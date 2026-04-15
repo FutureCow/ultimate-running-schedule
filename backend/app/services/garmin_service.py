@@ -275,13 +275,22 @@ def _build_garmin_workout(session: WorkoutSession) -> dict:
     }
 
 
+def _schedule_workout(client: Garmin, workout_id: str, date: "date") -> dict:
+    """Schedule a workout on the Garmin Connect calendar for a specific date.
+
+    The garminconnect library does not yet expose this endpoint, so we call
+    it directly via the underlying connectapi session.
+    """
+    url = f"workout-service/schedule/{workout_id}"
+    body = {"date": date.isoformat()}
+    return client.connectapi(url, method="POST", json=body)
+
+
 async def push_sessions_to_garmin(db: AsyncSession, user_id: int, sessions: list[WorkoutSession]) -> list[dict]:
-    """Push workout sessions to Garmin Connect. Returns list of results."""
+    """Push workout sessions to Garmin Connect and schedule them on the calendar."""
     cred = await get_credentials(db, user_id)
     if not cred:
         raise ValueError("No Garmin credentials found.")
-
-    results = []
 
     def _run():
         client = _build_client(cred)
@@ -292,10 +301,23 @@ async def push_sessions_to_garmin(db: AsyncSession, user_id: int, sessions: list
                 pushed.append({"session_id": session.id, "skipped": True, "reason": "rest day"})
                 continue
             try:
+                # 1. Create workout in the Garmin library
                 payload = _build_garmin_workout(session)
                 resp = client.add_workout(payload)
-                garmin_id = str(resp.get("workoutId", ""))
-                pushed.append({"session_id": session.id, "garmin_workout_id": garmin_id, "success": True})
+                workout_id = str(resp.get("workoutId", ""))
+
+                # 2. Schedule it on the calendar if we have a date
+                schedule_id = None
+                if session.scheduled_date and workout_id:
+                    sched_resp = _schedule_workout(client, workout_id, session.scheduled_date)
+                    schedule_id = str(sched_resp.get("workoutScheduleId", ""))
+
+                pushed.append({
+                    "session_id": session.id,
+                    "garmin_workout_id": workout_id,
+                    "garmin_schedule_id": schedule_id,
+                    "success": True,
+                })
             except Exception as e:
                 pushed.append({"session_id": session.id, "success": False, "error": str(e)})
         return pushed

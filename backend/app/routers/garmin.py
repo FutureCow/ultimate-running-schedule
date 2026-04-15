@@ -1,9 +1,10 @@
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.database import get_db
 from app.models.user import User
-from app.models.plan import WorkoutSession
+from app.models.plan import Plan, WorkoutSession
 from app.routers.deps import get_current_user
 from app.schemas.garmin import (
     GarminCredentialCreate, GarminCredentialResponse,
@@ -20,8 +21,7 @@ async def save_credentials(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    cred = await garmin_service.save_credentials(db, user.id, payload.email, payload.password)
-    return cred
+    return await garmin_service.save_credentials(db, user.id, payload.email, payload.password)
 
 
 @router.get("/credentials", response_model=GarminCredentialResponse)
@@ -57,7 +57,7 @@ async def sync_activities(
         return GarminSyncResponse(
             synced=True,
             activity_count=len(result["activities"]),
-            last_sync_at=result.get("last_sync_at") or __import__("datetime").datetime.now(__import__("datetime").timezone.utc),
+            last_sync_at=datetime.now(timezone.utc),
             summary=result["summary"],
         )
     except ValueError as e:
@@ -76,7 +76,7 @@ async def push_sessions(
         select(WorkoutSession)
         .join(WorkoutSession.plan)
         .where(WorkoutSession.id.in_(payload.session_ids))
-        .where(__import__("app.models.plan", fromlist=["Plan"]).Plan.user_id == user.id)
+        .where(Plan.user_id == user.id)
     )
     sessions = result.scalars().all()
     if not sessions:
@@ -96,7 +96,6 @@ async def push_week(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    from app.models.plan import Plan
     plan_result = await db.execute(
         select(Plan).where(Plan.id == payload.plan_id, Plan.user_id == user.id)
     )
