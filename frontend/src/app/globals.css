@@ -1,0 +1,74 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@layer base {
+  * { box-sizing: border-box; }
+
+  html, body {
+    @apply bg-surface text-slate-100 antialiased;
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100dvh;
+  }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { @apply bg-surface; }
+  ::-webkit-scrollbar-thumb { @apply bg-slate-600 rounded-full; }
+  ::-webkit-scrollbar-thumb:hover { @apply bg-slate-500; }
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-brand-500 px-5 py-2.5
+           text-sm font-semibold text-white shadow-lg shadow-brand-500/25
+           transition-all duration-200 hover:bg-brand-400 hover:shadow-brand-400/30
+           active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-slate-600
+           bg-surface-card px-5 py-2.5 text-sm font-semibold text-slate-200
+           transition-all duration-200 hover:border-slate-500 hover:bg-surface-elevated
+           active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2
+           text-sm font-medium text-slate-400 transition-all duration-200
+           hover:bg-surface-card hover:text-slate-200 active:scale-95;
+  }
+
+  .card {
+    @apply rounded-2xl border border-slate-700/50 bg-surface-card p-5 shadow-xl shadow-black/20;
+  }
+
+  .card-elevated {
+    @apply rounded-2xl border border-slate-600/50 bg-surface-elevated p-5;
+  }
+
+  .input {
+    @apply w-full rounded-xl border border-slate-600 bg-surface-card px-4 py-2.5
+           text-sm text-slate-100 placeholder-slate-500
+           transition-colors focus:border-brand-500 focus:outline-none focus:ring-2
+           focus:ring-brand-500/20 disabled:opacity-50;
+  }
+
+  .label {
+    @apply block text-sm font-medium text-slate-300 mb-1.5;
+  }
+
+  .pace-badge {
+    @apply font-mono text-xs font-medium tracking-wide px-2 py-0.5 rounded-lg;
+  }
+
+  .section-title {
+    @apply text-xl font-bold text-white mb-1;
+  }
+
+  .section-subtitle {
+    @apply text-sm text-slate-400;
+  }
+}
