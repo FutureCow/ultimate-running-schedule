@@ -14,6 +14,8 @@ async def register(payload: UserCreate, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Email already registered")
     if len(payload.password) < 8:
         raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+    if len(payload.password.encode("utf-8")) > 72:
+        raise HTTPException(status_code=400, detail="Password may not be longer than 72 characters")
     user = await auth_service.create_user(db, payload.email, payload.password)
     return user
 
