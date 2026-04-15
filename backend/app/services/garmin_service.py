@@ -1,28 +1,51 @@
 """
-Garmin Connect integration service.
-Handles credential encryption, activity fetch, and workout push.
+Garmin Connect integration service — compatible with python-garminconnect 0.3.2.
+
+Authentication uses the mobile SSO flow (DI OAuth Bearer tokens).
+Tokens are stored as garmin_tokens.json in a per-user temp directory,
+then the file contents are encrypted and persisted in the database.
 """
 import json
 import asyncio
 import logging
+import tempfile
+import os
 from datetime import datetime, date, timedelta, timezone
 from typing import Optional
+from pathlib import Path
 from cryptography.fernet import Fernet
-
-logger = logging.getLogger(__name__)
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from garminconnect import Garmin
-from tenacity import retry, stop_after_attempt, wait_exponential
+
+from garminconnect import (
+    Garmin,
+    GarminConnectAuthenticationError,
+    GarminConnectConnectionError,
+    GarminConnectTooManyRequestsError,
+)
+from garminconnect.workout import (
+    RunningWorkout,
+    WorkoutSegment,
+    create_warmup_step,
+    create_cooldown_step,
+    create_interval_step,
+    create_recovery_step,
+    create_repeat_group,
+)
 
 from app.config import settings
 from app.models.garmin import GarminCredential
 from app.models.plan import WorkoutSession, WorkoutType
 
+logger = logging.getLogger(__name__)
+
+TOKEN_FILENAME = "garmin_tokens.json"
+
+
+# ── Encryption helpers ────────────────────────────────────────────────────────
 
 def _fernet() -> Fernet:
-    key = settings.GARMIN_ENCRYPTION_KEY.encode()
-    return Fernet(key)
+    return Fernet(settings.GARMIN_ENCRYPTION_KEY.encode())
 
 
 def encrypt(value: str) -> str:
@@ -33,25 +56,48 @@ def decrypt(value: str) -> str:
     return _fernet().decrypt(value.encode()).decode()
 
 
+# ── Token file helpers ────────────────────────────────────────────────────────
+
+def _write_token_dir(cred: GarminCredential) -> str:
+    """Write decrypted token JSON to a temp dir; return the dir path."""
+    tmp = tempfile.mkdtemp(prefix=f"garmin_{cred.user_id}_")
+    if cred.encrypted_tokens:
+        token_json = decrypt(cred.encrypted_tokens)
+        Path(tmp, TOKEN_FILENAME).write_text(token_json)
+        logger.debug("Restored Garmin tokens for user %s", cred.user_id)
+    return tmp
+
+
+def _read_token_dir(token_dir: str) -> Optional[str]:
+    """Read token file from dir and return encrypted string (or None)."""
+    token_path = Path(token_dir, TOKEN_FILENAME)
+    if token_path.exists():
+        return encrypt(token_path.read_text())
+    return None
+
+
+def _cleanup_token_dir(token_dir: str) -> None:
+    import shutil
+    try:
+        shutil.rmtree(token_dir, ignore_errors=True)
+    except Exception:
+        pass
+
+
+# ── Credential CRUD ───────────────────────────────────────────────────────────
+
 async def save_credentials(db: AsyncSession, user_id: int, email: str, password: str) -> GarminCredential:
     result = await db.execute(select(GarminCredential).where(GarminCredential.user_id == user_id))
     cred = result.scalar_one_or_none()
-
     enc_email = encrypt(email)
     enc_pass = encrypt(password)
-
     if cred:
         cred.encrypted_email = enc_email
         cred.encrypted_password = enc_pass
-        cred.encrypted_tokens = None
+        cred.encrypted_tokens = None  # force re-login with new credentials
     else:
-        cred = GarminCredential(
-            user_id=user_id,
-            encrypted_email=enc_email,
-            encrypted_password=enc_pass,
-        )
+        cred = GarminCredential(user_id=user_id, encrypted_email=enc_email, encrypted_password=enc_pass)
         db.add(cred)
-
     await db.commit()
     await db.refresh(cred)
     return cred
@@ -62,30 +108,37 @@ async def get_credentials(db: AsyncSession, user_id: int) -> Optional[GarminCred
     return result.scalar_one_or_none()
 
 
-def _build_client(cred: GarminCredential) -> Garmin:
+# ── Login helper ──────────────────────────────────────────────────────────────
+
+def _login(cred: GarminCredential, token_dir: str) -> Garmin:
+    """
+    Login strategy:
+    1. If tokens exist in token_dir → restore them (no SSO)
+    2. If no tokens → full credential login and save to token_dir
+    """
     email = decrypt(cred.encrypted_email)
     password = decrypt(cred.encrypted_password)
-    client = Garmin(email=email, password=password)
-    # Restore cached OAuth tokens if available — avoids SSO login entirely
-    if cred.encrypted_tokens:
-        try:
-            token_data = decrypt(cred.encrypted_tokens)
-            client.garth.loads(token_data)
-            logger.info("Garmin: restored tokens from cache")
-        except Exception as e:
-            logger.warning("Garmin: token restore failed (%s), will re-login", e)
+
+    if Path(token_dir, TOKEN_FILENAME).exists():
+        # Restore from token file — no SSO needed
+        logger.info("Garmin: restoring tokens from cache (user %s)", cred.user_id)
+        client = Garmin()
+        client.login(token_dir)
+    else:
+        # First-time or expired — full SSO login
+        logger.info("Garmin: performing full SSO login for user %s", cred.user_id)
+        client = Garmin(
+            email=email,
+            password=password,
+            prompt_mfa=None,  # MFA not supported in headless mode
+        )
+        client.login(token_dir)
+        logger.info("Garmin: login successful, tokens saved")
+
     return client
 
 
-@retry(stop=stop_after_attempt(2), wait=wait_exponential(multiplier=1, min=3, max=8))
-def _login_sync(client: Garmin) -> None:
-    client.login()
-
-
-def _save_tokens(client: Garmin) -> str:
-    """Serialize the current garth OAuth tokens to an encrypted string."""
-    return encrypt(client.garth.dumps())
-
+# ── Activity fetch ────────────────────────────────────────────────────────────
 
 def _fetch_activities_sync(client: Garmin, start: date, end: date) -> list[dict]:
     activities = []
@@ -97,9 +150,7 @@ def _fetch_activities_sync(client: Garmin, start: date, end: date) -> list[dict]
             break
         for act in batch:
             try:
-                act_date = datetime.fromisoformat(
-                    act.get("startTimeLocal", "1970-01-01T00:00:00")
-                ).date()
+                act_date = datetime.fromisoformat(act.get("startTimeLocal", "1970-01-01T00:00:00")).date()
                 if act_date < start:
                     return activities
                 if act_date <= end:
@@ -113,19 +164,15 @@ def _fetch_activities_sync(client: Garmin, start: date, end: date) -> list[dict]
 
 
 def _parse_activity(act: dict) -> dict:
-    """Normalize a Garmin activity dict to our schema."""
     dist_m = act.get("distance", 0) or 0
     dist_km = round(dist_m / 1000, 2)
     duration_sec = int(act.get("duration", 0) or 0)
-    avg_speed = act.get("averageSpeed", 0) or 0  # m/s
-
+    avg_speed = act.get("averageSpeed", 0) or 0
     pace_str = None
-    if avg_speed and avg_speed > 0:
-        pace_sec = 1000 / avg_speed  # seconds per km
-        mins = int(pace_sec // 60)
-        secs = int(pace_sec % 60)
+    if avg_speed > 0:
+        pace_sec = 1000 / avg_speed
+        mins, secs = int(pace_sec // 60), int(pace_sec % 60)
         pace_str = f"{mins}:{secs:02d}"
-
     return {
         "activity_id": str(act.get("activityId", "")),
         "activity_name": act.get("activityName", ""),
@@ -144,35 +191,44 @@ def _parse_activity(act: dict) -> dict:
 async def fetch_activities(db: AsyncSession, user_id: int, months: int = 3) -> dict:
     cred = await get_credentials(db, user_id)
     if not cred:
-        raise ValueError("No Garmin credentials found. Please add them first.")
+        raise ValueError("Geen Garmin credentials gevonden. Sla ze eerst op.")
 
     end_date = date.today()
     start_date = end_date - timedelta(days=months * 30)
-
-    new_tokens: list[str] = []
+    token_dir = _write_token_dir(cred)
+    new_token_data: list[str] = []
 
     def _run():
-        client = _build_client(cred)
-        # Only do full SSO login when we have no cached tokens
-        if not cred.encrypted_tokens:
-            logger.info("Garmin: no cached tokens, performing full login")
-            _login_sync(client)
-            new_tokens.append(_save_tokens(client))
-        else:
-            logger.info("Garmin: using cached tokens")
-        raw = _fetch_activities_sync(client, start_date, end_date)
-        return [_parse_activity(a) for a in raw if a.get("activityType", {}).get("typeKey", "").lower() in ("running", "trail_running", "treadmill_running")]
+        try:
+            client = _login(cred, token_dir)
+            raw = _fetch_activities_sync(client, start_date, end_date)
+            enc = _read_token_dir(token_dir)
+            if enc:
+                new_token_data.append(enc)
+            return [
+                _parse_activity(a) for a in raw
+                if a.get("activityType", {}).get("typeKey", "").lower()
+                in ("running", "trail_running", "treadmill_running")
+            ]
+        finally:
+            _cleanup_token_dir(token_dir)
 
     loop = asyncio.get_event_loop()
-    activities = await loop.run_in_executor(None, _run)
+    try:
+        activities = await loop.run_in_executor(None, _run)
+    except GarminConnectTooManyRequestsError as e:
+        raise RuntimeError("Garmin rate limit bereikt (429). Wacht 15 minuten.") from e
+    except GarminConnectAuthenticationError as e:
+        # Wipe tokens so next attempt does a fresh login
+        cred.encrypted_tokens = None
+        await db.commit()
+        raise RuntimeError("Garmin authenticatie mislukt. Controleer je credentials.") from e
 
-    # Persist tokens + sync timestamp
-    if new_tokens:
-        cred.encrypted_tokens = new_tokens[0]
+    if new_token_data:
+        cred.encrypted_tokens = new_token_data[0]
     cred.last_sync_at = datetime.now(timezone.utc)
     await db.commit()
 
-    # Summarize for AI context
     total_km = sum(a["distance_km"] for a in activities)
     avg_paces = [a["average_pace_per_km"] for a in activities if a["average_pace_per_km"]]
     weekly_km = total_km / (months * 4.3) if activities else 0
@@ -189,180 +245,114 @@ async def fetch_activities(db: AsyncSession, user_id: int, months: int = 3) -> d
     }
 
 
-# ── Workout push to Garmin Connect ────────────────────────────────────────────
+# ── Workout builder (typed Pydantic models) ───────────────────────────────────
 
-def _pace_to_speed(pace_str: str) -> float:
-    """Convert 'M:SS' pace string to m/s."""
-    parts = pace_str.split(":")
-    total_sec = int(parts[0]) * 60 + int(parts[1])
-    return round(1000 / total_sec, 4)  # m/s
-
-
-def _build_garmin_workout(session: WorkoutSession) -> dict:
-    """Build a Garmin Connect workout payload from a WorkoutSession."""
-    steps = []
-    step_order = 1
-
-    def _make_step(step_type: str, description: str, end_condition: str,
-                   end_value, target_type: str = "no.target",
-                   target_low=None, target_high=None) -> dict:
-        step = {
-            "type": "ExecutableStepDTO",
-            "stepId": None,
-            "stepOrder": step_order,
-            "stepType": {"stepTypeId": 1 if step_type == "warmup" else (2 if step_type == "cooldown" else 3),
-                         "stepTypeKey": step_type},
-            "description": description,
-            "endCondition": {"conditionTypeKey": end_condition, "conditionTypeId": 3 if end_condition == "distance" else 2},
-            "endConditionValue": end_value,
-            "targetType": {"workoutTargetTypeId": 1, "workoutTargetTypeKey": target_type},
-        }
-        if target_low and target_high:
-            step["targetValueOne"] = target_low
-            step["targetValueTwo"] = target_high
-        return step
-
+def _build_running_workout(session: WorkoutSession) -> RunningWorkout:
+    """Build a typed RunningWorkout from a WorkoutSession."""
     paces = session.target_paces or {}
-    wtype = session.workout_type
+    steps = []
 
-    if wtype == WorkoutType.INTERVAL and session.intervals:
-        # Warmup
-        if paces.get("warmup"):
-            steps.append(_make_step("warmup", "Easy warmup jog", "distance", 2000))
-            step_order += 1
+    if paces.get("warmup"):
+        steps.append(create_warmup_step(duration_seconds=600.0))
 
-        # Repeat block
+    if session.workout_type == WorkoutType.INTERVAL and session.intervals:
         for iv in session.intervals:
             reps = iv.get("reps", 1)
-            pace = iv.get("pace", "")
-            dist = iv.get("distance_m", 400)
-            rest_sec = iv.get("rest_seconds", 90)
-
-            for _ in range(reps):
-                steps.append({
-                    "type": "ExecutableStepDTO",
-                    "stepOrder": step_order,
-                    "stepType": {"stepTypeId": 3, "stepTypeKey": "interval"},
-                    "description": f"Fast interval @ {pace}/km",
-                    "endCondition": {"conditionTypeKey": "distance", "conditionTypeId": 3},
-                    "endConditionValue": dist,
-                    "targetType": {"workoutTargetTypeId": 1, "workoutTargetTypeKey": "no.target"},
-                })
-                step_order += 1
-                steps.append({
-                    "type": "ExecutableStepDTO",
-                    "stepOrder": step_order,
-                    "stepType": {"stepTypeId": 5, "stepTypeKey": "recovery"},
-                    "description": "Recovery",
-                    "endCondition": {"conditionTypeKey": "time", "conditionTypeId": 2},
-                    "endConditionValue": rest_sec,
-                    "targetType": {"workoutTargetTypeId": 1, "workoutTargetTypeKey": "no.target"},
-                })
-                step_order += 1
-
-        # Cooldown
-        if paces.get("cooldown"):
-            steps.append(_make_step("cooldown", "Easy cooldown jog", "distance", 1000))
+            dist_m = float(iv.get("distance_m") or 400)
+            rest_sec = float(iv.get("rest_seconds", 90))
+            repeat = create_repeat_group(
+                repeat_value=reps,
+                steps=[
+                    create_interval_step(distance_meters=dist_m),
+                    create_recovery_step(duration_seconds=rest_sec),
+                ],
+            )
+            steps.append(repeat)
     else:
-        dist_m = int((session.distance_km or 5) * 1000)
-        main_pace = paces.get("main", "6:00")
+        dist_m = float((session.distance_km or 5) * 1000)
+        steps.append(create_interval_step(distance_meters=dist_m))
 
-        if paces.get("warmup"):
-            steps.append(_make_step("warmup", "Easy warmup", "distance", 1000))
-            step_order += 1
+    if paces.get("cooldown"):
+        steps.append(create_cooldown_step(duration_seconds=300.0))
 
-        steps.append({
-            "type": "ExecutableStepDTO",
-            "stepOrder": step_order,
-            "stepType": {"stepTypeId": 3, "stepTypeKey": "interval"},
-            "description": f"Run @ {main_pace}/km",
-            "endCondition": {"conditionTypeKey": "distance", "conditionTypeId": 3},
-            "endConditionValue": dist_m,
-            "targetType": {"workoutTargetTypeId": 1, "workoutTargetTypeKey": "no.target"},
-        })
-        step_order += 1
-
-        if paces.get("cooldown"):
-            steps.append(_make_step("cooldown", "Easy cooldown", "distance", 1000))
-
-    sport_type_map = {
-        WorkoutType.INTERVAL: {"sportTypeId": 1, "sportTypeKey": "running"},
-        WorkoutType.LONG_RUN: {"sportTypeId": 1, "sportTypeKey": "running"},
-        WorkoutType.TEMPO: {"sportTypeId": 1, "sportTypeKey": "running"},
-        WorkoutType.EASY_RUN: {"sportTypeId": 1, "sportTypeKey": "running"},
-        WorkoutType.RECOVERY: {"sportTypeId": 1, "sportTypeKey": "running"},
-    }
-
-    return {
-        "sportType": sport_type_map.get(session.workout_type, {"sportTypeId": 1, "sportTypeKey": "running"}),
-        "workoutName": session.title,
-        "description": session.description or "",
-        "workoutSegments": [{"segmentOrder": 1, "sportType": {"sportTypeId": 1, "sportTypeKey": "running"}, "workoutSteps": steps}],
-    }
+    return RunningWorkout(
+        workoutName=session.title,
+        description=session.description or "",
+        estimatedDurationInSecs=int((session.duration_minutes or 30) * 60),
+        workoutSegments=[
+            WorkoutSegment(
+                segmentOrder=1,
+                sportType={"sportTypeId": 1, "sportTypeKey": "running"},
+                workoutSteps=steps,
+            )
+        ],
+    )
 
 
-
+# ── Workout push ──────────────────────────────────────────────────────────────
 
 async def push_sessions_to_garmin(db: AsyncSession, user_id: int, sessions: list[WorkoutSession]) -> list[dict]:
-    """Push workout sessions to Garmin Connect and schedule them on the calendar."""
     cred = await get_credentials(db, user_id)
     if not cred:
-        raise ValueError("No Garmin credentials found.")
+        raise ValueError("Geen Garmin credentials gevonden.")
 
-    new_tokens: list[str] = []
+    token_dir = _write_token_dir(cred)
+    new_token_data: list[str] = []
 
     def _run():
-        client = _build_client(cred)
-        if not cred.encrypted_tokens:
-            try:
-                logger.info("Garmin: no cached tokens, performing full login")
-                _login_sync(client)
-                new_tokens.append(_save_tokens(client))
-            except Exception as login_err:
-                logger.error("Garmin login failed: %s", login_err, exc_info=True)
-                raise RuntimeError(f"Garmin login mislukt: {login_err}") from login_err
-        else:
-            logger.info("Garmin: using cached tokens for push")
-        pushed = []
-        for session in sessions:
-            if session.workout_type == WorkoutType.REST:
-                pushed.append({"session_id": session.id, "skipped": True, "reason": "rest day"})
-                continue
-            try:
-                # 1. Upload workout to the Garmin library
-                payload = _build_garmin_workout(session)
-                logger.info("Pushing session %s (%s) to Garmin", session.id, session.title)
-                resp = client.upload_workout(payload)
-                workout_id = str(resp.get("workoutId", ""))
-                logger.info("Garmin workout uploaded: %s", workout_id)
+        try:
+            client = _login(cred, token_dir)
+            pushed = []
 
-                # 2. Schedule it on the calendar if we have a date
-                schedule_id = None
-                if session.scheduled_date and workout_id:
-                    try:
-                        sched_resp = client.schedule_workout(workout_id, session.scheduled_date.isoformat())
-                        schedule_id = str(sched_resp.get("workoutScheduleId", ""))
-                        logger.info("Scheduled on %s (schedule_id=%s)", session.scheduled_date, schedule_id)
-                    except Exception as sched_err:
-                        logger.warning("Schedule failed for workout %s: %s", workout_id, sched_err)
+            for session in sessions:
+                if session.workout_type == WorkoutType.REST:
+                    pushed.append({"session_id": session.id, "skipped": True, "reason": "rest day"})
+                    continue
+                try:
+                    workout = _build_running_workout(session)
+                    logger.info("Uploading session %s: %s", session.id, session.title)
+                    resp = client.upload_running_workout(workout)
+                    workout_id = str(resp.get("workoutId", ""))
+                    logger.info("Workout created: %s", workout_id)
 
-                pushed.append({
-                    "session_id": session.id,
-                    "garmin_workout_id": workout_id,
-                    "garmin_schedule_id": schedule_id,
-                    "success": True,
-                })
-            except Exception as e:
-                logger.error("Push failed for session %s: %s", session.id, e, exc_info=True)
-                pushed.append({"session_id": session.id, "success": False, "error": str(e)})
-        return pushed
+                    schedule_id = None
+                    if session.scheduled_date and workout_id:
+                        try:
+                            sched = client.schedule_workout(workout_id, session.scheduled_date.isoformat())
+                            schedule_id = str(sched.get("workoutScheduleId", ""))
+                            logger.info("Scheduled on %s (id=%s)", session.scheduled_date, schedule_id)
+                        except Exception as e:
+                            logger.warning("Schedule failed for %s: %s", workout_id, e)
+
+                    pushed.append({
+                        "session_id": session.id,
+                        "garmin_workout_id": workout_id,
+                        "garmin_schedule_id": schedule_id,
+                        "success": True,
+                    })
+                except Exception as e:
+                    logger.error("Push failed for session %s: %s", session.id, e, exc_info=True)
+                    pushed.append({"session_id": session.id, "success": False, "error": str(e)})
+
+            enc = _read_token_dir(token_dir)
+            if enc:
+                new_token_data.append(enc)
+            return pushed
+        finally:
+            _cleanup_token_dir(token_dir)
 
     loop = asyncio.get_event_loop()
-    results = await loop.run_in_executor(None, _run)
+    try:
+        results = await loop.run_in_executor(None, _run)
+    except GarminConnectTooManyRequestsError as e:
+        raise RuntimeError("Garmin rate limit (429). Wacht 15 minuten.") from e
+    except GarminConnectAuthenticationError as e:
+        cred.encrypted_tokens = None
+        await db.commit()
+        raise RuntimeError("Garmin authenticatie mislukt.") from e
 
-    # Persist tokens + Garmin workout IDs
-    if new_tokens:
-        cred.encrypted_tokens = new_tokens[0]
+    if new_token_data:
+        cred.encrypted_tokens = new_token_data[0]
     now = datetime.now(timezone.utc)
     for r in results:
         if r.get("success"):
