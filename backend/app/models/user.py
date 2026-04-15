@@ -17,6 +17,6 @@ class User(Base):
     )
 
     garmin_credential: Mapped["GarminCredential"] = relationship(
-        "GarminCredential", back_populates="user", uselist=False, lazy="select"
+        "GarminCredential", back_populates="user", uselist=False, lazy="selectin"
     )
-    plans: Mapped[list["Plan"]] = relationship("Plan", back_populates="user", lazy="select")
+    plans: Mapped[list["Plan"]] = relationship("Plan", back_populates="user", lazy="selectin")

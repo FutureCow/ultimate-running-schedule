@@ -70,22 +70,13 @@ async def create_plan(
     db.add(plan)
     await db.flush()  # get plan.id
 
-    # Create workout sessions
     sessions = _create_sessions_from_json(plan, plan_json)
     db.add_all(sessions)
     await db.commit()
-    await db.refresh(plan)
 
-    # Reload with sessions
-    result = await db.execute(
-        select(Plan).where(Plan.id == plan.id)
-    )
-    plan = result.scalar_one()
-    sessions_result = await db.execute(
-        select(WorkoutSession).where(WorkoutSession.plan_id == plan.id).order_by(WorkoutSession.week_number, WorkoutSession.day_number)
-    )
-    plan.sessions = sessions_result.scalars().all()
-    return plan
+    # Reload fully with selectin-loaded sessions
+    result = await db.execute(select(Plan).where(Plan.id == plan.id))
+    return result.scalar_one()
 
 
 @router.get("", response_model=list[PlanResponse])
@@ -94,13 +85,7 @@ async def list_plans(
     user: User = Depends(get_current_user),
 ):
     result = await db.execute(select(Plan).where(Plan.user_id == user.id).order_by(Plan.created_at.desc()))
-    plans = result.scalars().all()
-    for plan in plans:
-        sessions_result = await db.execute(
-            select(WorkoutSession).where(WorkoutSession.plan_id == plan.id).order_by(WorkoutSession.week_number, WorkoutSession.day_number)
-        )
-        plan.sessions = sessions_result.scalars().all()
-    return plans
+    return result.scalars().all()
 
 
 @router.get("/{plan_id}", response_model=PlanResponse)
@@ -113,10 +98,6 @@ async def get_plan(
     plan = result.scalar_one_or_none()
     if not plan:
         raise HTTPException(status_code=404, detail="Plan not found")
-    sessions_result = await db.execute(
-        select(WorkoutSession).where(WorkoutSession.plan_id == plan.id).order_by(WorkoutSession.week_number, WorkoutSession.day_number)
-    )
-    plan.sessions = sessions_result.scalars().all()
     return plan
 
 

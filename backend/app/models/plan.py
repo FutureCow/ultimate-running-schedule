@@ -55,7 +55,8 @@ class Plan(Base):
 
     user: Mapped["User"] = relationship("User", back_populates="plans")
     sessions: Mapped[list["WorkoutSession"]] = relationship(
-        "WorkoutSession", back_populates="plan", cascade="all, delete-orphan", lazy="select"
+        "WorkoutSession", back_populates="plan", cascade="all, delete-orphan",
+        lazy="selectin", order_by="WorkoutSession.week_number, WorkoutSession.day_number"
     )
 
 
