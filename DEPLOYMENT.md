@@ -268,22 +268,72 @@ rc-service postgresql start
 
 ### OpenRC services (Alpine)
 
+**Backend** — `/etc/init.d/runai-backend`:
+
 ```bash
-# Backend: /etc/init.d/runai-backend
 cat > /etc/init.d/runai-backend <<'EOF'
 #!/sbin/openrc-run
-description="RunAI Backend"
+description="RunAI Backend (FastAPI / Uvicorn)"
+
 command="/home/runapp/app/backend/.venv/bin/uvicorn"
 command_args="app.main:app --host 127.0.0.1 --port 8000 --workers 2 --proxy-headers"
 directory="/home/runapp/app/backend"
 command_user="runapp"
 command_background=true
 pidfile="/run/runai-backend.pid"
+output_log="/var/log/runai-backend.log"
+error_log="/var/log/runai-backend.log"
+
+depend() {
+    need net postgresql
+}
 EOF
 
 chmod +x /etc/init.d/runai-backend
 rc-update add runai-backend default
 rc-service runai-backend start
+```
+
+**Frontend** — `/etc/init.d/runai-frontend`:
+
+```bash
+cat > /etc/init.d/runai-frontend <<'EOF'
+#!/sbin/openrc-run
+description="RunAI Frontend (Next.js)"
+
+export NODE_ENV="production"
+export PORT="3001"
+export HOSTNAME="127.0.0.1"
+export NEXT_PUBLIC_API_URL="https://jouwdomein.nl/api/v1"
+
+command="/usr/bin/node"
+command_args="/home/runapp/app/frontend/.next/standalone/server.js"
+directory="/home/runapp/app/frontend"
+command_user="runapp"
+command_background=true
+pidfile="/run/runai-frontend.pid"
+output_log="/var/log/runai-frontend.log"
+error_log="/var/log/runai-frontend.log"
+
+depend() {
+    need net runai-backend
+}
+EOF
+
+chmod +x /etc/init.d/runai-frontend
+rc-update add runai-frontend default
+rc-service runai-frontend start
+```
+
+**Status controleren:**
+
+```bash
+rc-service runai-backend status
+rc-service runai-frontend status
+
+# Logs bekijken
+tail -f /var/log/runai-backend.log
+tail -f /var/log/runai-frontend.log
 ```
 
 ---
