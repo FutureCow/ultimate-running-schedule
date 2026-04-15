@@ -1,0 +1,16 @@
+{
+  "name": "RunAI – AI Running Plans",
+  "short_name": "RunAI",
+  "description": "Gepersonaliseerde hardloopschema's met Garmin en Claude AI",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

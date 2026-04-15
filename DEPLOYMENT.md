@@ -98,6 +98,10 @@ echo "NEXT_PUBLIC_API_URL=https://jouwdomein.nl/api/v1" > .env.local
 
 # Productiebuild
 npm run build
+
+# Kopieer static files naar standalone map (verplicht!)
+cp -r .next/static .next/standalone/.next/static
+cp -r public .next/standalone/public
 ```
 
 ### 7. systemd services
@@ -368,6 +372,8 @@ alembic upgrade head
 cd ../frontend
 npm ci --frozen-lockfile
 npm run build
+cp -r .next/static .next/standalone/.next/static
+cp -r public .next/standalone/public
 
 # Herstarten
 exit
