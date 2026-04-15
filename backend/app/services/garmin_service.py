@@ -23,15 +23,6 @@ from garminconnect import (
     GarminConnectConnectionError,
     GarminConnectTooManyRequestsError,
 )
-from garminconnect.workout import (
-    RunningWorkout,
-    WorkoutSegment,
-    create_warmup_step,
-    create_cooldown_step,
-    create_interval_step,
-    create_recovery_step,
-    create_repeat_group,
-)
 
 from app.config import settings
 from app.models.garmin import GarminCredential
@@ -245,48 +236,72 @@ async def fetch_activities(db: AsyncSession, user_id: int, months: int = 3) -> d
     }
 
 
-# ── Workout builder (typed Pydantic models) ───────────────────────────────────
+# ── Workout builder ───────────────────────────────────────────────────────────
 
-def _build_running_workout(session: WorkoutSession) -> RunningWorkout:
-    """Build a typed RunningWorkout from a WorkoutSession."""
+_SPORT_RUNNING = {"sportTypeId": 1, "sportTypeKey": "running"}
+
+
+def _step(order: int, step_type_id: int, step_type_key: str,
+          end_condition: str, end_value, description: str = "") -> dict:
+    """Build a single Garmin workout step dict."""
+    cond_id = 3 if end_condition == "distance" else 2  # 3=distance, 2=time
+    return {
+        "type": "ExecutableStepDTO",
+        "stepId": None,
+        "stepOrder": order,
+        "stepType": {"stepTypeId": step_type_id, "stepTypeKey": step_type_key},
+        "description": description,
+        "endCondition": {"conditionTypeKey": end_condition, "conditionTypeId": cond_id},
+        "endConditionValue": end_value,
+        "targetType": {"workoutTargetTypeId": 1, "workoutTargetTypeKey": "no.target"},
+    }
+
+
+def _build_workout_payload(session: WorkoutSession) -> dict:
+    """Build a Garmin Connect workout dict using distance-based steps."""
     paces = session.target_paces or {}
     steps = []
+    order = 1
 
+    # Warmup (1 km easy)
     if paces.get("warmup"):
-        steps.append(create_warmup_step(duration_seconds=600.0))
+        steps.append(_step(order, 1, "warmup", "distance", 1000, "Warming-up"))
+        order += 1
 
     if session.workout_type == WorkoutType.INTERVAL and session.intervals:
         for iv in session.intervals:
             reps = iv.get("reps", 1)
-            dist_m = float(iv.get("distance_m") or 400)
-            rest_sec = float(iv.get("rest_seconds", 90))
-            repeat = create_repeat_group(
-                repeat_value=reps,
-                steps=[
-                    create_interval_step(distance_meters=dist_m),
-                    create_recovery_step(duration_seconds=rest_sec),
-                ],
-            )
-            steps.append(repeat)
+            dist_m = iv.get("distance_m") or 400
+            rest_sec = iv.get("rest_seconds", 90)
+            pace_note = iv.get("pace", "")
+            for _ in range(reps):
+                steps.append(_step(order, 3, "interval", "distance", dist_m,
+                                   f"Interval @ {pace_note}/km"))
+                order += 1
+                steps.append(_step(order, 5, "recovery", "time", rest_sec, "Rust"))
+                order += 1
     else:
-        dist_m = float((session.distance_km or 5) * 1000)
-        steps.append(create_interval_step(distance_meters=dist_m))
+        dist_m = int((session.distance_km or 5) * 1000)
+        main_pace = paces.get("main", "")
+        steps.append(_step(order, 3, "interval", "distance", dist_m,
+                           f"Loop @ {main_pace}/km"))
+        order += 1
 
+    # Cooldown (500 m easy)
     if paces.get("cooldown"):
-        steps.append(create_cooldown_step(duration_seconds=300.0))
+        steps.append(_step(order, 2, "cooldown", "distance", 500, "Cooling-down"))
 
-    return RunningWorkout(
-        workoutName=session.title,
-        description=session.description or "",
-        estimatedDurationInSecs=int((session.duration_minutes or 30) * 60),
-        workoutSegments=[
-            WorkoutSegment(
-                segmentOrder=1,
-                sportType={"sportTypeId": 1, "sportTypeKey": "running"},
-                workoutSteps=steps,
-            )
-        ],
-    )
+    return {
+        "sportType": _SPORT_RUNNING,
+        "workoutName": session.title,
+        "description": session.description or "",
+        "estimatedDurationInSecs": (session.duration_minutes or 30) * 60,
+        "workoutSegments": [{
+            "segmentOrder": 1,
+            "sportType": _SPORT_RUNNING,
+            "workoutSteps": steps,
+        }],
+    }
 
 
 # ── Workout push ──────────────────────────────────────────────────────────────
@@ -309,9 +324,9 @@ async def push_sessions_to_garmin(db: AsyncSession, user_id: int, sessions: list
                     pushed.append({"session_id": session.id, "skipped": True, "reason": "rest day"})
                     continue
                 try:
-                    workout = _build_running_workout(session)
+                    payload = _build_workout_payload(session)
                     logger.info("Uploading session %s: %s", session.id, session.title)
-                    resp = client.upload_running_workout(workout)
+                    resp = client.upload_workout(payload)
                     workout_id = str(resp.get("workoutId", ""))
                     logger.info("Workout created: %s", workout_id)
 
