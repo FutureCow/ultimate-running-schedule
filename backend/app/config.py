@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     # App
     APP_ENV: str = "development"
     LOG_LEVEL: str = "INFO"
+    REGISTRATION_OPEN: bool = True
 
     @property
     def allowed_origins_list(self) -> List[str]:

@@ -3,12 +3,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.schemas.user import UserCreate, UserLogin, UserResponse, TokenResponse, RefreshRequest
 from app.services import auth_service
+from app.config import settings
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def register(payload: UserCreate, db: AsyncSession = Depends(get_db)):
+    if not settings.REGISTRATION_OPEN:
+        raise HTTPException(status_code=403, detail="Registratie is gesloten")
     existing = await auth_service.get_user_by_email(db, payload.email)
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
