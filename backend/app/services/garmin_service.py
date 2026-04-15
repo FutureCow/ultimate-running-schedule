@@ -298,7 +298,11 @@ async def push_sessions_to_garmin(db: AsyncSession, user_id: int, sessions: list
 
     def _run():
         client = _build_client(cred)
-        _login_sync(client)
+        try:
+            _login_sync(client)
+        except Exception as login_err:
+            logger.error("Garmin login failed: %s", login_err, exc_info=True)
+            raise RuntimeError(f"Garmin login mislukt: {login_err}") from login_err
         pushed = []
         for session in sessions:
             if session.workout_type == WorkoutType.REST:
