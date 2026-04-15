@@ -66,12 +66,25 @@ def _build_client(cred: GarminCredential) -> Garmin:
     email = decrypt(cred.encrypted_email)
     password = decrypt(cred.encrypted_password)
     client = Garmin(email=email, password=password)
+    # Restore cached OAuth tokens if available — avoids SSO login entirely
+    if cred.encrypted_tokens:
+        try:
+            token_data = decrypt(cred.encrypted_tokens)
+            client.garth.loads(token_data)
+            logger.info("Garmin: restored tokens from cache")
+        except Exception as e:
+            logger.warning("Garmin: token restore failed (%s), will re-login", e)
     return client
 
 
-@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
+@retry(stop=stop_after_attempt(2), wait=wait_exponential(multiplier=1, min=3, max=8))
 def _login_sync(client: Garmin) -> None:
     client.login()
+
+
+def _save_tokens(client: Garmin) -> str:
+    """Serialize the current garth OAuth tokens to an encrypted string."""
+    return encrypt(client.garth.dumps())
 
 
 def _fetch_activities_sync(client: Garmin, start: date, end: date) -> list[dict]:
@@ -136,16 +149,26 @@ async def fetch_activities(db: AsyncSession, user_id: int, months: int = 3) -> d
     end_date = date.today()
     start_date = end_date - timedelta(days=months * 30)
 
+    new_tokens: list[str] = []
+
     def _run():
         client = _build_client(cred)
-        _login_sync(client)
+        # Only do full SSO login when we have no cached tokens
+        if not cred.encrypted_tokens:
+            logger.info("Garmin: no cached tokens, performing full login")
+            _login_sync(client)
+            new_tokens.append(_save_tokens(client))
+        else:
+            logger.info("Garmin: using cached tokens")
         raw = _fetch_activities_sync(client, start_date, end_date)
         return [_parse_activity(a) for a in raw if a.get("activityType", {}).get("typeKey", "").lower() in ("running", "trail_running", "treadmill_running")]
 
     loop = asyncio.get_event_loop()
     activities = await loop.run_in_executor(None, _run)
 
-    # Update last_sync_at
+    # Persist tokens + sync timestamp
+    if new_tokens:
+        cred.encrypted_tokens = new_tokens[0]
     cred.last_sync_at = datetime.now(timezone.utc)
     await db.commit()
 
@@ -296,13 +319,20 @@ async def push_sessions_to_garmin(db: AsyncSession, user_id: int, sessions: list
     if not cred:
         raise ValueError("No Garmin credentials found.")
 
+    new_tokens: list[str] = []
+
     def _run():
         client = _build_client(cred)
-        try:
-            _login_sync(client)
-        except Exception as login_err:
-            logger.error("Garmin login failed: %s", login_err, exc_info=True)
-            raise RuntimeError(f"Garmin login mislukt: {login_err}") from login_err
+        if not cred.encrypted_tokens:
+            try:
+                logger.info("Garmin: no cached tokens, performing full login")
+                _login_sync(client)
+                new_tokens.append(_save_tokens(client))
+            except Exception as login_err:
+                logger.error("Garmin login failed: %s", login_err, exc_info=True)
+                raise RuntimeError(f"Garmin login mislukt: {login_err}") from login_err
+        else:
+            logger.info("Garmin: using cached tokens for push")
         pushed = []
         for session in sessions:
             if session.workout_type == WorkoutType.REST:
@@ -341,7 +371,9 @@ async def push_sessions_to_garmin(db: AsyncSession, user_id: int, sessions: list
     loop = asyncio.get_event_loop()
     results = await loop.run_in_executor(None, _run)
 
-    # Persist Garmin IDs
+    # Persist tokens + Garmin workout IDs
+    if new_tokens:
+        cred.encrypted_tokens = new_tokens[0]
     now = datetime.now(timezone.utc)
     for r in results:
         if r.get("success"):
