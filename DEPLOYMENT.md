@@ -399,6 +399,98 @@ iptables -A INPUT -j DROP
 
 ---
 
+## Caddy reverse proxy (aparte machine)
+
+Caddy draait op een andere server en proxiet naar de Alpine-machine (`APP_SERVER_IP`).
+SSL wordt automatisch geregeld via Let's Encrypt — geen certbot nodig.
+
+### Caddyfile
+
+```caddy
+jouwdomein.nl {
+
+    # Frontend (Next.js)
+    reverse_proxy APP_SERVER_IP:3001 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+
+    # Backend API
+    handle /api/* {
+        reverse_proxy APP_SERVER_IP:8000 {
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+            transport http {
+                read_timeout 120s
+                write_timeout 120s
+            }
+        }
+    }
+
+    # OpenAPI docs (verwijder in productie of beveilig met basic_auth)
+    handle /docs* {
+        reverse_proxy APP_SERVER_IP:8000
+    }
+    handle /openapi.json {
+        reverse_proxy APP_SERVER_IP:8000
+    }
+
+    # Security headers
+    header {
+        Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+        X-Content-Type-Options nosniff
+        X-Frame-Options DENY
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+    }
+
+    encode gzip
+    log {
+        output file /var/log/caddy/runai.log
+        format console
+    }
+}
+```
+
+> Vervang `APP_SERVER_IP` door het interne of publieke IP van je Alpine-machine, bijv. `192.168.1.50`.
+
+### Firewall op de Alpine-machine
+
+Poort 80/443 hoeft **niet** open — alleen Caddy communiceert met de Alpine-machine.
+Sta alleen verkeer toe vanaf het Caddy-server IP:
+
+```bash
+# Alpine (iptables) — vervang CADDY_IP door het IP van je Caddy-machine
+iptables -A INPUT -p tcp --dport 3001 -s CADDY_IP -j ACCEPT
+iptables -A INPUT -p tcp --dport 8000 -s CADDY_IP -j ACCEPT
+iptables -A INPUT -p tcp --dport 3001 -j DROP
+iptables -A INPUT -p tcp --dport 8000 -j DROP
+```
+
+Of met `nftables`:
+
+```bash
+nft add rule inet filter input ip saddr CADDY_IP tcp dport { 3001, 8000 } accept
+nft add rule inet filter input tcp dport { 3001, 8000 } drop
+```
+
+### Frontend env aanpassen
+
+De `NEXT_PUBLIC_API_URL` moet naar het publieke domein wijzen zodat de browser de API bereikt via Caddy:
+
+```bash
+# /etc/init.d/runai-frontend — pas deze regel aan:
+export NEXT_PUBLIC_API_URL="https://jouwdomein.nl/api/v1"
+
+rc-service runai-frontend restart
+```
+
+---
+
 ## Monitoring
 
 ```bash
