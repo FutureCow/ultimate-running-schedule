@@ -301,16 +301,6 @@ def _build_garmin_workout(session: WorkoutSession) -> dict:
     }
 
 
-def _schedule_workout(client: Garmin, workout_id: str, schedule_date: "date") -> dict:
-    """Schedule a workout on the Garmin Connect calendar for a specific date.
-
-    The garminconnect library does not yet expose this endpoint directly,
-    so we call it via the underlying garth session.
-    """
-    path = f"/workout-service/schedule/{workout_id}"
-    body = {"date": schedule_date.isoformat()}
-    # garminconnect uses garth under the hood; garth.connectapi does POST/PUT/etc.
-    return client.garth.connectapi(path, method="POST", json=body)
 
 
 async def push_sessions_to_garmin(db: AsyncSession, user_id: int, sessions: list[WorkoutSession]) -> list[dict]:
@@ -339,22 +329,21 @@ async def push_sessions_to_garmin(db: AsyncSession, user_id: int, sessions: list
                 pushed.append({"session_id": session.id, "skipped": True, "reason": "rest day"})
                 continue
             try:
-                # 1. Create workout in the Garmin library
+                # 1. Upload workout to the Garmin library
                 payload = _build_garmin_workout(session)
                 logger.info("Pushing session %s (%s) to Garmin", session.id, session.title)
-                resp = client.add_workout(payload)
+                resp = client.upload_workout(payload)
                 workout_id = str(resp.get("workoutId", ""))
-                logger.info("Garmin workout created: %s", workout_id)
+                logger.info("Garmin workout uploaded: %s", workout_id)
 
                 # 2. Schedule it on the calendar if we have a date
                 schedule_id = None
                 if session.scheduled_date and workout_id:
                     try:
-                        sched_resp = _schedule_workout(client, workout_id, session.scheduled_date)
+                        sched_resp = client.schedule_workout(workout_id, session.scheduled_date.isoformat())
                         schedule_id = str(sched_resp.get("workoutScheduleId", ""))
                         logger.info("Scheduled on %s (schedule_id=%s)", session.scheduled_date, schedule_id)
                     except Exception as sched_err:
-                        # Scheduling failed but workout was created — not fatal
                         logger.warning("Schedule failed for workout %s: %s", workout_id, sched_err)
 
                 pushed.append({
