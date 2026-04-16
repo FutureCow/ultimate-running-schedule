@@ -126,7 +126,10 @@ def _target_display(plan: PlanCreate) -> str:
 
 
 async def generate_plan(plan: PlanCreate, garmin_summary: Optional[dict] = None, language: str = "nl") -> dict:
-    client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
+    client_kwargs = {"api_key": settings.ANTHROPIC_API_KEY or "proxy"}
+    if settings.ANTHROPIC_BASE_URL:
+        client_kwargs["base_url"] = settings.ANTHROPIC_BASE_URL
+    client = anthropic.AsyncAnthropic(**client_kwargs)
 
     prompt = PLAN_PROMPT_TEMPLATE.format(
         duration_weeks=plan.duration_weeks,

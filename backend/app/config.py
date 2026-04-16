@@ -17,6 +17,7 @@ class Settings(BaseSettings):
 
     # Anthropic
     ANTHROPIC_API_KEY: str = ""
+    ANTHROPIC_BASE_URL: str = ""  # Optioneel: bijv. http://192.168.1.81:8317 voor CLIProxyAPI
 
     # Garmin credential encryption (Fernet key)
     GARMIN_ENCRYPTION_KEY: str = ""
