@@ -18,6 +18,7 @@ import { StepReview } from "./steps/StepReview";
 const schema = z.object({
   name: z.string().min(1, "Verplicht"),
   goal: z.enum(["5k", "10k", "half_marathon", "marathon"]),
+  plan_language: z.enum(["nl", "en"]),
   target_time_seconds: z.number().optional(),
   target_pace_per_km: z.string().optional(),
   age: z.number().min(10).max(90).optional(),
@@ -70,6 +71,7 @@ export function PlanCreatorForm({ editPlan }: Props) {
     defaultValues: editPlan ? {
       name: editPlan.name,
       goal: editPlan.goal as FormSchema["goal"],
+      plan_language: (locale === "en" ? "en" : "nl") as "nl" | "en",
       target_time_seconds: editPlan.target_time_seconds ?? undefined,
       target_pace_per_km: editPlan.target_pace_per_km ?? undefined,
       age: editPlan.age ?? undefined,
@@ -85,6 +87,7 @@ export function PlanCreatorForm({ editPlan }: Props) {
       start_date: editPlan.start_date ?? undefined,
     } : {
       goal: "10k",
+      plan_language: (locale === "en" ? "en" : "nl") as "nl" | "en",
       duration_weeks: 12,
       surface: "road",
       training_days: ["tuesday", "thursday", "saturday", "sunday"],
@@ -111,7 +114,7 @@ export function PlanCreatorForm({ editPlan }: Props) {
       const payload: PlanFormData & { language: string } = {
         ...data,
         training_days: data.training_days,
-        language: locale,
+        language: data.plan_language,
       };
       if (isEditMode) {
         await plansApi.update(editPlan!.id, payload);

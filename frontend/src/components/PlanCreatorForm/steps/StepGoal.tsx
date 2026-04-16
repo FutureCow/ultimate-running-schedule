@@ -21,6 +21,7 @@ interface Props {
 export function StepGoal({ register, watch, setValue, errors, targetTimeDisplay }: Props) {
   const t = useTranslations("form.goal");
   const goal = watch("goal");
+  const planLanguage = watch("plan_language");
 
   return (
     <div className="space-y-5">
@@ -102,6 +103,28 @@ export function StepGoal({ register, watch, setValue, errors, targetTimeDisplay 
       <div>
         <label className="label">{t("startDate")}</label>
         <input type="date" {...register("start_date")} className="input" />
+      </div>
+
+      <div>
+        <label className="label">{t("planLanguageLabel")}</label>
+        <div className="grid grid-cols-2 gap-2">
+          {(["nl", "en"] as const).map((lang) => (
+            <button
+              key={lang}
+              type="button"
+              onClick={() => setValue("plan_language", lang)}
+              className={`rounded-xl border p-3 text-left transition-all duration-200 ${
+                planLanguage === lang
+                  ? "border-brand-500 bg-brand-500/10 text-white"
+                  : "border-slate-700 bg-surface-elevated text-slate-400 hover:border-slate-600"
+              }`}
+            >
+              <span className="text-xl">{lang === "nl" ? "🇳🇱" : "🇬🇧"}</span>
+              <p className="font-semibold mt-1 text-sm">{t(`planLanguages.${lang}.label`)}</p>
+              <p className="text-[11px] opacity-70">{t(`planLanguages.${lang}.desc`)}</p>
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );

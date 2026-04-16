@@ -121,6 +121,11 @@
       "durationLabel": "Plan duration:",
       "durationValue": "{weeks} weeks",
       "startDate": "Start date (optional)",
+      "planLanguageLabel": "Plan language",
+      "planLanguages": {
+        "nl": { "label": "Nederlands", "desc": "Trainingen en beschrijvingen in het Nederlands" },
+        "en": { "label": "English",    "desc": "Workouts and descriptions in English" }
+      },
       "goals": {
         "5k":            { "label": "5 km",           "desc": "First 5K or go faster" },
         "10k":           { "label": "10 km",           "desc": "Improve at the classic distance" },
@@ -173,7 +178,8 @@
         "trainingDays": "Training days",
         "longRunDay": "Long run day",
         "surface": "Surface",
-        "startDate": "Start date"
+        "startDate": "Start date",
+        "planLanguage": "Plan language"
       },
       "noInjuries": "None",
       "durationFormat": "{weeks} weeks",
