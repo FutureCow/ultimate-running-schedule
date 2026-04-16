@@ -6,9 +6,10 @@ import { ChevronLeft, ChevronRight, Zap, Loader2, CheckCircle2 } from "lucide-re
 import { Plan, WorkoutSession } from "@/types";
 import { WorkoutCard } from "../WorkoutCard/WorkoutCard";
 import { DAYS, DAY_ABBR } from "@/lib/utils";
-import { garminApi } from "@/lib/api";
+import { garminApi, sessionsApi } from "@/lib/api";
 import { format, parseISO } from "date-fns";
 import { nl } from "date-fns/locale";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 interface Props {
   plan: Plan;
@@ -20,6 +21,18 @@ export function WeekCalendar({ plan }: Props) {
   const [pushingSession, setPushingSession] = useState<number | null>(null);
   const [pushingWeek, setPushingWeek] = useState(false);
   const [weekPushed, setWeekPushed] = useState<Set<number>>(new Set());
+  const queryClient = useQueryClient();
+
+  const moveMutation = useMutation({
+    mutationFn: ({ sessionId, dayNumber }: { sessionId: number; dayNumber: number }) =>
+      sessionsApi.move(sessionId, dayNumber),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["plan", String(plan.id)] }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (sessionId: number) => sessionsApi.delete(sessionId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["plan", String(plan.id)] }),
+  });
 
   const week = weeks.find((w) => w.week_number === currentWeek);
   const sessions = plan.sessions.filter((s) => s.week_number === currentWeek);
@@ -137,6 +150,12 @@ export function WeekCalendar({ plan }: Props) {
                         session={s}
                         onPushToGarmin={handlePushSession}
                         isPushing={pushingSession === s.id}
+                        onMove={(sessionId, dayNumber) => moveMutation.mutate({ sessionId, dayNumber })}
+                        isMoving={moveMutation.isPending && moveMutation.variables?.sessionId === s.id}
+                        onDelete={(sessionId) => {
+                          if (confirm("Training verwijderen?")) deleteMutation.mutate(sessionId);
+                        }}
+                        isDeleting={deleteMutation.isPending && deleteMutation.variables === s.id}
                       />
                     ))
                   ) : (

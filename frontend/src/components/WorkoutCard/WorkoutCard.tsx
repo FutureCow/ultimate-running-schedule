@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { Clock, Ruler, Watch, ChevronDown, ChevronUp, Zap, CheckCircle2 } from "lucide-react";
+import { Clock, Ruler, Watch, ChevronDown, ChevronUp, Zap, CheckCircle2, ArrowLeftRight, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { WorkoutSession } from "@/types";
 import { cn, WORKOUT_COLORS, WORKOUT_LABELS } from "@/lib/utils";
@@ -10,7 +10,13 @@ interface Props {
   session: WorkoutSession;
   onPushToGarmin?: (sessionId: number) => void;
   isPushing?: boolean;
+  onMove?: (sessionId: number, dayNumber: number) => void;
+  isMoving?: boolean;
+  onDelete?: (sessionId: number) => void;
+  isDeleting?: boolean;
 }
+
+const DAY_LABELS = ["Ma", "Di", "Wo", "Do", "Vr", "Za", "Zo"];
 
 const ACCENT_COLORS: Record<string, string> = {
   easy_run:  "bg-emerald-500",
@@ -22,8 +28,9 @@ const ACCENT_COLORS: Record<string, string> = {
   rest:      "bg-slate-600",
 };
 
-export function WorkoutCard({ session, onPushToGarmin, isPushing }: Props) {
+export function WorkoutCard({ session, onPushToGarmin, isPushing, onMove, isMoving, onDelete, isDeleting }: Props) {
   const [expanded, setExpanded] = useState(false);
+  const [showMovePicker, setShowMovePicker] = useState(false);
   const colorClass = WORKOUT_COLORS[session.workout_type];
   const accentColor = ACCENT_COLORS[session.workout_type] ?? "bg-slate-600";
 
@@ -144,27 +151,105 @@ export function WorkoutCard({ session, onPushToGarmin, isPushing }: Props) {
                 </div>
               )}
 
-              {/* Garmin push */}
-              <div className="flex items-center gap-3">
-                {onPushToGarmin && !session.garmin_workout_id && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); onPushToGarmin(session.id); }}
-                    disabled={isPushing}
-                    className="btn-secondary text-xs px-3 py-1.5 gap-1.5"
-                  >
-                    {isPushing
-                      ? <span className="w-3 h-3 rounded-full border border-current border-t-transparent animate-spin" />
-                      : <Zap className="w-3.5 h-3.5 text-brand-400" />
-                    }
-                    Push naar Garmin
-                  </button>
-                )}
-                {session.garmin_pushed_at && (
-                  <span className="flex items-center gap-1.5 text-xs text-brand-400 font-medium">
-                    <CheckCircle2 className="w-3.5 h-3.5" /> Op Garmin
-                  </span>
-                )}
+              {/* Actions row */}
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div className="flex items-center gap-2 flex-wrap">
+                  {onPushToGarmin && !session.garmin_workout_id && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onPushToGarmin(session.id); }}
+                      disabled={isPushing}
+                      className="btn-secondary text-xs px-3 py-1.5 gap-1.5"
+                    >
+                      {isPushing
+                        ? <span className="w-3 h-3 rounded-full border border-current border-t-transparent animate-spin" />
+                        : <Zap className="w-3.5 h-3.5 text-brand-400" />
+                      }
+                      Push naar Garmin
+                    </button>
+                  )}
+                  {session.garmin_pushed_at && (
+                    <span className="flex items-center gap-1.5 text-xs text-brand-400 font-medium">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Op Garmin
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {onMove && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setShowMovePicker((v) => !v); }}
+                      disabled={isMoving}
+                      className="btn-ghost text-xs px-2.5 py-1.5 gap-1.5 text-slate-400 hover:text-white"
+                    >
+                      {isMoving
+                        ? <span className="w-3 h-3 rounded-full border border-current border-t-transparent animate-spin" />
+                        : <ArrowLeftRight className="w-3.5 h-3.5" />
+                      }
+                      Verplaatsen
+                    </button>
+                  )}
+                  {onDelete && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onDelete(session.id); }}
+                      disabled={isDeleting}
+                      className="btn-ghost text-xs px-2.5 py-1.5 gap-1.5 text-red-500 hover:text-red-400"
+                    >
+                      {isDeleting
+                        ? <span className="w-3 h-3 rounded-full border border-current border-t-transparent animate-spin" />
+                        : <Trash2 className="w-3.5 h-3.5" />
+                      }
+                      Verwijderen
+                    </button>
+                  )}
+                </div>
               </div>
+
+              {/* Day picker */}
+              <AnimatePresence>
+                {showMovePicker && onMove && (
+                  <motion.div
+                    key="day-picker"
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.15 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="pt-2">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-2">
+                        Verplaats naar dag
+                      </p>
+                      <div className="flex gap-1.5">
+                        {DAY_LABELS.map((label, idx) => {
+                          const dayNum = idx + 1;
+                          const isCurrent = session.day_number === dayNum;
+                          return (
+                            <button
+                              key={dayNum}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (!isCurrent) {
+                                  onMove(session.id, dayNum);
+                                  setShowMovePicker(false);
+                                }
+                              }}
+                              disabled={isCurrent}
+                              className={cn(
+                                "flex-1 rounded-lg py-1.5 text-xs font-semibold transition-colors",
+                                isCurrent
+                                  ? "bg-brand-500/20 text-brand-400 cursor-default"
+                                  : "bg-surface-elevated text-slate-400 hover:bg-slate-700 hover:text-white"
+                              )}
+                            >
+                              {label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </motion.div>
         )}

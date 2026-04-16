@@ -59,6 +59,12 @@ export const plansApi = {
   delete: (id: number) => api.delete(`/plans/${id}`),
 };
 
+// Sessions
+export const sessionsApi = {
+  move: (id: number, dayNumber: number) => api.patch(`/sessions/${id}`, { day_number: dayNumber }),
+  delete: (id: number) => api.delete(`/sessions/${id}`),
+};
+
 // Garmin
 export const garminApi = {
   saveCredentials: (email: string, password: string) => api.post("/garmin/credentials", { email, password }),
