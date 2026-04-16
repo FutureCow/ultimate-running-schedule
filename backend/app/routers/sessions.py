@@ -1,3 +1,4 @@
+import logging
 from datetime import timedelta, date
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -8,6 +9,9 @@ from app.models.user import User
 from app.models.plan import Plan, WorkoutSession
 from app.routers.deps import get_current_user
 from app.schemas.plan import WorkoutSessionResponse
+from app.services import garmin_service
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
 
@@ -65,6 +69,13 @@ async def delete_session(
     session = result.scalar_one_or_none()
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
+
+    # If the workout was pushed to Garmin, delete it there too (best-effort)
+    if session.garmin_workout_id:
+        try:
+            await garmin_service.delete_workout_from_garmin(db, user.id, session.garmin_workout_id)
+        except Exception as e:
+            logger.warning("Garmin delete failed for workout %s: %s", session.garmin_workout_id, e)
 
     await db.delete(session)
     await db.commit()

@@ -304,6 +304,43 @@ def _build_workout_payload(session: WorkoutSession) -> dict:
     }
 
 
+# ── Workout delete ────────────────────────────────────────────────────────────
+
+async def delete_workout_from_garmin(db: AsyncSession, user_id: int, garmin_workout_id: str) -> bool:
+    """Delete a workout from Garmin Connect. Returns True on success, False on failure."""
+    cred = await get_credentials(db, user_id)
+    if not cred:
+        logger.warning("No Garmin credentials for user %s — skipping Garmin delete", user_id)
+        return False
+
+    token_dir = _write_token_dir(cred)
+    new_token_data: list[str] = []
+
+    def _run() -> bool:
+        try:
+            client = _login(cred, token_dir)
+            logger.info("Deleting Garmin workout %s for user %s", garmin_workout_id, user_id)
+            client.delete_workout(garmin_workout_id)
+            enc = _read_token_dir(token_dir)
+            if enc:
+                new_token_data.append(enc)
+            return True
+        except Exception as e:
+            logger.warning("Failed to delete Garmin workout %s: %s", garmin_workout_id, e)
+            return False
+        finally:
+            _cleanup_token_dir(token_dir)
+
+    loop = asyncio.get_event_loop()
+    success = await loop.run_in_executor(None, _run)
+
+    if new_token_data:
+        cred.encrypted_tokens = new_token_data[0]
+        await db.commit()
+
+    return success
+
+
 # ── Workout push ──────────────────────────────────────────────────────────────
 
 async def push_sessions_to_garmin(db: AsyncSession, user_id: int, sessions: list[WorkoutSession]) -> list[dict]:
