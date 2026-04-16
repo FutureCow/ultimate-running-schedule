@@ -16,9 +16,10 @@ interface Props {
   setValue: UseFormSetValue<FormSchema>;
   errors: FieldErrors<FormSchema>;
   getValues: any;
+  targetTimeDisplay?: string;
 }
 
-export function StepGoal({ register, watch, setValue, errors }: Props) {
+export function StepGoal({ register, watch, setValue, errors, targetTimeDisplay }: Props) {
   const goal = watch("goal");
 
   return (
@@ -65,6 +66,7 @@ export function StepGoal({ register, watch, setValue, errors }: Props) {
             type="text"
             placeholder="bijv. 48:30"
             className="input"
+            defaultValue={targetTimeDisplay}
             onChange={(e) => {
               const [m, s] = e.target.value.split(":").map(Number);
               if (!isNaN(m) && !isNaN(s)) setValue("target_time_seconds", m * 60 + s);

@@ -55,6 +55,24 @@ class PlanCreate(BaseModel):
     start_date: Optional[date] = None
 
 
+class PlanUpdate(BaseModel):
+    name: Optional[str] = None
+    goal: Optional[str] = None
+    target_time_seconds: Optional[int] = None
+    target_pace_per_km: Optional[str] = None
+    age: Optional[int] = None
+    height_cm: Optional[float] = None
+    weight_kg: Optional[float] = None
+    weekly_km: Optional[float] = None
+    weekly_runs: Optional[int] = None
+    injuries: Optional[str] = None
+    training_days: Optional[list[str]] = None
+    long_run_day: Optional[str] = None
+    duration_weeks: Optional[int] = None
+    surface: Optional[str] = None
+    start_date: Optional[date] = None
+
+
 class PlanResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

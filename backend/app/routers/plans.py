@@ -6,7 +6,7 @@ from app.database import get_db
 from app.models.user import User
 from app.models.plan import Plan, WorkoutSession
 from app.routers.deps import get_current_user
-from app.schemas.plan import PlanCreate, PlanResponse
+from app.schemas.plan import PlanCreate, PlanUpdate, PlanResponse
 from app.services import claude_service, garmin_service
 
 router = APIRouter(prefix="/plans", tags=["plans"])
@@ -99,6 +99,71 @@ async def get_plan(
     if not plan:
         raise HTTPException(status_code=404, detail="Plan not found")
     return plan
+
+
+@router.put("/{plan_id}", response_model=PlanResponse)
+async def update_plan(
+    plan_id: int,
+    payload: PlanUpdate,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    result = await db.execute(select(Plan).where(Plan.id == plan_id, Plan.user_id == user.id))
+    plan = result.scalar_one_or_none()
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found")
+
+    # Apply updated fields
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        setattr(plan, field, value)
+
+    # Build a PlanCreate-like object for AI generation using merged values
+    merged = PlanCreate(
+        name=plan.name,
+        goal=plan.goal,
+        target_time_seconds=plan.target_time_seconds,
+        target_pace_per_km=plan.target_pace_per_km,
+        age=plan.age,
+        height_cm=plan.height_cm,
+        weight_kg=plan.weight_kg,
+        weekly_km=plan.weekly_km,
+        weekly_runs=plan.weekly_runs,
+        injuries=plan.injuries,
+        training_days=plan.training_days,
+        long_run_day=plan.long_run_day,
+        duration_weeks=plan.duration_weeks,
+        surface=plan.surface,
+        start_date=plan.start_date,
+    )
+
+    # Fetch optional Garmin context
+    garmin_summary = None
+    try:
+        garmin_summary = await garmin_service.fetch_activities(db, user.id, months=3)
+    except Exception:
+        pass
+
+    # Regenerate plan via AI
+    try:
+        plan_json = await claude_service.generate_plan(merged, garmin_summary)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"AI plan generation failed: {str(e)}")
+
+    plan.plan_json = plan_json
+
+    # Delete old sessions
+    from sqlalchemy import delete as sql_delete
+    await db.execute(sql_delete(WorkoutSession).where(WorkoutSession.plan_id == plan_id))
+
+    await db.flush()
+
+    # Create new sessions
+    sessions = _create_sessions_from_json(plan, plan_json)
+    db.add_all(sessions)
+    await db.commit()
+
+    result = await db.execute(select(Plan).where(Plan.id == plan_id))
+    return result.scalar_one()
 
 
 @router.delete("/{plan_id}", status_code=204)

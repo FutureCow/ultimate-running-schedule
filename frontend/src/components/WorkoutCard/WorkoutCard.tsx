@@ -64,22 +64,24 @@ export function WorkoutCard({ session, onPushToGarmin, isPushing }: Props) {
           </div>
 
           {/* Stats row */}
-          <div className="flex items-center gap-3 shrink-0">
-            {session.distance_km && (
-              <Stat icon={<Ruler className="w-3.5 h-3.5" />} value={`${session.distance_km} km`} />
-            )}
-            {session.duration_minutes && (
-              <Stat icon={<Clock className="w-3.5 h-3.5" />} value={`${session.duration_minutes} min`} />
-            )}
-            {session.target_paces?.main && (
-              <Stat
-                icon={<Watch className="w-3.5 h-3.5" />}
-                value={session.target_paces.main}
-                mono
-                highlight
-              />
-            )}
-            <button className="text-slate-600 hover:text-slate-400 ml-1">
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="flex flex-col sm:flex-row items-end sm:items-center gap-1 sm:gap-3">
+              {session.distance_km && (
+                <Stat icon={<Ruler className="w-3.5 h-3.5" />} value={`${session.distance_km} km`} />
+              )}
+              {session.duration_minutes && (
+                <Stat icon={<Clock className="w-3.5 h-3.5" />} value={`${session.duration_minutes} min`} />
+              )}
+              {session.target_paces?.main && (
+                <Stat
+                  icon={<Watch className="w-3.5 h-3.5" />}
+                  value={session.target_paces.main}
+                  mono
+                  highlight
+                />
+              )}
+            </div>
+            <button className="text-slate-600 hover:text-slate-400">
               {expanded
                 ? <ChevronUp className="w-4 h-4" />
                 : <ChevronDown className="w-4 h-4" />

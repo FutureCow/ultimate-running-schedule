@@ -55,6 +55,7 @@ export const plansApi = {
   list: () => api.get("/plans"),
   get: (id: number) => api.get(`/plans/${id}`),
   create: (data: any) => api.post("/plans", data),
+  update: (id: number, data: any) => api.put(`/plans/${id}`, data),
   delete: (id: number) => api.delete(`/plans/${id}`),
 };
 

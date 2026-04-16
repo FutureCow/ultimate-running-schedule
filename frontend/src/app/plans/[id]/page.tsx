@@ -3,7 +3,7 @@
 import { useParams, useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { ArrowLeft, Trash2, Info } from "lucide-react";
+import { ArrowLeft, Trash2, Info, Pencil } from "lucide-react";
 import Link from "next/link";
 import { plansApi } from "@/lib/api";
 import { Plan } from "@/types";
@@ -55,12 +55,17 @@ export default function PlanDetailPage() {
                   </p>
                 </div>
               </div>
-              <button
-                onClick={() => { if (confirm("Plan verwijderen?")) deleteMutation.mutate(); }}
-                className="btn-ghost text-red-400 hover:text-red-300 px-3"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-2">
+                <Link href={`/plans/${id}/edit`} className="btn-ghost px-3">
+                  <Pencil className="w-4 h-4" />
+                </Link>
+                <button
+                  onClick={() => { if (confirm("Plan verwijderen?")) deleteMutation.mutate(); }}
+                  className="btn-ghost text-red-400 hover:text-red-300 px-3"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
             {/* Coaching notes */}

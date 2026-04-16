@@ -6,9 +6,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { ArrowLeft, ArrowRight, Zap, CheckCircle2, AlertCircle } from "lucide-react";
+import { ArrowLeft, ArrowRight, Zap, CheckCircle2, AlertCircle, RefreshCw } from "lucide-react";
 import { plansApi } from "@/lib/api";
-import { PlanFormData } from "@/types";
+import { Plan, PlanFormData } from "@/types";
 import { DAYS } from "@/lib/utils";
 import { StepGoal } from "./steps/StepGoal";
 import { StepAthleteProfile } from "./steps/StepAthleteProfile";
@@ -42,11 +42,25 @@ const STEPS = [
   { id: 4, title: "Overzicht", subtitle: "Controleer en genereer" },
 ];
 
-export function PlanCreatorForm() {
+interface Props {
+  editPlan?: Plan;
+}
+
+function secondsToDisplay(seconds?: number | null): string | undefined {
+  if (!seconds) return undefined;
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  if (h > 0) return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+export function PlanCreatorForm({ editPlan }: Props) {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const isEditMode = !!editPlan;
 
   const {
     register,
@@ -58,7 +72,23 @@ export function PlanCreatorForm() {
     trigger,
   } = useForm<FormSchema>({
     resolver: zodResolver(schema),
-    defaultValues: {
+    defaultValues: editPlan ? {
+      name: editPlan.name,
+      goal: editPlan.goal as FormSchema["goal"],
+      target_time_seconds: editPlan.target_time_seconds ?? undefined,
+      target_pace_per_km: editPlan.target_pace_per_km ?? undefined,
+      age: editPlan.age ?? undefined,
+      height_cm: editPlan.height_cm ?? undefined,
+      weight_kg: editPlan.weight_kg ?? undefined,
+      weekly_km: editPlan.weekly_km ?? undefined,
+      weekly_runs: editPlan.weekly_runs ?? undefined,
+      injuries: editPlan.injuries ?? undefined,
+      training_days: editPlan.training_days ?? ["tuesday", "thursday", "saturday", "sunday"],
+      long_run_day: editPlan.long_run_day ?? "sunday",
+      duration_weeks: editPlan.duration_weeks,
+      surface: editPlan.surface ?? "road",
+      start_date: editPlan.start_date ?? undefined,
+    } : {
       goal: "10k",
       duration_weeks: 12,
       surface: "road",
@@ -87,14 +117,20 @@ export function PlanCreatorForm() {
         ...data,
         training_days: data.training_days,
       };
-      const { data: plan } = await plansApi.create(payload);
-      router.push(`/plans/${plan.id}`);
+      if (isEditMode) {
+        await plansApi.update(editPlan!.id, payload);
+        router.push(`/plans/${editPlan!.id}`);
+      } else {
+        const { data: plan } = await plansApi.create(payload);
+        router.push(`/plans/${plan.id}`);
+      }
     } catch (e: any) {
-      setError(e?.response?.data?.detail || "Plan aanmaken mislukt. Probeer opnieuw.");
+      setError(e?.response?.data?.detail || `Plan ${isEditMode ? "bijwerken" : "aanmaken"} mislukt. Probeer opnieuw.`);
       setLoading(false);
     }
   }
 
+  const targetTimeDisplay = secondsToDisplay(editPlan?.target_time_seconds);
   const stepProps = { register, watch, setValue, getValues, errors };
 
   return (
@@ -122,7 +158,9 @@ export function PlanCreatorForm() {
 
       <div className="card">
         <div className="mb-6">
-          <h2 className="text-lg font-bold text-white">{STEPS[step - 1].title}</h2>
+          <h2 className="text-lg font-bold text-white">
+            {isEditMode ? `Bewerken: ${STEPS[step - 1].title}` : STEPS[step - 1].title}
+          </h2>
           <p className="text-sm text-slate-400">{STEPS[step - 1].subtitle}</p>
         </div>
 
@@ -145,7 +183,7 @@ export function PlanCreatorForm() {
             exit={{ opacity: 0, x: -20 }}
             transition={{ duration: 0.2 }}
           >
-            {step === 1 && <StepGoal {...stepProps} />}
+            {step === 1 && <StepGoal {...stepProps} targetTimeDisplay={targetTimeDisplay} />}
             {step === 2 && <StepAthleteProfile {...stepProps} />}
             {step === 3 && <StepTrainingPrefs {...stepProps} />}
             {step === 4 && <StepReview values={values} />}
@@ -178,6 +216,11 @@ export function PlanCreatorForm() {
                 <>
                   <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
                   AI genereert plan…
+                </>
+              ) : isEditMode ? (
+                <>
+                  <RefreshCw className="w-4 h-4" />
+                  Plan Regenereren
                 </>
               ) : (
                 <>
