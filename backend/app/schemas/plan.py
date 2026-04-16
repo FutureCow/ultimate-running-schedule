@@ -53,6 +53,7 @@ class PlanCreate(BaseModel):
     duration_weeks: int = 12
     surface: Optional[str] = None
     start_date: Optional[date] = None
+    language: str = "nl"
 
 
 class PlanUpdate(BaseModel):
@@ -71,6 +72,7 @@ class PlanUpdate(BaseModel):
     duration_weeks: Optional[int] = None
     surface: Optional[str] = None
     start_date: Optional[date] = None
+    language: Optional[str] = None
 
 
 class PlanResponse(BaseModel):

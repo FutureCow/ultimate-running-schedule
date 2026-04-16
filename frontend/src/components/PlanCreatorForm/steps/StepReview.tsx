@@ -1,31 +1,46 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { FormSchema } from "../PlanCreatorForm";
-import { GOAL_LABELS, DAYS, secondsToTime } from "@/lib/utils";
+import { secondsToTime } from "@/lib/utils";
 import { CheckCircle2 } from "lucide-react";
 
 const DAYS_EN = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
 
 export function StepReview({ values }: { values: Partial<FormSchema> }) {
+  const t = useTranslations("form.review");
+  const tGoals = useTranslations("goals");
+  const tDays = useTranslations("days");
+
   const rows = [
-    { label: "Plannaam", value: values.name },
-    { label: "Doel", value: values.goal ? GOAL_LABELS[values.goal] : "—" },
-    { label: "Doeltijd", value: values.target_time_seconds ? secondsToTime(values.target_time_seconds) : values.target_pace_per_km ? `${values.target_pace_per_km}/km` : "—" },
-    { label: "Duur", value: `${values.duration_weeks} weken` },
-    { label: "Leeftijd", value: values.age ? `${values.age} jaar` : "—" },
-    { label: "Lengte / Gewicht", value: `${values.height_cm || "—"} cm / ${values.weight_kg || "—"} kg` },
-    { label: "Huidig volume", value: `${values.weekly_km || "—"} km/week · ${values.weekly_runs || "—"} ritten` },
-    { label: "Blessures", value: values.injuries || "Geen" },
+    { label: t("rows.name"),         value: values.name },
+    { label: t("rows.goal"),         value: values.goal ? tGoals(values.goal as any) : "—" },
     {
-      label: "Trainingsdagen",
+      label: t("rows.targetTime"),
+      value: values.target_time_seconds
+        ? secondsToTime(values.target_time_seconds)
+        : values.target_pace_per_km
+        ? `${values.target_pace_per_km}/km`
+        : "—",
+    },
+    { label: t("rows.duration"),     value: values.duration_weeks ? t("durationFormat", { weeks: values.duration_weeks }) : "—" },
+    { label: t("rows.age"),          value: values.age ? t("ageFormat", { age: values.age }) : "—" },
+    { label: t("rows.heightWeight"), value: t("heightWeightFormat", { height: values.height_cm || "—", weight: values.weight_kg || "—" }) },
+    { label: t("rows.volume"),       value: t("volumeFormat", { km: values.weekly_km || "—", runs: values.weekly_runs || "—" }) },
+    { label: t("rows.injuries"),     value: values.injuries || t("noInjuries") },
+    {
+      label: t("rows.trainingDays"),
       value: (values.training_days || [])
-        .map((d) => DAYS[DAYS_EN.indexOf(d)])
+        .map((d) => tDays(`full.${DAYS_EN.indexOf(d)}`))
         .filter(Boolean)
         .join(", "),
     },
-    { label: "Lange loop dag", value: values.long_run_day ? DAYS[DAYS_EN.indexOf(values.long_run_day)] : "—" },
-    { label: "Ondergrond", value: values.surface || "—" },
-    { label: "Startdatum", value: values.start_date || "—" },
+    {
+      label: t("rows.longRunDay"),
+      value: values.long_run_day ? tDays(`full.${DAYS_EN.indexOf(values.long_run_day)}`) : "—",
+    },
+    { label: t("rows.surface"),      value: values.surface || "—" },
+    { label: t("rows.startDate"),    value: values.start_date || "—" },
   ];
 
   return (
@@ -33,7 +48,7 @@ export function StepReview({ values }: { values: Partial<FormSchema> }) {
       <div className="flex items-center gap-2 mb-1">
         <CheckCircle2 className="w-5 h-5 text-brand-400" />
         <p className="text-sm text-slate-300">
-          Controleer je gegevens. Als alles klopt klik je op <strong className="text-white">Genereer Plan</strong> en maakt Claude AI jouw persoonlijk schema.
+          {t("checkNote")} <strong className="text-white">{t("checkNoteButton")}</strong> {t("checkNoteSuffix")}
         </p>
       </div>
 
@@ -47,7 +62,7 @@ export function StepReview({ values }: { values: Partial<FormSchema> }) {
       </div>
 
       <div className="rounded-xl border border-brand-700/30 bg-brand-950/30 px-4 py-3 text-xs text-slate-400">
-        🤖 <span className="text-brand-300 font-medium">AI Plan Generatie</span> — Claude Opus analyseert je profiel en Garmin-data en maakt een wetenschappelijk onderbouwd schema. Dit kan 20-30 seconden duren.
+        🤖 <span className="text-brand-300 font-medium">{t("aiNoteLabel")}</span> — {t("aiNoteText")}
       </div>
     </div>
   );

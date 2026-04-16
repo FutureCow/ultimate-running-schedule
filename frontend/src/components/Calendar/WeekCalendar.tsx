@@ -2,13 +2,14 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { ChevronLeft, ChevronRight, Zap, Loader2, CheckCircle2 } from "lucide-react";
 import { Plan, WorkoutSession } from "@/types";
 import { WorkoutCard } from "../WorkoutCard/WorkoutCard";
-import { DAYS, DAY_ABBR } from "@/lib/utils";
 import { garminApi, sessionsApi } from "@/lib/api";
 import { format, parseISO } from "date-fns";
-import { nl } from "date-fns/locale";
+import { nl, enUS } from "date-fns/locale";
+import { useLocale } from "next-intl";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 interface Props {
@@ -16,6 +17,11 @@ interface Props {
 }
 
 export function WeekCalendar({ plan }: Props) {
+  const t = useTranslations("calendar");
+  const locale = useLocale();
+  const dateFnsLocale = locale === "nl" ? nl : enUS;
+  const tDays = useTranslations("days");
+
   const weeks = plan.plan_json?.weeks || [];
   const [currentWeek, setCurrentWeek] = useState(1);
   const [pushingSession, setPushingSession] = useState<number | null>(null);
@@ -54,15 +60,16 @@ export function WeekCalendar({ plan }: Props) {
     setPushingWeek(true);
     try {
       await garminApi.pushWeek(plan.id, currentWeek);
-      setWeekPushed((prev) => new Set([...prev, currentWeek]));
+      setWeekPushed((prev) => new Set(Array.from(prev).concat(currentWeek)));
     } catch (e) { console.error(e); }
     finally { setPushingWeek(false); }
   }
 
+  const tWorkout = useTranslations("workout");
+
   return (
     <div className="space-y-4">
-
-      {/* ── Week navigator ──────────────────────────────────── */}
+      {/* Week navigator */}
       <div className="flex items-center justify-between gap-4">
         <button
           onClick={() => setCurrentWeek((w) => Math.max(1, w - 1))}
@@ -73,9 +80,11 @@ export function WeekCalendar({ plan }: Props) {
         </button>
 
         <div className="text-center">
-          <p className="text-lg font-bold text-white">Week {currentWeek} <span className="text-slate-500 font-normal">/ {totalWeeks}</span></p>
+          <p className="text-lg font-bold text-white">
+            {t("weekTitle", { current: currentWeek, total: totalWeeks })}
+          </p>
           {week && <p className="text-xs text-brand-400 font-medium">{week.theme}</p>}
-          {week && <p className="text-xs text-slate-500">{week.total_km} km totaal</p>}
+          {week && <p className="text-xs text-slate-500">{week.total_km} km</p>}
         </div>
 
         <button
@@ -87,7 +96,7 @@ export function WeekCalendar({ plan }: Props) {
         </button>
       </div>
 
-      {/* ── Week progress strip ─────────────────────────────── */}
+      {/* Week progress strip */}
       <div className="flex gap-1">
         {Array.from({ length: totalWeeks }, (_, i) => i + 1).map((w) => (
           <button
@@ -101,21 +110,21 @@ export function WeekCalendar({ plan }: Props) {
         ))}
       </div>
 
-      {/* ── Push week button ────────────────────────────────── */}
+      {/* Push week button */}
       <div className="flex justify-end">
         {weekPushed.has(currentWeek) ? (
           <span className="flex items-center gap-1.5 text-xs text-brand-400 font-medium">
-            <CheckCircle2 className="w-4 h-4" /> Week {currentWeek} op Garmin
+            <CheckCircle2 className="w-4 h-4" /> {t("weekOnGarmin", { week: currentWeek })}
           </span>
         ) : (
           <button onClick={handlePushWeek} disabled={pushingWeek} className="btn-secondary text-xs gap-1.5 px-3 py-1.5">
             {pushingWeek ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5 text-brand-400" />}
-            Push week naar Garmin
+            {t("pushWeek")}
           </button>
         )}
       </div>
 
-      {/* ── Day list ────────────────────────────────────────── */}
+      {/* Day list */}
       <AnimatePresence mode="wait">
         <motion.div
           key={currentWeek}
@@ -125,23 +134,22 @@ export function WeekCalendar({ plan }: Props) {
           transition={{ duration: 0.2 }}
           className="space-y-2"
         >
-          {DAYS.map((day, idx) => {
+          {Array.from({ length: 7 }, (_, idx) => {
             const dayNum = idx + 1;
+            const dayLabel = tDays(`abbr.${idx}`);
             const daySessions = sessionsByDay[dayNum] || [];
             const firstSession = daySessions[0];
             const dateStr = firstSession?.scheduled_date
-              ? format(parseISO(firstSession.scheduled_date), "d MMM", { locale: nl })
+              ? format(parseISO(firstSession.scheduled_date), "d MMM", { locale: dateFnsLocale })
               : null;
 
             return (
-              <div key={day} className="flex gap-3 items-start">
-                {/* Day label — fixed width */}
+              <div key={idx} className="flex gap-3 items-start">
                 <div className="w-14 shrink-0 pt-3 text-right">
-                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{DAY_ABBR[idx]}</p>
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{dayLabel}</p>
                   {dateStr && <p className="text-[10px] text-slate-600 mt-0.5">{dateStr}</p>}
                 </div>
 
-                {/* Workout card(s) */}
                 <div className="flex-1 space-y-2 min-w-0">
                   {daySessions.length > 0 ? (
                     daySessions.map((s) => (
@@ -153,14 +161,14 @@ export function WeekCalendar({ plan }: Props) {
                         onMove={(sessionId, dayNumber) => moveMutation.mutate({ sessionId, dayNumber })}
                         isMoving={moveMutation.isPending && moveMutation.variables?.sessionId === s.id}
                         onDelete={(sessionId) => {
-                          if (confirm("Training verwijderen?")) deleteMutation.mutate(sessionId);
+                          if (confirm(tWorkout("deleteConfirm"))) deleteMutation.mutate(sessionId);
                         }}
                         isDeleting={deleteMutation.isPending && deleteMutation.variables === s.id}
                       />
                     ))
                   ) : (
                     <div className="flex items-center rounded-2xl border border-dashed border-slate-700/30 px-4 py-3">
-                      <span className="text-xs text-slate-700">Rustdag</span>
+                      <span className="text-xs text-slate-700">{t("restDay")}</span>
                     </div>
                   )}
                 </div>

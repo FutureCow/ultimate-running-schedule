@@ -9,7 +9,7 @@ from app.config import settings
 from app.schemas.plan import PlanCreate
 
 
-SYSTEM_PROMPT = """You are an elite running coach and sports scientist with 20+ years of experience.
+SYSTEM_PROMPT_BASE = """You are an elite running coach and sports scientist with 20+ years of experience.
 You create highly personalized, science-backed training plans.
 
 IMPORTANT OUTPUT RULES:
@@ -18,7 +18,12 @@ IMPORTANT OUTPUT RULES:
 - Paces must be realistic and consistent with the athlete's history and goal.
 - Pace calculations must use the Jack Daniels VDOT methodology.
 - Workouts are structured as a progressive plan: build volume, then intensity, then taper.
+- Generate ALL text fields (title, description, theme, weekly_structure, coaching_notes, garmin_description) in {language}.
 """
+
+def _get_system_prompt(language: str) -> str:
+    lang_name = "Dutch" if language == "nl" else "English"
+    return SYSTEM_PROMPT_BASE.format(language=lang_name)
 
 PLAN_PROMPT_TEMPLATE = """Create a complete {duration_weeks}-week running training plan.
 
@@ -120,7 +125,7 @@ def _target_display(plan: PlanCreate) -> str:
     return "Finish / personal best"
 
 
-async def generate_plan(plan: PlanCreate, garmin_summary: Optional[dict] = None) -> dict:
+async def generate_plan(plan: PlanCreate, garmin_summary: Optional[dict] = None, language: str = "nl") -> dict:
     client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
 
     prompt = PLAN_PROMPT_TEMPLATE.format(
@@ -142,7 +147,7 @@ async def generate_plan(plan: PlanCreate, garmin_summary: Optional[dict] = None)
     message = await client.messages.create(
         model="claude-opus-4-5",
         max_tokens=16000,
-        system=SYSTEM_PROMPT,
+        system=_get_system_prompt(language),
         messages=[{"role": "user", "content": prompt}],
     )
 

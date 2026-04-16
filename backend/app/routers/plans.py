@@ -57,14 +57,17 @@ async def create_plan(
 
     # Generate plan via Claude
     try:
-        plan_json = await claude_service.generate_plan(payload, garmin_summary)
+        plan_json = await claude_service.generate_plan(payload, garmin_summary, language=payload.language)
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"AI plan generation failed: {str(e)}")
+
+    plan_data = payload.model_dump()
+    plan_data.pop("language", None)  # language is not a DB column
 
     # Persist plan
     plan = Plan(
         user_id=user.id,
-        **payload.model_dump(),
+        **plan_data,
         plan_json=plan_json,
     )
     db.add(plan)
@@ -113,9 +116,13 @@ async def update_plan(
     if not plan:
         raise HTTPException(status_code=404, detail="Plan not found")
 
-    # Apply updated fields
+    # Extract language before applying to DB model (not a DB column)
+    update_language = payload.language or "nl"
+
+    # Apply updated fields (skip language – not a DB column)
     for field, value in payload.model_dump(exclude_unset=True).items():
-        setattr(plan, field, value)
+        if field != "language":
+            setattr(plan, field, value)
 
     # Build a PlanCreate-like object for AI generation using merged values
     merged = PlanCreate(
@@ -145,7 +152,7 @@ async def update_plan(
 
     # Regenerate plan via AI
     try:
-        plan_json = await claude_service.generate_plan(merged, garmin_summary)
+        plan_json = await claude_service.generate_plan(merged, garmin_summary, language=update_language)
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"AI plan generation failed: {str(e)}")
 

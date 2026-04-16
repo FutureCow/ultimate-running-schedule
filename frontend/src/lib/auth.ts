@@ -13,7 +13,9 @@ export function logout() {
   if (typeof window === "undefined") return;
   localStorage.removeItem("access_token");
   localStorage.removeItem("refresh_token");
-  window.location.href = "/login";
+  // Detect current locale from URL and redirect to localized login
+  const locale = window.location.pathname.startsWith("/en") ? "en" : "nl";
+  window.location.href = `/${locale}/login`;
 }
 
 export async function login(email: string, password: string) {

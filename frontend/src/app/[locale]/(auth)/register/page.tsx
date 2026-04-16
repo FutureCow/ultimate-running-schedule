@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
+import { useTranslations } from "next-intl";
+import { useRouter, Link } from "@/i18n/navigation";
 import { motion } from "framer-motion";
 import { Mail, Lock, Zap, AlertCircle, CheckCircle2 } from "lucide-react";
 import { register, login } from "@/lib/auth";
 
 export default function RegisterPage() {
+  const t = useTranslations("auth.register");
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -18,15 +19,15 @@ export default function RegisterPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
-    if (password !== confirm) { setError("Wachtwoorden komen niet overeen"); return; }
-    if (password.length < 8) { setError("Wachtwoord moet minstens 8 tekens lang zijn"); return; }
+    if (password !== confirm) { setError(t("errors.mismatch")); return; }
+    if (password.length < 8) { setError(t("errors.tooShort")); return; }
     setLoading(true);
     try {
       await register(email, password);
       await login(email, password);
       router.replace("/dashboard");
     } catch (err: any) {
-      setError(err?.response?.data?.detail || "Registratie mislukt. Probeer opnieuw.");
+      setError(err?.response?.data?.detail || t("errors.failed"));
     } finally {
       setLoading(false);
     }
@@ -34,7 +35,7 @@ export default function RegisterPage() {
 
   const strength = password.length === 0 ? 0 : password.length < 8 ? 1 : password.length < 12 ? 2 : 3;
   const strengthColors = ["", "bg-red-500", "bg-yellow-500", "bg-brand-500"];
-  const strengthLabels = ["", "Zwak", "Matig", "Sterk"];
+  const strengthLabels = ["", t("strength.weak"), t("strength.fair"), t("strength.strong")];
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-12">
@@ -50,8 +51,8 @@ export default function RegisterPage() {
           <div className="w-12 h-12 rounded-2xl bg-brand-500 flex items-center justify-center mb-3 shadow-lg shadow-brand-500/30">
             <Zap className="w-6 h-6 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-white">Account aanmaken</h1>
-          <p className="text-sm text-slate-400 mt-1">Start met je AI hardloopschema</p>
+          <h1 className="text-2xl font-bold text-white">{t("title")}</h1>
+          <p className="text-sm text-slate-400 mt-1">{t("subtitle")}</p>
         </div>
 
         <div className="card">
@@ -68,20 +69,20 @@ export default function RegisterPage() {
             )}
 
             <div>
-              <label className="label">E-mailadres</label>
+              <label className="label">{t("email")}</label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                 <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-                  placeholder="jij@example.com" required className="input pl-10" />
+                  placeholder={t("emailPlaceholder")} required className="input pl-10" />
               </div>
             </div>
 
             <div>
-              <label className="label">Wachtwoord</label>
+              <label className="label">{t("password")}</label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                 <input type="password" value={password} onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Min. 8 tekens" required className="input pl-10" />
+                  placeholder={t("passwordPlaceholder")} required className="input pl-10" />
               </div>
               {password && (
                 <div className="mt-2 space-y-1">
@@ -98,11 +99,11 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <label className="label">Bevestig wachtwoord</label>
+              <label className="label">{t("confirmPassword")}</label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                 <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)}
-                  placeholder="Herhaal wachtwoord" required className="input pl-10" />
+                  placeholder={t("confirmPlaceholder")} required className="input pl-10" />
                 {confirm && confirm === password && (
                   <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-400" />
                 )}
@@ -112,15 +113,15 @@ export default function RegisterPage() {
             <button type="submit" disabled={loading} className="btn-primary w-full mt-2">
               {loading
                 ? <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-                : "Account aanmaken"
+                : t("submit")
               }
             </button>
           </form>
 
           <p className="text-center text-sm text-slate-500 mt-4">
-            Al een account?{" "}
+            {t("hasAccount")}{" "}
             <Link href="/login" className="text-brand-400 hover:text-brand-300 font-medium">
-              Inloggen
+              {t("loginLink")}
             </Link>
           </p>
         </div>

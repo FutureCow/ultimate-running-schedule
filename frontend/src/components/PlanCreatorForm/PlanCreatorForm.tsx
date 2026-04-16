@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useTranslations, useLocale } from "next-intl";
+import { useRouter } from "@/i18n/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -9,7 +10,6 @@ import { z } from "zod";
 import { ArrowLeft, ArrowRight, Zap, CheckCircle2, AlertCircle, RefreshCw } from "lucide-react";
 import { plansApi } from "@/lib/api";
 import { Plan, PlanFormData } from "@/types";
-import { DAYS } from "@/lib/utils";
 import { StepGoal } from "./steps/StepGoal";
 import { StepAthleteProfile } from "./steps/StepAthleteProfile";
 import { StepTrainingPrefs } from "./steps/StepTrainingPrefs";
@@ -35,17 +35,6 @@ const schema = z.object({
 
 export type FormSchema = z.infer<typeof schema>;
 
-const STEPS = [
-  { id: 1, title: "Doel & Plan", subtitle: "Wat wil je bereiken?" },
-  { id: 2, title: "Jouw Profiel", subtitle: "Vertel ons over jezelf" },
-  { id: 3, title: "Trainingsvoorkeur", subtitle: "Hoe train jij het liefst?" },
-  { id: 4, title: "Overzicht", subtitle: "Controleer en genereer" },
-];
-
-interface Props {
-  editPlan?: Plan;
-}
-
 function secondsToDisplay(seconds?: number | null): string | undefined {
   if (!seconds) return undefined;
   const h = Math.floor(seconds / 3600);
@@ -55,8 +44,14 @@ function secondsToDisplay(seconds?: number | null): string | undefined {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
+interface Props {
+  editPlan?: Plan;
+}
+
 export function PlanCreatorForm({ editPlan }: Props) {
+  const t = useTranslations("form");
   const router = useRouter();
+  const locale = useLocale();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -113,9 +108,10 @@ export function PlanCreatorForm({ editPlan }: Props) {
     setLoading(true);
     setError("");
     try {
-      const payload: PlanFormData = {
+      const payload: PlanFormData & { language: string } = {
         ...data,
         training_days: data.training_days,
+        language: locale,
       };
       if (isEditMode) {
         await plansApi.update(editPlan!.id, payload);
@@ -125,7 +121,7 @@ export function PlanCreatorForm({ editPlan }: Props) {
         router.push(`/plans/${plan.id}`);
       }
     } catch (e: any) {
-      setError(e?.response?.data?.detail || `Plan ${isEditMode ? "bijwerken" : "aanmaken"} mislukt. Probeer opnieuw.`);
+      setError(e?.response?.data?.detail || t("errors.failed"));
       setLoading(false);
     }
   }
@@ -133,12 +129,14 @@ export function PlanCreatorForm({ editPlan }: Props) {
   const targetTimeDisplay = secondsToDisplay(editPlan?.target_time_seconds);
   const stepProps = { register, watch, setValue, getValues, errors };
 
+  const STEPS = [1, 2, 3, 4] as const;
+
   return (
     <div className="max-w-2xl mx-auto">
       {/* Progress steps */}
       <div className="flex items-center justify-between mb-8 relative">
         <div className="absolute top-4 left-0 right-0 h-0.5 bg-slate-700 -z-10" />
-        {STEPS.map(({ id, title }) => (
+        {STEPS.map((id) => (
           <div key={id} className="flex flex-col items-center gap-2">
             <motion.div
               animate={{
@@ -147,10 +145,13 @@ export function PlanCreatorForm({ editPlan }: Props) {
               }}
               className="w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs font-bold transition-colors"
             >
-              {step > id ? <CheckCircle2 className="w-4 h-4 text-white" /> : <span className={step === id ? "text-white" : "text-slate-500"}>{id}</span>}
+              {step > id
+                ? <CheckCircle2 className="w-4 h-4 text-white" />
+                : <span className={step === id ? "text-white" : "text-slate-500"}>{id}</span>
+              }
             </motion.div>
             <span className={`text-[10px] font-medium hidden sm:block ${step >= id ? "text-brand-400" : "text-slate-600"}`}>
-              {title}
+              {t(`steps.${id}.title`)}
             </span>
           </div>
         ))}
@@ -159,9 +160,9 @@ export function PlanCreatorForm({ editPlan }: Props) {
       <div className="card">
         <div className="mb-6">
           <h2 className="text-lg font-bold text-white">
-            {isEditMode ? `Bewerken: ${STEPS[step - 1].title}` : STEPS[step - 1].title}
+            {isEditMode ? `${t("editPrefix")} ${t(`steps.${step}.title`)}` : t(`steps.${step}.title`)}
           </h2>
-          <p className="text-sm text-slate-400">{STEPS[step - 1].subtitle}</p>
+          <p className="text-sm text-slate-400">{t(`steps.${step}.subtitle`)}</p>
         </div>
 
         {error && (
@@ -190,7 +191,6 @@ export function PlanCreatorForm({ editPlan }: Props) {
           </motion.div>
         </AnimatePresence>
 
-        {/* Navigation */}
         <div className="flex items-center justify-between mt-8 pt-4 border-t border-slate-700/50">
           <button
             type="button"
@@ -198,12 +198,12 @@ export function PlanCreatorForm({ editPlan }: Props) {
             disabled={step === 1}
             className="btn-ghost disabled:opacity-0"
           >
-            <ArrowLeft className="w-4 h-4" /> Vorige
+            <ArrowLeft className="w-4 h-4" /> {t("prev")}
           </button>
 
           {step < 4 ? (
             <button type="button" onClick={nextStep} className="btn-primary">
-              Volgende <ArrowRight className="w-4 h-4" />
+              {t("next")} <ArrowRight className="w-4 h-4" />
             </button>
           ) : (
             <button
@@ -215,17 +215,17 @@ export function PlanCreatorForm({ editPlan }: Props) {
               {loading ? (
                 <>
                   <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-                  AI genereert plan…
+                  {t("generating")}
                 </>
               ) : isEditMode ? (
                 <>
                   <RefreshCw className="w-4 h-4" />
-                  Plan Regenereren
+                  {t("regenerate")}
                 </>
               ) : (
                 <>
                   <Zap className="w-4 h-4" />
-                  Genereer Plan
+                  {t("generate")}
                 </>
               )}
             </button>

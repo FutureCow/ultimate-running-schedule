@@ -1,9 +1,10 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
-import Link from "next/link";
+import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
 import { plansApi } from "@/lib/api";
 import { Plan } from "@/types";
 import { PlanCreatorForm } from "@/components/PlanCreatorForm/PlanCreatorForm";
@@ -11,6 +12,7 @@ import { Navbar } from "@/components/ui/Navbar";
 
 export default function EditPlanPage() {
   const { id } = useParams<{ id: string }>();
+  const t = useTranslations("plans.edit");
 
   const { data: plan, isLoading } = useQuery<Plan>({
     queryKey: ["plan", id],
@@ -26,10 +28,8 @@ export default function EditPlanPage() {
             <ArrowLeft className="w-5 h-5" />
           </Link>
           <div>
-            <h1 className="text-xl font-bold text-white">Plan bewerken</h1>
-            <p className="text-xs text-slate-400">
-              Pas de parameters aan en regenereer je trainingsschema met AI.
-            </p>
+            <h1 className="text-xl font-bold text-white">{t("title")}</h1>
+            <p className="text-xs text-slate-400">{t("subtitle")}</p>
           </div>
         </div>
 
@@ -38,7 +38,7 @@ export default function EditPlanPage() {
             <span className="w-8 h-8 rounded-full border-2 border-brand-500 border-t-transparent animate-spin" />
           </div>
         ) : !plan ? (
-          <div className="text-center py-20 text-slate-400">Plan niet gevonden.</div>
+          <div className="text-center py-20 text-slate-400">{t("title")}</div>
         ) : (
           <PlanCreatorForm editPlan={plan} />
         )}

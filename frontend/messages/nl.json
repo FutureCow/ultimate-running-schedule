@@ -1,0 +1,265 @@
+{
+  "common": {
+    "loading": "Laden…",
+    "notFound": "Niet gevonden",
+    "back": "Terug",
+    "save": "Opslaan",
+    "cancel": "Annuleren",
+    "delete": "Verwijderen",
+    "edit": "Bewerken",
+    "weeks": "weken",
+    "km": "km",
+    "min": "min",
+    "perKm": "/km",
+    "none": "—"
+  },
+  "meta": {
+    "title": "RunAI – AI trainingsplannen",
+    "description": "Gepersonaliseerde hardloopplannen op basis van je Garmin-data en Claude AI"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "newPlan": "Nieuw Plan",
+    "settings": "Instellingen",
+    "logout": "Uitloggen"
+  },
+  "auth": {
+    "login": {
+      "title": "Welkom terug",
+      "subtitle": "Log in op je RunAI account",
+      "email": "E-mailadres",
+      "emailPlaceholder": "jij@example.com",
+      "password": "Wachtwoord",
+      "submit": "Inloggen",
+      "noAccount": "Nog geen account?",
+      "registerLink": "Registreer"
+    },
+    "register": {
+      "title": "Account aanmaken",
+      "subtitle": "Start met je AI hardloopschema",
+      "email": "E-mailadres",
+      "emailPlaceholder": "jij@example.com",
+      "password": "Wachtwoord",
+      "passwordPlaceholder": "Min. 8 tekens",
+      "confirmPassword": "Bevestig wachtwoord",
+      "confirmPlaceholder": "Herhaal wachtwoord",
+      "submit": "Account aanmaken",
+      "hasAccount": "Al een account?",
+      "loginLink": "Inloggen",
+      "strength": {
+        "weak": "Zwak",
+        "fair": "Matig",
+        "strong": "Sterk"
+      },
+      "errors": {
+        "mismatch": "Wachtwoorden komen niet overeen",
+        "tooShort": "Wachtwoord moet minstens 8 tekens lang zijn",
+        "failed": "Registratie mislukt. Probeer opnieuw."
+      }
+    }
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "newPlan": "Nieuw Plan",
+    "activePlan": "Actief plan",
+    "viewPlan": "Bekijk plan",
+    "allPlans": "Alle plannen",
+    "stats": {
+      "targetTime": "Doeltijd",
+      "targetPace": "Doeltempo",
+      "vdot": "VDOT",
+      "weeks": "Weken"
+    },
+    "paceZones": "Tempo Zones",
+    "empty": {
+      "title": "Nog geen trainingsplan",
+      "subtitle": "Maak je eerste AI-gegenereerde hardloopschema op basis van je Garmin-data.",
+      "cta": "Plan aanmaken"
+    }
+  },
+  "plans": {
+    "notFound": "Plan niet gevonden.",
+    "deleteConfirm": "Plan verwijderen?",
+    "weeklyStructure": "Weekstructuur",
+    "new": {
+      "title": "Nieuw Trainingsplan",
+      "subtitle": "AI genereert een gepersonaliseerd schema op basis van jouw profiel en Garmin-data."
+    },
+    "edit": {
+      "title": "Plan bewerken",
+      "subtitle": "Pas de parameters aan en regenereer je trainingsschema met AI."
+    }
+  },
+  "form": {
+    "steps": {
+      "1": { "title": "Doel & Plan", "subtitle": "Wat wil je bereiken?" },
+      "2": { "title": "Jouw Profiel", "subtitle": "Vertel ons over jezelf" },
+      "3": { "title": "Trainingsvoorkeur", "subtitle": "Hoe train jij het liefst?" },
+      "4": { "title": "Overzicht", "subtitle": "Controleer en genereer" }
+    },
+    "editPrefix": "Bewerken:",
+    "prev": "Vorige",
+    "next": "Volgende",
+    "generate": "Genereer Plan",
+    "regenerate": "Plan Regenereren",
+    "generating": "AI genereert plan…",
+    "errors": {
+      "required": "Verplicht",
+      "minDays": "Kies minstens 2 dagen",
+      "failed": "Mislukt. Probeer opnieuw."
+    },
+    "goal": {
+      "planName": "Naam van je plan",
+      "planNamePlaceholder": "bijv. 'Sub-50 10K Rotterdam 2026'",
+      "goalDistance": "Doelafstand",
+      "targetTime": "Doeltijd (min:sec)",
+      "targetTimePlaceholder": "bijv. 48:30",
+      "targetTimeHint": "MM:SS of HH:MM:SS",
+      "targetPace": "Of: Doeltempo",
+      "targetPacePlaceholder": "bijv. 4:50 /km",
+      "targetPaceHint": "Min:sec per km",
+      "durationLabel": "Planningsduur:",
+      "durationValue": "{weeks} weken",
+      "startDate": "Startdatum (optioneel)",
+      "goals": {
+        "5k":            { "label": "5 km",          "desc": "Eerste 5K of sneller worden" },
+        "10k":           { "label": "10 km",          "desc": "Klassieke afstand verbeteren" },
+        "half_marathon": { "label": "Halve Marathon", "desc": "21,1 km uitdaging" },
+        "marathon":      { "label": "Marathon",       "desc": "42,2 km – de ultieme test" }
+      }
+    },
+    "profile": {
+      "age": "Leeftijd",
+      "height": "Lengte (cm)",
+      "weight": "Gewicht (kg)",
+      "weeklyKm": "Km per week",
+      "weeklyKmHint": "Huidige wekelijkse afstand",
+      "weeklyRuns": "Ritten per week",
+      "weeklyRunsHint": "Gemiddeld aantal trainingen",
+      "injuries": "Blessures / beperkingen",
+      "injuriesPlaceholder": "bijv. lichte kniepijn links, oud hamstringletsel rechts…",
+      "injuriesHint": "De AI houdt hier rekening mee bij het samenstellen van je plan.",
+      "garminNoteLabel": "Garmin data",
+      "garminNoteText": "als je Garmin-credentials hebt opgeslagen worden de laatste 3 maanden trainingsdata automatisch meegenomen voor nauwkeurigere pace-berekeningen."
+    },
+    "prefs": {
+      "trainingDays": "Trainingsdagen",
+      "selected": "{count} geselecteerd",
+      "longRunDay": "Lange duurloop dag",
+      "longRunDayHint": "Kies de dag voor je wekelijkse lange duurloop",
+      "surface": "Ondergrond",
+      "surfaces": {
+        "road":      "Asfalt",
+        "trail":     "Trail",
+        "treadmill": "Loopband",
+        "track":     "Atletiek"
+      }
+    },
+    "review": {
+      "checkNote": "Controleer je gegevens. Als alles klopt klik je op",
+      "checkNoteButton": "Genereer Plan",
+      "checkNoteSuffix": "en maakt Claude AI jouw persoonlijk schema.",
+      "aiNoteLabel": "AI Plan Generatie",
+      "aiNoteText": "Claude Opus analyseert je profiel en Garmin-data en maakt een wetenschappelijk onderbouwd schema. Dit kan 20-30 seconden duren.",
+      "rows": {
+        "name": "Plannaam",
+        "goal": "Doel",
+        "targetTime": "Doeltijd",
+        "duration": "Duur",
+        "age": "Leeftijd",
+        "heightWeight": "Lengte / Gewicht",
+        "volume": "Huidig volume",
+        "injuries": "Blessures",
+        "trainingDays": "Trainingsdagen",
+        "longRunDay": "Lange loop dag",
+        "surface": "Ondergrond",
+        "startDate": "Startdatum"
+      },
+      "noInjuries": "Geen",
+      "durationFormat": "{weeks} weken",
+      "ageFormat": "{age} jaar",
+      "heightWeightFormat": "{height} cm / {weight} kg",
+      "volumeFormat": "{km} km/week · {runs} ritten"
+    }
+  },
+  "workout": {
+    "rest": "Rustdag",
+    "warmup": "Warming-up",
+    "mainPace": "Hoofdtempo",
+    "cooldown": "Cooling-down",
+    "intervals": "Intervalstructuur",
+    "pushToGarmin": "Push naar Garmin",
+    "onGarmin": "Op Garmin",
+    "move": "Verplaatsen",
+    "delete": "Verwijderen",
+    "deleteConfirm": "Training verwijderen?",
+    "moveToDayLabel": "Verplaats naar dag",
+    "restSeconds": "{seconds}s rust",
+    "types": {
+      "easy_run":  "Easy Run",
+      "long_run":  "Long Run",
+      "tempo":     "Tempo",
+      "interval":  "Intervallen",
+      "recovery":  "Herstel",
+      "race":      "Race",
+      "rest":      "Rust"
+    }
+  },
+  "calendar": {
+    "weekTitle": "Week {current} / {total}",
+    "pushWeek": "Push week naar Garmin",
+    "weekOnGarmin": "Week {week} op Garmin",
+    "restDay": "Rustdag"
+  },
+  "paceZones": {
+    "title": "Tempo Zones",
+    "subtitle": "VDOT-gebaseerde training paces",
+    "vdot": "VDOT",
+    "zones": {
+      "easy":       "Easy",
+      "marathon":   "Marathon",
+      "threshold":  "Drempel",
+      "interval":   "Interval",
+      "repetition": "Repetitie"
+    }
+  },
+  "settings": {
+    "title": "Instellingen",
+    "subtitle": "Beheer je Garmin Connect koppeling",
+    "language": {
+      "title": "Taal / Language"
+    },
+    "garmin": {
+      "title": "Garmin Connect",
+      "encryptedNote": "Credentials worden versleuteld opgeslagen",
+      "connected": "Gekoppeld",
+      "syncDate": "Sync: {date}",
+      "syncButton": "Sync activiteiten",
+      "deleteButton": "Verwijderen",
+      "deleteConfirm": "Garmin credentials verwijderen?",
+      "syncSuccess": "✓ {count} activiteiten gesynchroniseerd",
+      "syncFailed": "Sync mislukt",
+      "saveFailed": "Opslaan mislukt",
+      "securityNote": "Je Garmin credentials worden versleuteld opgeslagen met AES-256 (Fernet) en nooit in plain text bewaard.",
+      "emailLabel": "Garmin e-mailadres",
+      "passwordLabel": "Garmin wachtwoord",
+      "connectButton": "Koppel Garmin"
+    }
+  },
+  "days": {
+    "full": {
+      "0": "Maandag", "1": "Dinsdag", "2": "Woensdag", "3": "Donderdag",
+      "4": "Vrijdag", "5": "Zaterdag", "6": "Zondag"
+    },
+    "abbr": {
+      "0": "Ma", "1": "Di", "2": "Wo", "3": "Do",
+      "4": "Vr", "5": "Za", "6": "Zo"
+    }
+  },
+  "goals": {
+    "5k":            "5 km",
+    "10k":           "10 km",
+    "half_marathon": "Halve Marathon",
+    "marathon":      "Marathon"
+  }
+}

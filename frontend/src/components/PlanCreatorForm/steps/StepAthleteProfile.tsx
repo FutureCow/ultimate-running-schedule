@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { UseFormRegister, UseFormWatch, UseFormSetValue, FieldErrors } from "react-hook-form";
 import { FormSchema } from "../PlanCreatorForm";
 
@@ -11,13 +12,14 @@ interface Props {
   getValues: any;
 }
 
-export function StepAthleteProfile({ register, watch, errors }: Props) {
+export function StepAthleteProfile({ register, errors }: Props) {
+  const t = useTranslations("form.profile");
+
   return (
     <div className="space-y-5">
-      {/* Age / Height / Weight */}
       <div className="grid grid-cols-3 gap-3">
         <div>
-          <label className="label">Leeftijd</label>
+          <label className="label">{t("age")}</label>
           <input
             type="number"
             {...register("age", { valueAsNumber: true })}
@@ -27,7 +29,7 @@ export function StepAthleteProfile({ register, watch, errors }: Props) {
           {errors.age && <p className="text-[10px] text-red-400 mt-1">{errors.age.message}</p>}
         </div>
         <div>
-          <label className="label">Lengte (cm)</label>
+          <label className="label">{t("height")}</label>
           <input
             type="number"
             {...register("height_cm", { valueAsNumber: true })}
@@ -36,7 +38,7 @@ export function StepAthleteProfile({ register, watch, errors }: Props) {
           />
         </div>
         <div>
-          <label className="label">Gewicht (kg)</label>
+          <label className="label">{t("weight")}</label>
           <input
             type="number"
             step="0.1"
@@ -47,10 +49,9 @@ export function StepAthleteProfile({ register, watch, errors }: Props) {
         </div>
       </div>
 
-      {/* Current fitness */}
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="label">Km per week</label>
+          <label className="label">{t("weeklyKm")}</label>
           <input
             type="number"
             step="0.5"
@@ -58,37 +59,33 @@ export function StepAthleteProfile({ register, watch, errors }: Props) {
             placeholder="40"
             className="input"
           />
-          <p className="text-[10px] text-slate-600 mt-1">Huidige wekelijkse afstand</p>
+          <p className="text-[10px] text-slate-600 mt-1">{t("weeklyKmHint")}</p>
         </div>
         <div>
-          <label className="label">Ritten per week</label>
+          <label className="label">{t("weeklyRuns")}</label>
           <input
             type="number"
             {...register("weekly_runs", { valueAsNumber: true })}
             placeholder="4"
             className="input"
           />
-          <p className="text-[10px] text-slate-600 mt-1">Gemiddeld aantal trainingen</p>
+          <p className="text-[10px] text-slate-600 mt-1">{t("weeklyRunsHint")}</p>
         </div>
       </div>
 
-      {/* Injuries */}
       <div>
-        <label className="label">Blessures / beperkingen</label>
+        <label className="label">{t("injuries")}</label>
         <textarea
           {...register("injuries")}
           rows={3}
-          placeholder="bijv. lichte kniepijn links, oud hamstringletsel rechts…"
+          placeholder={t("injuriesPlaceholder")}
           className="input resize-none"
         />
-        <p className="text-[10px] text-slate-600 mt-1">
-          De AI houdt hier rekening mee bij het samenstellen van je plan.
-        </p>
+        <p className="text-[10px] text-slate-600 mt-1">{t("injuriesHint")}</p>
       </div>
 
-      {/* Garmin data note */}
       <div className="rounded-xl border border-brand-700/30 bg-brand-950/30 px-3 py-2.5 text-xs text-slate-400">
-        💡 <span className="text-brand-300 font-medium">Garmin data</span> — als je Garmin-credentials hebt opgeslagen worden de laatste 3 maanden trainingsdata automatisch meegenomen voor nauwkeurigere pace-berekeningen.
+        💡 <span className="text-brand-300 font-medium">{t("garminNoteLabel")}</span> — {t("garminNoteText")}
       </div>
     </div>
   );

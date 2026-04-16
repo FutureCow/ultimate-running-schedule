@@ -1,0 +1,265 @@
+{
+  "common": {
+    "loading": "Loading…",
+    "notFound": "Not found",
+    "back": "Back",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "weeks": "weeks",
+    "km": "km",
+    "min": "min",
+    "perKm": "/km",
+    "none": "—"
+  },
+  "meta": {
+    "title": "RunAI – AI-Powered Running Plans",
+    "description": "Personalized running plans based on your Garmin data and Claude AI"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "newPlan": "New Plan",
+    "settings": "Settings",
+    "logout": "Log out"
+  },
+  "auth": {
+    "login": {
+      "title": "Welcome back",
+      "subtitle": "Log in to your RunAI account",
+      "email": "Email address",
+      "emailPlaceholder": "you@example.com",
+      "password": "Password",
+      "submit": "Log in",
+      "noAccount": "Don't have an account?",
+      "registerLink": "Register"
+    },
+    "register": {
+      "title": "Create account",
+      "subtitle": "Start your AI running schedule",
+      "email": "Email address",
+      "emailPlaceholder": "you@example.com",
+      "password": "Password",
+      "passwordPlaceholder": "Min. 8 characters",
+      "confirmPassword": "Confirm password",
+      "confirmPlaceholder": "Repeat password",
+      "submit": "Create account",
+      "hasAccount": "Already have an account?",
+      "loginLink": "Log in",
+      "strength": {
+        "weak": "Weak",
+        "fair": "Fair",
+        "strong": "Strong"
+      },
+      "errors": {
+        "mismatch": "Passwords do not match",
+        "tooShort": "Password must be at least 8 characters",
+        "failed": "Registration failed. Please try again."
+      }
+    }
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "newPlan": "New Plan",
+    "activePlan": "Active plan",
+    "viewPlan": "View plan",
+    "allPlans": "All plans",
+    "stats": {
+      "targetTime": "Target time",
+      "targetPace": "Target pace",
+      "vdot": "VDOT",
+      "weeks": "Weeks"
+    },
+    "paceZones": "Pace Zones",
+    "empty": {
+      "title": "No training plan yet",
+      "subtitle": "Create your first AI-generated running schedule based on your Garmin data.",
+      "cta": "Create plan"
+    }
+  },
+  "plans": {
+    "notFound": "Plan not found.",
+    "deleteConfirm": "Delete plan?",
+    "weeklyStructure": "Weekly structure",
+    "new": {
+      "title": "New Training Plan",
+      "subtitle": "AI generates a personalized schedule based on your profile and Garmin data."
+    },
+    "edit": {
+      "title": "Edit plan",
+      "subtitle": "Adjust the parameters and regenerate your training schedule with AI."
+    }
+  },
+  "form": {
+    "steps": {
+      "1": { "title": "Goal & Plan", "subtitle": "What do you want to achieve?" },
+      "2": { "title": "Your Profile", "subtitle": "Tell us about yourself" },
+      "3": { "title": "Training preferences", "subtitle": "How do you like to train?" },
+      "4": { "title": "Overview", "subtitle": "Review and generate" }
+    },
+    "editPrefix": "Edit:",
+    "prev": "Previous",
+    "next": "Next",
+    "generate": "Generate Plan",
+    "regenerate": "Regenerate Plan",
+    "generating": "AI is generating plan…",
+    "errors": {
+      "required": "Required",
+      "minDays": "Select at least 2 days",
+      "failed": "Failed. Please try again."
+    },
+    "goal": {
+      "planName": "Plan name",
+      "planNamePlaceholder": "e.g. 'Sub-50 10K 2026'",
+      "goalDistance": "Target distance",
+      "targetTime": "Target time (min:sec)",
+      "targetTimePlaceholder": "e.g. 48:30",
+      "targetTimeHint": "MM:SS or HH:MM:SS",
+      "targetPace": "Or: Target pace",
+      "targetPacePlaceholder": "e.g. 4:50 /km",
+      "targetPaceHint": "Min:sec per km",
+      "durationLabel": "Plan duration:",
+      "durationValue": "{weeks} weeks",
+      "startDate": "Start date (optional)",
+      "goals": {
+        "5k":            { "label": "5 km",           "desc": "First 5K or go faster" },
+        "10k":           { "label": "10 km",           "desc": "Improve at the classic distance" },
+        "half_marathon": { "label": "Half Marathon",   "desc": "21.1 km challenge" },
+        "marathon":      { "label": "Marathon",        "desc": "42.2 km – the ultimate test" }
+      }
+    },
+    "profile": {
+      "age": "Age",
+      "height": "Height (cm)",
+      "weight": "Weight (kg)",
+      "weeklyKm": "km per week",
+      "weeklyKmHint": "Current weekly distance",
+      "weeklyRuns": "Runs per week",
+      "weeklyRunsHint": "Average number of sessions",
+      "injuries": "Injuries / limitations",
+      "injuriesPlaceholder": "e.g. mild left knee pain, old right hamstring injury…",
+      "injuriesHint": "The AI will take this into account when building your plan.",
+      "garminNoteLabel": "Garmin data",
+      "garminNoteText": "if you have saved Garmin credentials, the last 3 months of training data will automatically be included for more accurate pace calculations."
+    },
+    "prefs": {
+      "trainingDays": "Training days",
+      "selected": "{count} selected",
+      "longRunDay": "Long run day",
+      "longRunDayHint": "Choose the day for your weekly long run",
+      "surface": "Surface",
+      "surfaces": {
+        "road":      "Road",
+        "trail":     "Trail",
+        "treadmill": "Treadmill",
+        "track":     "Track"
+      }
+    },
+    "review": {
+      "checkNote": "Review your details. When everything looks good, click",
+      "checkNoteButton": "Generate Plan",
+      "checkNoteSuffix": "and Claude AI will build your personal schedule.",
+      "aiNoteLabel": "AI Plan Generation",
+      "aiNoteText": "Claude Opus analyses your profile and Garmin data to create a science-backed training schedule. This may take 20–30 seconds.",
+      "rows": {
+        "name": "Plan name",
+        "goal": "Goal",
+        "targetTime": "Target time",
+        "duration": "Duration",
+        "age": "Age",
+        "heightWeight": "Height / Weight",
+        "volume": "Current volume",
+        "injuries": "Injuries",
+        "trainingDays": "Training days",
+        "longRunDay": "Long run day",
+        "surface": "Surface",
+        "startDate": "Start date"
+      },
+      "noInjuries": "None",
+      "durationFormat": "{weeks} weeks",
+      "ageFormat": "{age} yrs",
+      "heightWeightFormat": "{height} cm / {weight} kg",
+      "volumeFormat": "{km} km/week · {runs} runs"
+    }
+  },
+  "workout": {
+    "rest": "Rest day",
+    "warmup": "Warm-up",
+    "mainPace": "Main pace",
+    "cooldown": "Cool-down",
+    "intervals": "Interval structure",
+    "pushToGarmin": "Push to Garmin",
+    "onGarmin": "On Garmin",
+    "move": "Move",
+    "delete": "Delete",
+    "deleteConfirm": "Delete workout?",
+    "moveToDayLabel": "Move to day",
+    "restSeconds": "{seconds}s rest",
+    "types": {
+      "easy_run":  "Easy Run",
+      "long_run":  "Long Run",
+      "tempo":     "Tempo",
+      "interval":  "Intervals",
+      "recovery":  "Recovery",
+      "race":      "Race",
+      "rest":      "Rest"
+    }
+  },
+  "calendar": {
+    "weekTitle": "Week {current} / {total}",
+    "pushWeek": "Push week to Garmin",
+    "weekOnGarmin": "Week {week} on Garmin",
+    "restDay": "Rest day"
+  },
+  "paceZones": {
+    "title": "Pace Zones",
+    "subtitle": "VDOT-based training paces",
+    "vdot": "VDOT",
+    "zones": {
+      "easy":       "Easy",
+      "marathon":   "Marathon",
+      "threshold":  "Threshold",
+      "interval":   "Interval",
+      "repetition": "Repetition"
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "subtitle": "Manage your Garmin Connect connection",
+    "language": {
+      "title": "Taal / Language"
+    },
+    "garmin": {
+      "title": "Garmin Connect",
+      "encryptedNote": "Credentials are stored encrypted",
+      "connected": "Connected",
+      "syncDate": "Synced: {date}",
+      "syncButton": "Sync activities",
+      "deleteButton": "Remove",
+      "deleteConfirm": "Remove Garmin credentials?",
+      "syncSuccess": "✓ {count} activities synced",
+      "syncFailed": "Sync failed",
+      "saveFailed": "Save failed",
+      "securityNote": "Your Garmin credentials are stored encrypted with AES-256 (Fernet) and are never stored in plain text.",
+      "emailLabel": "Garmin email address",
+      "passwordLabel": "Garmin password",
+      "connectButton": "Connect Garmin"
+    }
+  },
+  "days": {
+    "full": {
+      "0": "Monday", "1": "Tuesday", "2": "Wednesday", "3": "Thursday",
+      "4": "Friday", "5": "Saturday", "6": "Sunday"
+    },
+    "abbr": {
+      "0": "Mo", "1": "Tu", "2": "We", "3": "Th",
+      "4": "Fr", "5": "Sa", "6": "Su"
+    }
+  },
+  "goals": {
+    "5k":            "5 km",
+    "10k":           "10 km",
+    "half_marathon": "Half Marathon",
+    "marathon":      "Marathon"
+  }
+}

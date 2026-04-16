@@ -1,18 +1,15 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { UseFormRegister, UseFormWatch, UseFormSetValue, FieldErrors } from "react-hook-form";
 import { FormSchema } from "../PlanCreatorForm";
 import { cn } from "@/lib/utils";
 
-const DAYS_NL = ["Maandag", "Dinsdag", "Woensdag", "Donderdag", "Vrijdag", "Zaterdag", "Zondag"];
 const DAYS_EN = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
-
-const SURFACES = [
-  { value: "road",      label: "Asfalt",    emoji: "🛣️" },
-  { value: "trail",     label: "Trail",     emoji: "🌲" },
-  { value: "treadmill", label: "Loopband",  emoji: "🏋️" },
-  { value: "track",     label: "Atletiek",  emoji: "🏟️" },
-];
+const SURFACE_KEYS = ["road", "trail", "treadmill", "track"] as const;
+const SURFACE_EMOJIS: Record<string, string> = {
+  road: "🛣️", trail: "🌲", treadmill: "🏋️", track: "🏟️",
+};
 
 interface Props {
   register: UseFormRegister<FormSchema>;
@@ -23,6 +20,9 @@ interface Props {
 }
 
 export function StepTrainingPrefs({ watch, setValue, errors }: Props) {
+  const t = useTranslations("form.prefs");
+  const tDays = useTranslations("days");
+
   const trainingDays = watch("training_days") || [];
   const longRunDay = watch("long_run_day");
   const surface = watch("surface");
@@ -37,15 +37,13 @@ export function StepTrainingPrefs({ watch, setValue, errors }: Props) {
 
   return (
     <div className="space-y-5">
-      {/* Training days */}
       <div>
         <label className="label">
-          Trainingsdagen{" "}
-          <span className="text-brand-400 font-bold">({trainingDays.length} geselecteerd)</span>
+          {t("trainingDays")}{" "}
+          <span className="text-brand-400 font-bold">({t("selected", { count: trainingDays.length })})</span>
         </label>
         <div className="grid grid-cols-7 gap-1.5">
-          {DAYS_NL.map((day, i) => {
-            const val = DAYS_EN[i];
+          {DAYS_EN.map((val, i) => {
             const selected = trainingDays.includes(val);
             return (
               <button
@@ -59,7 +57,7 @@ export function StepTrainingPrefs({ watch, setValue, errors }: Props) {
                     : "bg-surface-elevated text-slate-500 hover:bg-slate-700 hover:text-slate-300"
                 )}
               >
-                {day.slice(0, 2)}
+                {tDays(`abbr.${i}`)}
               </button>
             );
           })}
@@ -69,51 +67,46 @@ export function StepTrainingPrefs({ watch, setValue, errors }: Props) {
         )}
       </div>
 
-      {/* Long run day */}
       <div>
-        <label className="label">Lange duurloop dag</label>
+        <label className="label">{t("longRunDay")}</label>
         <div className="grid grid-cols-7 gap-1.5">
-          {DAYS_NL.map((day, i) => {
-            const val = DAYS_EN[i];
-            return (
-              <button
-                key={val}
-                type="button"
-                onClick={() => setValue("long_run_day", val)}
-                className={cn(
-                  "rounded-xl py-2.5 text-xs font-semibold transition-all duration-200",
-                  longRunDay === val
-                    ? "bg-blue-500 text-white shadow-lg shadow-blue-500/25"
-                    : "bg-surface-elevated text-slate-500 hover:bg-slate-700 hover:text-slate-300",
-                  !trainingDays.includes(val) && "opacity-40"
-                )}
-              >
-                {day.slice(0, 2)}
-              </button>
-            );
-          })}
+          {DAYS_EN.map((val, i) => (
+            <button
+              key={val}
+              type="button"
+              onClick={() => setValue("long_run_day", val)}
+              className={cn(
+                "rounded-xl py-2.5 text-xs font-semibold transition-all duration-200",
+                longRunDay === val
+                  ? "bg-blue-500 text-white shadow-lg shadow-blue-500/25"
+                  : "bg-surface-elevated text-slate-500 hover:bg-slate-700 hover:text-slate-300",
+                !trainingDays.includes(val) && "opacity-40"
+              )}
+            >
+              {tDays(`abbr.${i}`)}
+            </button>
+          ))}
         </div>
-        <p className="text-[10px] text-slate-600 mt-1">Kies de dag voor je wekelijkse lange duurloop</p>
+        <p className="text-[10px] text-slate-600 mt-1">{t("longRunDayHint")}</p>
       </div>
 
-      {/* Surface */}
       <div>
-        <label className="label">Ondergrond</label>
+        <label className="label">{t("surface")}</label>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          {SURFACES.map(({ value, label, emoji }) => (
+          {SURFACE_KEYS.map((key) => (
             <button
-              key={value}
+              key={key}
               type="button"
-              onClick={() => setValue("surface", value)}
+              onClick={() => setValue("surface", key)}
               className={cn(
                 "rounded-xl border py-3 text-sm font-medium transition-all duration-200",
-                surface === value
+                surface === key
                   ? "border-brand-500 bg-brand-500/10 text-white"
                   : "border-slate-700 bg-surface-elevated text-slate-400 hover:border-slate-600"
               )}
             >
-              <span className="text-xl block mb-1">{emoji}</span>
-              {label}
+              <span className="text-xl block mb-1">{SURFACE_EMOJIS[key]}</span>
+              {t(`surfaces.${key}`)}
             </button>
           ))}
         </div>

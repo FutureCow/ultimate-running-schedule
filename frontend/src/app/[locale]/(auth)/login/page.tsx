@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
+import { useTranslations } from "next-intl";
+import { useRouter, Link } from "@/i18n/navigation";
 import { motion } from "framer-motion";
 import { Mail, Lock, Zap, AlertCircle } from "lucide-react";
 import { login } from "@/lib/auth";
 
 export default function LoginPage() {
+  const t = useTranslations("auth.login");
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -30,7 +31,6 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-12">
-      {/* Background gradient */}
       <div className="absolute inset-0 bg-gradient-to-br from-brand-950/40 via-surface to-surface pointer-events-none" />
 
       <motion.div
@@ -39,13 +39,12 @@ export default function LoginPage() {
         transition={{ duration: 0.5 }}
         className="relative w-full max-w-sm"
       >
-        {/* Logo */}
         <div className="flex flex-col items-center mb-8">
           <div className="w-12 h-12 rounded-2xl bg-brand-500 flex items-center justify-center mb-3 shadow-lg shadow-brand-500/30">
             <Zap className="w-6 h-6 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-white">Welkom terug</h1>
-          <p className="text-sm text-slate-400 mt-1">Log in op je RunAI account</p>
+          <h1 className="text-2xl font-bold text-white">{t("title")}</h1>
+          <p className="text-sm text-slate-400 mt-1">{t("subtitle")}</p>
         </div>
 
         <div className="card">
@@ -62,14 +61,14 @@ export default function LoginPage() {
             )}
 
             <div>
-              <label className="label">E-mailadres</label>
+              <label className="label">{t("email")}</label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="jij@example.com"
+                  placeholder={t("emailPlaceholder")}
                   required
                   className="input pl-10"
                 />
@@ -77,7 +76,7 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label className="label">Wachtwoord</label>
+              <label className="label">{t("password")}</label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                 <input
@@ -94,14 +93,14 @@ export default function LoginPage() {
             <button type="submit" disabled={loading} className="btn-primary w-full mt-2">
               {loading ? (
                 <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-              ) : "Inloggen"}
+              ) : t("submit")}
             </button>
           </form>
 
           <p className="text-center text-sm text-slate-500 mt-4">
-            Nog geen account?{" "}
+            {t("noAccount")}{" "}
             <Link href="/register" className="text-brand-400 hover:text-brand-300 font-medium">
-              Registreer
+              {t("registerLink")}
             </Link>
           </p>
         </div>
