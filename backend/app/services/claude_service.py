@@ -12,20 +12,24 @@ from app.schemas.plan import PlanCreate
 SYSTEM_PROMPT_BASE = """You are an elite running coach and sports scientist with 20+ years of experience.
 You create highly personalized, science-backed training plans.
 
+** LANGUAGE: YOU MUST WRITE EVERY TEXT VALUE IN THE JSON IN {language}. THIS IS MANDATORY. **
+
 IMPORTANT OUTPUT RULES:
 - Return ONLY valid JSON – no markdown, no explanation outside JSON.
 - Every workout must include precise target paces in "MM:SS" format per km.
 - Paces must be realistic and consistent with the athlete's history and goal.
 - Pace calculations must use the Jack Daniels VDOT methodology.
 - Workouts are structured as a progressive plan: build volume, then intensity, then taper.
-- Generate ALL text fields (title, description, theme, weekly_structure, coaching_notes, garmin_description) in {language}.
+- ALL string fields (title, description, theme, weekly_structure, coaching_notes, garmin_description, goal, target_time) MUST be written in {language}. No exceptions.
 """
 
 def _get_system_prompt(language: str) -> str:
     lang_name = "Dutch" if language == "nl" else "English"
     return SYSTEM_PROMPT_BASE.format(language=lang_name)
 
-PLAN_PROMPT_TEMPLATE = """Create a complete {total_weeks}-week running training plan ({duration_weeks} training weeks + 1 post-race recovery week).
+PLAN_PROMPT_TEMPLATE = """IMPORTANT: Write ALL text values in {output_language}. Every title, description, theme, and note must be in {output_language}.
+
+Create a complete {total_weeks}-week running training plan ({duration_weeks} training weeks + 1 post-race recovery week).
 
 ## Athlete Profile
 - Goal race: {goal}
@@ -166,8 +170,10 @@ async def generate_plan(plan: PlanCreate, garmin_summary: Optional[dict] = None,
         client_kwargs["base_url"] = settings.ANTHROPIC_BASE_URL
     client = anthropic.AsyncAnthropic(**client_kwargs)
 
+    lang_name = "Dutch" if language == "nl" else "English"
     race_ctx = _race_context(plan)
     prompt = PLAN_PROMPT_TEMPLATE.format(
+        output_language=lang_name,
         duration_weeks=plan.duration_weeks,
         goal=_goal_display(plan.goal),
         target=_target_display(plan),
