@@ -1,6 +1,7 @@
-#!/usr/bin/env bash
+#!/bin/sh
 # update.sh — pull latest code and rebuild only what changed
-set -euo pipefail
+# Compatible with bash, sh, and busybox ash (Alpine Linux)
+set -eu
 
 # ── Config ────────────────────────────────────────────────────────────────────
 APP_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -10,16 +11,15 @@ BACKEND_SERVICE="runai-backend"
 FRONTEND_SERVICE="runai-frontend"
 
 # ── Colour helpers ────────────────────────────────────────────────────────────
-GREEN='\033[0;32m'; YELLOW='\033[1;33m'; RED='\033[0;31m'; BOLD='\033[1m'; NC='\033[0m'
-info()    { echo -e "${BOLD}[update]${NC} $*"; }
-success() { echo -e "${GREEN}[update]${NC} $*"; }
-warn()    { echo -e "${YELLOW}[update]${NC} $*"; }
-error()   { echo -e "${RED}[update]${NC} $*" >&2; exit 1; }
+info()    { printf '\033[1m[update]\033[0m %s\n' "$*"; }
+success() { printf '\033[0;32m[update]\033[0m %s\n' "$*"; }
+warn()    { printf '\033[1;33m[update]\033[0m %s\n' "$*"; }
+error()   { printf '\033[0;31m[update]\033[0m %s\n' "$*" >&2; exit 1; }
 
 # ── Service manager detection ─────────────────────────────────────────────────
-if command -v systemctl &>/dev/null && systemctl list-units --type=service &>/dev/null 2>&1; then
+if command -v systemctl >/dev/null 2>&1 && systemctl list-units --type=service >/dev/null 2>&1; then
     restart_service() { sudo systemctl restart "$1" && success "Service $1 herstart (systemd)"; }
-elif command -v rc-service &>/dev/null; then
+elif command -v rc-service >/dev/null 2>&1; then
     restart_service() { sudo rc-service "$1" restart && success "Service $1 herstart (OpenRC)"; }
 else
     error "Geen ondersteunde service manager gevonden (systemd of OpenRC)."
@@ -46,7 +46,7 @@ echo "$CHANGED" | sed 's/^/  /'
 BACKEND_CHANGED=false
 FRONTEND_CHANGED=false
 
-echo "$CHANGED" | grep -q "^backend/" && BACKEND_CHANGED=true
+echo "$CHANGED" | grep -q "^backend/"  && BACKEND_CHANGED=true
 echo "$CHANGED" | grep -q "^frontend/" && FRONTEND_CHANGED=true
 
 # ── Backend update ────────────────────────────────────────────────────────────
@@ -54,7 +54,7 @@ if $BACKEND_CHANGED; then
     info "Backend bestanden gewijzigd — update starten…"
     cd "$BACKEND_DIR"
 
-    source .venv/bin/activate
+    . .venv/bin/activate
 
     # Alleen pip install als requirements.txt is veranderd
     if echo "$CHANGED" | grep -q "^backend/requirements"; then
@@ -98,5 +98,5 @@ else
 fi
 
 # ── Klaar ─────────────────────────────────────────────────────────────────────
-echo ""
+printf '\n'
 success "Update klaar! $(git log -1 --format='%h %s')"
