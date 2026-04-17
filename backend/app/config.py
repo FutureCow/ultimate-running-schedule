@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     # Anthropic
     ANTHROPIC_API_KEY: str = ""
     ANTHROPIC_BASE_URL: str = ""  # Optioneel: bijv. http://192.168.1.81:8317 voor CLIProxyAPI
+    CLAUDE_MODEL: str = "claude-opus-4-6"  # Overschrijf bij gebruik van een proxy
 
     # Garmin credential encryption (Fernet key)
     GARMIN_ENCRYPTION_KEY: str = ""

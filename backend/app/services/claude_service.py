@@ -186,7 +186,7 @@ async def generate_plan(plan: PlanCreate, garmin_summary: Optional[dict] = None,
     )
 
     message = await client.messages.create(
-        model="claude-opus-4-5",
+        model=settings.CLAUDE_MODEL,
         max_tokens=16000,
         system=_get_system_prompt(language),
         messages=[{"role": "user", "content": prompt}],
