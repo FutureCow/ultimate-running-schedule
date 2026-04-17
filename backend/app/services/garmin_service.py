@@ -342,7 +342,7 @@ def _build_workout_payload(session: WorkoutSession) -> dict:
     else:
         dist_m = int((session.distance_km or 5) * 1000)
         steps.append(_step(order, 3, "interval", "distance", dist_m,
-                           "Hoofdgedeelte", pace_range=paces.get("main")))
+                           session.description or "", pace_range=paces.get("main")))
         order += 1
 
     # Cooldown (500 m at cooldown pace)
