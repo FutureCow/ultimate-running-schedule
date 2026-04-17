@@ -89,7 +89,13 @@ Create a complete {total_weeks}-week running training plan ({duration_weeks} tra
           "target_paces": {{
             "warmup": string | null,     // "MM:SS – MM:SS"
             "main": string,             // "MM:SS – MM:SS"
-            "cooldown": string | null
+            "cooldown": string | null,
+            "strides": {{              // optional: include when strides are prescribed
+              "reps": number,          // typically 4–8
+              "distance_m": number,    // typically 80–100
+              "pace": string,          // "MM:SS – MM:SS" near-sprint / repetition pace
+              "rest_seconds": number   // full recovery between strides, typically 60–90
+            }} | null
           }},
           "intervals": [               // only for interval workouts
             {{

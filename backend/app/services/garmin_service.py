@@ -345,6 +345,21 @@ def _build_workout_payload(session: WorkoutSession) -> dict:
                            session.description or "", pace_range=paces.get("main")))
         order += 1
 
+    # Strides (short fast accelerations stored in target_paces["strides"])
+    strides = paces.get("strides")
+    if strides and session.workout_type != WorkoutType.INTERVAL:
+        reps = strides.get("reps", 4)
+        dist_m = strides.get("distance_m", 100)
+        rest_sec = strides.get("rest_seconds", 90)
+        stride_pace = strides.get("pace", "")
+        for i in range(reps):
+            steps.append(_step(order, 3, "interval", "distance", dist_m,
+                               f"Stride {i + 1}", pace_range=stride_pace))
+            order += 1
+            if i < reps - 1:
+                steps.append(_step(order, 4, "recovery", "time", rest_sec, "Herstel"))
+                order += 1
+
     # Cooldown (500 m at cooldown pace)
     if paces.get("cooldown"):
         steps.append(_step(order, 2, "cooldown", "distance", 500,
