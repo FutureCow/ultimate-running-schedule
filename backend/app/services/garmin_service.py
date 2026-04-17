@@ -241,9 +241,61 @@ async def fetch_activities(db: AsyncSession, user_id: int, months: int = 3) -> d
 _SPORT_RUNNING = {"sportTypeId": 1, "sportTypeKey": "running"}
 
 
+def _pace_to_ms(pace_str: str) -> Optional[float]:
+    """Convert a 'MM:SS' pace-per-km string to speed in m/s."""
+    # Strip common suffixes and whitespace
+    clean = pace_str.strip().replace("/km", "").strip()
+    try:
+        parts = clean.split(":")
+        total_sec = int(parts[0]) * 60 + int(parts[1])
+        return round(1000 / total_sec, 4) if total_sec > 0 else None
+    except Exception:
+        return None
+
+
+def _pace_target(pace_range: Optional[str]) -> dict:
+    """
+    Build a Garmin speed-zone targetType dict from a pace range string.
+    Accepts formats like '5:00 – 5:30', '5:00-5:30', or a single '5:15'.
+    Returns no.target if the string is absent or unparseable.
+    targetValueOne/Two are speeds in m/s; One < Two (slower..faster).
+    """
+    _no_target = {"workoutTargetTypeId": 1, "workoutTargetTypeKey": "no.target"}
+    if not pace_range:
+        return _no_target
+
+    pace_range = pace_range.replace("/km", "").strip()
+    fast_ms = slow_ms = None
+
+    # Try range separators (longer/spaced variants first to avoid false splits)
+    for sep in (" – ", " - ", "–", "-"):
+        if sep in pace_range:
+            a, b = pace_range.split(sep, 1)
+            fast_ms = _pace_to_ms(a)  # first token is faster pace (lower MM:SS)
+            slow_ms = _pace_to_ms(b)  # second token is slower pace (higher MM:SS)
+            break
+    else:
+        # Single value: add ±3 % margin so it forms a narrow zone
+        speed = _pace_to_ms(pace_range)
+        if speed:
+            margin = round(speed * 0.03, 4)
+            slow_ms = round(speed - margin, 4)
+            fast_ms = round(speed + margin, 4)
+
+    if slow_ms and fast_ms and 0 < slow_ms < fast_ms:
+        return {
+            "workoutTargetTypeId": 5,
+            "workoutTargetTypeKey": "speed.zone",
+            "targetValueOne": slow_ms,   # lower speed = slower pace
+            "targetValueTwo": fast_ms,   # higher speed = faster pace
+        }
+    return _no_target
+
+
 def _step(order: int, step_type_id: int, step_type_key: str,
-          end_condition: str, end_value, description: str = "") -> dict:
-    """Build a single Garmin workout step dict."""
+          end_condition: str, end_value, description: str = "",
+          pace_range: Optional[str] = None) -> dict:
+    """Build a single Garmin workout step dict with an optional pace target."""
     cond_id = 3 if end_condition == "distance" else 2  # 3=distance, 2=time
     return {
         "type": "ExecutableStepDTO",
@@ -253,19 +305,20 @@ def _step(order: int, step_type_id: int, step_type_key: str,
         "description": description,
         "endCondition": {"conditionTypeKey": end_condition, "conditionTypeId": cond_id},
         "endConditionValue": end_value,
-        "targetType": {"workoutTargetTypeId": 1, "workoutTargetTypeKey": "no.target"},
+        "targetType": _pace_target(pace_range),
     }
 
 
 def _build_workout_payload(session: WorkoutSession) -> dict:
-    """Build a Garmin Connect workout dict using distance-based steps."""
+    """Build a Garmin Connect workout dict with proper pace targets per step."""
     paces = session.target_paces or {}
     steps = []
     order = 1
 
-    # Warmup (1 km easy)
+    # Warmup (1 km at warmup pace)
     if paces.get("warmup"):
-        steps.append(_step(order, 1, "warmup", "distance", 1000, "Warming-up"))
+        steps.append(_step(order, 1, "warmup", "distance", 1000,
+                           "Warming-up", pace_range=paces.get("warmup")))
         order += 1
 
     if session.workout_type == WorkoutType.INTERVAL and session.intervals:
@@ -273,23 +326,24 @@ def _build_workout_payload(session: WorkoutSession) -> dict:
             reps = iv.get("reps", 1)
             dist_m = iv.get("distance_m") or 400
             rest_sec = iv.get("rest_seconds", 90)
-            pace_note = iv.get("pace", "")
+            iv_pace = iv.get("pace", "")
             for _ in range(reps):
                 steps.append(_step(order, 3, "interval", "distance", dist_m,
-                                   f"Interval @ {pace_note}/km"))
+                                   f"Interval {dist_m}m", pace_range=iv_pace))
                 order += 1
-                steps.append(_step(order, 5, "recovery", "time", rest_sec, "Rust"))
+                # Recovery: time-based, no pace target
+                steps.append(_step(order, 4, "recovery", "time", rest_sec, "Rust"))
                 order += 1
     else:
         dist_m = int((session.distance_km or 5) * 1000)
-        main_pace = paces.get("main", "")
         steps.append(_step(order, 3, "interval", "distance", dist_m,
-                           f"Loop @ {main_pace}/km"))
+                           "Hoofdgedeelte", pace_range=paces.get("main")))
         order += 1
 
-    # Cooldown (500 m easy)
+    # Cooldown (500 m at cooldown pace)
     if paces.get("cooldown"):
-        steps.append(_step(order, 2, "cooldown", "distance", 500, "Cooling-down"))
+        steps.append(_step(order, 2, "cooldown", "distance", 500,
+                           "Cooling-down", pace_range=paces.get("cooldown")))
 
     return {
         "sportType": _SPORT_RUNNING,

@@ -48,11 +48,13 @@ class PlanCreate(BaseModel):
     weekly_km: Optional[float] = None
     weekly_runs: Optional[int] = None
     injuries: Optional[str] = None
+    extra_notes: Optional[str] = None
     training_days: Optional[list[str]] = None
     long_run_day: Optional[str] = None
     duration_weeks: int = 12
     surface: Optional[str] = None
     start_date: Optional[date] = None
+    race_date: Optional[date] = None
     language: str = "nl"
 
 
@@ -67,11 +69,13 @@ class PlanUpdate(BaseModel):
     weekly_km: Optional[float] = None
     weekly_runs: Optional[int] = None
     injuries: Optional[str] = None
+    extra_notes: Optional[str] = None
     training_days: Optional[list[str]] = None
     long_run_day: Optional[str] = None
     duration_weeks: Optional[int] = None
     surface: Optional[str] = None
     start_date: Optional[date] = None
+    race_date: Optional[date] = None
     language: Optional[str] = None
 
 
@@ -90,11 +94,13 @@ class PlanResponse(BaseModel):
     weekly_km: Optional[float] = None
     weekly_runs: Optional[int] = None
     injuries: Optional[str] = None
+    extra_notes: Optional[str] = None
     training_days: Optional[list] = None
     long_run_day: Optional[str] = None
     duration_weeks: int
     surface: Optional[str] = None
     start_date: Optional[date] = None
+    race_date: Optional[date] = None
     plan_json: Optional[Any] = None
     garmin_synced: bool
     created_at: datetime

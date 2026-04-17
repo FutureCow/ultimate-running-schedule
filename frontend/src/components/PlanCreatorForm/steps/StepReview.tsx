@@ -28,6 +28,7 @@ export function StepReview({ values }: { values: Partial<FormSchema> }) {
     { label: t("rows.heightWeight"), value: t("heightWeightFormat", { height: values.height_cm || "—", weight: values.weight_kg || "—" }) },
     { label: t("rows.volume"),       value: t("volumeFormat", { km: values.weekly_km || "—", runs: values.weekly_runs || "—" }) },
     { label: t("rows.injuries"),     value: values.injuries || t("noInjuries") },
+    { label: t("rows.extraNotes"),   value: values.extra_notes || "—" },
     {
       label: t("rows.trainingDays"),
       value: (values.training_days || [])
@@ -41,6 +42,7 @@ export function StepReview({ values }: { values: Partial<FormSchema> }) {
     },
     { label: t("rows.surface"),       value: values.surface || "—" },
     { label: t("rows.startDate"),     value: values.start_date || "—" },
+    { label: t("rows.raceDate"),      value: values.race_date || "—" },
     { label: t("rows.planLanguage"),  value: values.plan_language === "en" ? "🇬🇧 English" : "🇳🇱 Nederlands" },
   ];
 

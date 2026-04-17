@@ -120,7 +120,13 @@
       "targetPaceHint": "Min:sec per km",
       "durationLabel": "Planningsduur:",
       "durationValue": "{weeks} weken",
-      "startDate": "Startdatum (optioneel)",
+      "startDate": "Startdatum",
+      "modeWeeks": "Aantal weken",
+      "modeRaceDate": "Wedstrijddatum",
+      "raceDateLabel": "Wedstrijddatum",
+      "raceDateHint": "Het aantal weken wordt automatisch berekend op basis van start- en wedstrijddatum.",
+      "raceDateSuggestion": "Wedstrijddatum op basis van duur:",
+      "weeksCalculated": "{weeks} weken training (excl. 1 herstelweek na de wedstrijd)",
       "planLanguageLabel": "Taal van het plan",
       "planLanguages": {
         "nl": { "label": "Nederlands", "desc": "Trainingen en beschrijvingen in het Nederlands" },
@@ -158,7 +164,10 @@
         "trail":     "Trail",
         "treadmill": "Loopband",
         "track":     "Atletiek"
-      }
+      },
+      "extraNotes": "Voorkeuren",
+      "extraNotesPlaceholder": "bijv. geen intervallen op maandag, voorkeur voor ochtendtraining, wil meer heuvels…",
+      "extraNotesHint": "Vrije tekst die de AI meeneemt bij het opstellen van je schema."
     },
     "review": {
       "checkNote": "Controleer je gegevens. Als alles klopt klik je op",
@@ -175,10 +184,12 @@
         "heightWeight": "Lengte / Gewicht",
         "volume": "Huidig volume",
         "injuries": "Blessures",
+        "extraNotes": "Voorkeuren",
         "trainingDays": "Trainingsdagen",
         "longRunDay": "Lange loop dag",
         "surface": "Ondergrond",
         "startDate": "Startdatum",
+        "raceDate": "Wedstrijddatum",
         "planLanguage": "Taal plan"
       },
       "noInjuries": "Geen",

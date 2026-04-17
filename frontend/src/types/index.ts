@@ -95,11 +95,13 @@ export interface Plan {
   weekly_km?: number | null;
   weekly_runs?: number | null;
   injuries?: string | null;
+  extra_notes?: string | null;
   training_days?: string[] | null;
   long_run_day?: string | null;
   duration_weeks: number;
   surface?: string | null;
   start_date?: string | null;
+  race_date?: string | null;
   plan_json?: PlanJson | null;
   garmin_synced: boolean;
   created_at: string;
@@ -126,9 +128,11 @@ export interface PlanFormData {
   weekly_km?: number;
   weekly_runs?: number;
   injuries?: string;
+  extra_notes?: string;
   training_days: string[];
   long_run_day: string;
   duration_weeks: number;
   surface: string;
   start_date?: string;
+  race_date?: string;
 }

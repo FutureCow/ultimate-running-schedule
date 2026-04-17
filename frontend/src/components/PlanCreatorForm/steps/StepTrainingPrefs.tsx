@@ -19,7 +19,7 @@ interface Props {
   getValues: any;
 }
 
-export function StepTrainingPrefs({ watch, setValue, errors }: Props) {
+export function StepTrainingPrefs({ register, watch, setValue, errors }: Props) {
   const t = useTranslations("form.prefs");
   const tDays = useTranslations("days");
 
@@ -110,6 +110,17 @@ export function StepTrainingPrefs({ watch, setValue, errors }: Props) {
             </button>
           ))}
         </div>
+      </div>
+
+      <div>
+        <label className="label">{t("extraNotes")}</label>
+        <textarea
+          {...register("extra_notes")}
+          rows={3}
+          placeholder={t("extraNotesPlaceholder")}
+          className="input resize-none"
+        />
+        <p className="text-[10px] text-slate-600 mt-1">{t("extraNotesHint")}</p>
       </div>
     </div>
   );

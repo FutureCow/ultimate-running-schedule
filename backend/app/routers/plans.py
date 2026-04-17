@@ -14,16 +14,21 @@ router = APIRouter(prefix="/plans", tags=["plans"])
 
 def _create_sessions_from_json(plan: Plan, plan_json: dict) -> list[WorkoutSession]:
     sessions = []
-    start = plan.start_date or date.today()
-    # Adjust to Monday of the start week
-    start = start - timedelta(days=start.weekday())
+    actual_start = plan.start_date or date.today()
+    # Week 1 starts on the Monday of the week that contains actual_start.
+    # Sessions scheduled before actual_start are skipped so no training
+    # appears in the past or before the user's chosen start date.
+    week1_monday = actual_start - timedelta(days=actual_start.weekday())
 
     for week in plan_json.get("weeks", []):
         wnum = week["week_number"]
-        week_start = start + timedelta(weeks=wnum - 1)
+        week_start = week1_monday + timedelta(weeks=wnum - 1)
         for workout in week.get("workouts", []):
             day_num = workout.get("day_number", 1)
             scheduled = week_start + timedelta(days=day_num - 1)
+            # Skip sessions that fall before the actual start date
+            if scheduled < actual_start:
+                continue
             session = WorkoutSession(
                 plan_id=plan.id,
                 week_number=wnum,
@@ -136,11 +141,13 @@ async def update_plan(
         weekly_km=plan.weekly_km,
         weekly_runs=plan.weekly_runs,
         injuries=plan.injuries,
+        extra_notes=plan.extra_notes,
         training_days=plan.training_days,
         long_run_day=plan.long_run_day,
         duration_weeks=plan.duration_weeks,
         surface=plan.surface,
         start_date=plan.start_date,
+        race_date=plan.race_date,
     )
 
     # Fetch optional Garmin context

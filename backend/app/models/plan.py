@@ -40,11 +40,13 @@ class Plan(Base):
     weekly_km: Mapped[float | None] = mapped_column(Float, nullable=True)
     weekly_runs: Mapped[int | None] = mapped_column(Integer, nullable=True)
     injuries: Mapped[str | None] = mapped_column(Text, nullable=True)
+    extra_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     training_days: Mapped[list | None] = mapped_column(JSON, nullable=True)  # ["monday","wednesday",...]
     long_run_day: Mapped[str | None] = mapped_column(String(20), nullable=True)
     duration_weeks: Mapped[int] = mapped_column(Integer, default=12)
     surface: Mapped[str | None] = mapped_column(String(50), nullable=True)
     start_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    race_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     # Full AI-generated plan stored as JSON
     plan_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     garmin_synced: Mapped[bool] = mapped_column(Boolean, default=False)

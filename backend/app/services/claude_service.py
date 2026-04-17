@@ -25,7 +25,7 @@ def _get_system_prompt(language: str) -> str:
     lang_name = "Dutch" if language == "nl" else "English"
     return SYSTEM_PROMPT_BASE.format(language=lang_name)
 
-PLAN_PROMPT_TEMPLATE = """Create a complete {duration_weeks}-week running training plan.
+PLAN_PROMPT_TEMPLATE = """Create a complete {total_weeks}-week running training plan ({duration_weeks} training weeks + 1 post-race recovery week).
 
 ## Athlete Profile
 - Goal race: {goal}
@@ -34,9 +34,20 @@ PLAN_PROMPT_TEMPLATE = """Create a complete {duration_weeks}-week running traini
 - Height: {height_cm} cm | Weight: {weight_kg} kg
 - Current fitness: {weekly_km} km/week over {weekly_runs} runs
 - Injuries / notes: {injuries}
+- Extra preferences / notes: {extra_notes}
 - Available training days: {training_days}
 - Long run day: {long_run_day}
 - Preferred surface: {surface}
+
+## Race & Schedule
+- Race date: {race_date}
+- Race falls in week {duration_weeks}, day {race_day_number} (1=Mon … 7=Sun)
+- Week {post_week_1} is a mandatory POST-RACE RECOVERY week (easy running only, no intensity)
+
+## Planning Rules
+- The final 2 weeks before the race (weeks {taper_week_1} and {taper_week_2}) must be a proper TAPER: sharply reduced volume, no heavy sessions within 3 days of race day.
+- Week {duration_weeks}: the race workout goes on day {race_day_number}. No hard sessions in the 3 days before it.
+- Week {post_week_1}: light recovery runs only (easy pace, short distance). Label theme as "Post-race recovery".
 
 ## Recent Garmin Activity Summary (last 3 months)
 {garmin_summary}
@@ -92,7 +103,7 @@ PLAN_PROMPT_TEMPLATE = """Create a complete {duration_weeks}-week running traini
   ]
 }}
 
-Generate the full {duration_weeks}-week plan now."""
+Generate the full {total_weeks}-week plan now ({duration_weeks} training + 1 recovery)."""
 
 
 def _format_garmin_summary(summary: Optional[dict]) -> str:
@@ -125,12 +136,37 @@ def _target_display(plan: PlanCreate) -> str:
     return "Finish / personal best"
 
 
+def _race_context(plan: PlanCreate) -> dict:
+    """Derive race-related template variables from plan."""
+    from datetime import date as date_type
+    duration = plan.duration_weeks
+    total = duration + 1
+
+    race_date = plan.race_date
+    if race_date:
+        race_date_str = race_date.strftime("%A %d %B %Y")
+        race_day_number = race_date.isoweekday()  # 1=Mon … 7=Sun
+    else:
+        race_date_str = f"end of week {duration} (exact date not set)"
+        race_day_number = 7  # default Sunday
+
+    return {
+        "total_weeks": total,
+        "race_date": race_date_str,
+        "race_day_number": race_day_number,
+        "post_week_1": duration + 1,
+        "taper_week_1": max(1, duration - 1),
+        "taper_week_2": duration,
+    }
+
+
 async def generate_plan(plan: PlanCreate, garmin_summary: Optional[dict] = None, language: str = "nl") -> dict:
     client_kwargs = {"api_key": settings.ANTHROPIC_API_KEY or "proxy"}
     if settings.ANTHROPIC_BASE_URL:
         client_kwargs["base_url"] = settings.ANTHROPIC_BASE_URL
     client = anthropic.AsyncAnthropic(**client_kwargs)
 
+    race_ctx = _race_context(plan)
     prompt = PLAN_PROMPT_TEMPLATE.format(
         duration_weeks=plan.duration_weeks,
         goal=_goal_display(plan.goal),
@@ -141,10 +177,12 @@ async def generate_plan(plan: PlanCreate, garmin_summary: Optional[dict] = None,
         weekly_km=plan.weekly_km or "unknown",
         weekly_runs=plan.weekly_runs or "unknown",
         injuries=plan.injuries or "None reported",
+        extra_notes=plan.extra_notes or "None",
         training_days=", ".join(plan.training_days) if plan.training_days else "flexible",
         long_run_day=plan.long_run_day or "Sunday",
         surface=plan.surface or "road",
         garmin_summary=_format_garmin_summary(garmin_summary),
+        **race_ctx,
     )
 
     message = await client.messages.create(

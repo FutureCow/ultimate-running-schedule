@@ -120,7 +120,13 @@
       "targetPaceHint": "Min:sec per km",
       "durationLabel": "Plan duration:",
       "durationValue": "{weeks} weeks",
-      "startDate": "Start date (optional)",
+      "startDate": "Start date",
+      "modeWeeks": "Number of weeks",
+      "modeRaceDate": "Race date",
+      "raceDateLabel": "Race date",
+      "raceDateHint": "The number of weeks will be calculated automatically from your start and race dates.",
+      "raceDateSuggestion": "Race date based on duration:",
+      "weeksCalculated": "{weeks} weeks of training (excl. 1 post-race recovery week)",
       "planLanguageLabel": "Plan language",
       "planLanguages": {
         "nl": { "label": "Nederlands", "desc": "Trainingen en beschrijvingen in het Nederlands" },
@@ -158,7 +164,10 @@
         "trail":     "Trail",
         "treadmill": "Treadmill",
         "track":     "Track"
-      }
+      },
+      "extraNotes": "Preferences",
+      "extraNotesPlaceholder": "e.g. no intervals on Mondays, prefer morning runs, want more hill work…",
+      "extraNotesHint": "Free text that the AI will take into account when building your schedule."
     },
     "review": {
       "checkNote": "Review your details. When everything looks good, click",
@@ -175,10 +184,12 @@
         "heightWeight": "Height / Weight",
         "volume": "Current volume",
         "injuries": "Injuries",
+        "extraNotes": "Preferences",
         "trainingDays": "Training days",
         "longRunDay": "Long run day",
         "surface": "Surface",
         "startDate": "Start date",
+        "raceDate": "Race date",
         "planLanguage": "Plan language"
       },
       "noInjuries": "None",

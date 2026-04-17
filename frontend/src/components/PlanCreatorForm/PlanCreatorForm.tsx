@@ -27,11 +27,13 @@ const schema = z.object({
   weekly_km: z.number().min(0).max(500).optional(),
   weekly_runs: z.number().min(1).max(14).optional(),
   injuries: z.string().optional(),
+  extra_notes: z.string().optional(),
   training_days: z.array(z.string()).min(2, "Kies minstens 2 dagen"),
   long_run_day: z.string().min(1, "Verplicht"),
   duration_weeks: z.number().min(4).max(52),
   surface: z.string().min(1, "Verplicht"),
   start_date: z.string().optional(),
+  race_date: z.string().optional(),
 });
 
 export type FormSchema = z.infer<typeof schema>;
@@ -80,11 +82,13 @@ export function PlanCreatorForm({ editPlan }: Props) {
       weekly_km: editPlan.weekly_km ?? undefined,
       weekly_runs: editPlan.weekly_runs ?? undefined,
       injuries: editPlan.injuries ?? undefined,
+      extra_notes: editPlan.extra_notes ?? undefined,
       training_days: editPlan.training_days ?? ["tuesday", "thursday", "saturday", "sunday"],
       long_run_day: editPlan.long_run_day ?? "sunday",
       duration_weeks: editPlan.duration_weeks,
       surface: editPlan.surface ?? "road",
       start_date: editPlan.start_date ?? undefined,
+      race_date: editPlan.race_date ?? undefined,
     } : {
       goal: "10k",
       plan_language: (locale === "en" ? "en" : "nl") as "nl" | "en",
