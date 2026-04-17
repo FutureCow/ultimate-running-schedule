@@ -241,18 +241,20 @@ async def fetch_activities(db: AsyncSession, user_id: int, months: int = 3) -> d
 _SPORT_RUNNING = {"sportTypeId": 1, "sportTypeKey": "running"}
 
 
-def _pace_to_sec(pace_str: str) -> Optional[int]:
-    """Convert a 'MM:SS' pace-per-km string to total seconds per km."""
+def _pace_to_ms(pace_str: str) -> Optional[float]:
+    """Convert a 'MM:SS' pace-per-km string to speed in m/s."""
     clean = pace_str.strip().replace("/km", "").strip()
     try:
         parts = clean.split(":")
         total_sec = int(parts[0]) * 60 + int(parts[1])
-        return total_sec if total_sec > 0 else None
+        return round(1000 / total_sec, 4) if total_sec > 0 else None
     except Exception:
         return None
 
 
 _NO_TARGET = {"workoutTargetTypeId": 1, "workoutTargetTypeKey": "no.target"}
+# pace.zone (typeId=6) uses the same m/s values as speed.zone (typeId=5),
+# but Garmin displays them as min/km instead of km/h.
 _PACE_ZONE = {"workoutTargetTypeId": 6, "workoutTargetTypeKey": "pace.zone"}
 
 
@@ -261,31 +263,30 @@ def _pace_target(pace_range: Optional[str]) -> tuple[dict, Optional[float], Opti
     Parse a pace range string.
     Returns (targetType dict, targetValueOne, targetValueTwo) where:
       - targetType uses pace.zone (typeId=6) so Garmin displays min/km
-      - targetValueOne = slower bound (higher sec/km)
-      - targetValueTwo = faster bound (lower sec/km)
+      - values are in m/s: targetValueOne = slower (lower m/s), targetValueTwo = faster
     Both values go at the step level, NOT inside targetType.
     """
     if not pace_range:
         return _NO_TARGET, None, None
 
     pace_range = pace_range.replace("/km", "").strip()
-    fast_sec = slow_sec = None
+    fast_ms = slow_ms = None
 
     for sep in (" – ", " - ", "–", "-"):
         if sep in pace_range:
             a, b = pace_range.split(sep, 1)
-            fast_sec = _pace_to_sec(a)  # first token = faster pace (lower sec/km)
-            slow_sec = _pace_to_sec(b)  # second token = slower pace (higher sec/km)
+            fast_ms = _pace_to_ms(a)  # first token = faster pace (lower MM:SS = higher m/s)
+            slow_ms = _pace_to_ms(b)  # second token = slower pace (higher MM:SS = lower m/s)
             break
     else:
-        sec = _pace_to_sec(pace_range)
-        if sec:
-            margin = max(5, round(sec * 0.04))  # ±4 % margin, min 5 sec
-            fast_sec = sec - margin
-            slow_sec = sec + margin
+        speed = _pace_to_ms(pace_range)
+        if speed:
+            margin = round(speed * 0.03, 4)
+            slow_ms = round(speed - margin, 4)
+            fast_ms = round(speed + margin, 4)
 
-    if fast_sec and slow_sec and 0 < fast_sec < slow_sec:
-        return _PACE_ZONE, float(slow_sec), float(fast_sec)
+    if slow_ms and fast_ms and 0 < slow_ms < fast_ms:
+        return _PACE_ZONE, slow_ms, fast_ms
 
     return _NO_TARGET, None, None
 
