@@ -97,6 +97,7 @@ export function PlanCreatorForm({ editPlan }: Props) {
       surface: "road",
       training_days: ["tuesday", "thursday", "saturday", "sunday"],
       long_run_day: "sunday",
+      start_date: new Date().toISOString().split("T")[0],
     },
   });
 

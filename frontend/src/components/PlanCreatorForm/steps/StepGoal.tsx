@@ -141,6 +141,7 @@ export function StepGoal({ register, watch, setValue, errors, targetTimeDisplay 
           type="date"
           {...register("start_date")}
           className="input"
+          min={new Date().toISOString().split("T")[0]}
           onChange={(e) => {
             register("start_date").onChange(e);
             handleStartOrWeeksChange(e.target.value, currentWeeks);

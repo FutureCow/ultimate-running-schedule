@@ -241,63 +241,63 @@ async def fetch_activities(db: AsyncSession, user_id: int, months: int = 3) -> d
 _SPORT_RUNNING = {"sportTypeId": 1, "sportTypeKey": "running"}
 
 
-def _pace_to_ms(pace_str: str) -> Optional[float]:
-    """Convert a 'MM:SS' pace-per-km string to speed in m/s."""
-    # Strip common suffixes and whitespace
+def _pace_to_sec(pace_str: str) -> Optional[int]:
+    """Convert a 'MM:SS' pace-per-km string to total seconds per km."""
     clean = pace_str.strip().replace("/km", "").strip()
     try:
         parts = clean.split(":")
         total_sec = int(parts[0]) * 60 + int(parts[1])
-        return round(1000 / total_sec, 4) if total_sec > 0 else None
+        return total_sec if total_sec > 0 else None
     except Exception:
         return None
 
 
-def _pace_target(pace_range: Optional[str]) -> dict:
+_NO_TARGET = {"workoutTargetTypeId": 1, "workoutTargetTypeKey": "no.target"}
+_PACE_ZONE = {"workoutTargetTypeId": 6, "workoutTargetTypeKey": "pace.zone"}
+
+
+def _pace_target(pace_range: Optional[str]) -> tuple[dict, Optional[float], Optional[float]]:
     """
-    Build a Garmin speed-zone targetType dict from a pace range string.
-    Accepts formats like '5:00 – 5:30', '5:00-5:30', or a single '5:15'.
-    Returns no.target if the string is absent or unparseable.
-    targetValueOne/Two are speeds in m/s; One < Two (slower..faster).
+    Parse a pace range string.
+    Returns (targetType dict, targetValueOne, targetValueTwo) where:
+      - targetType uses pace.zone (typeId=6) so Garmin displays min/km
+      - targetValueOne = slower bound (higher sec/km)
+      - targetValueTwo = faster bound (lower sec/km)
+    Both values go at the step level, NOT inside targetType.
     """
-    _no_target = {"workoutTargetTypeId": 1, "workoutTargetTypeKey": "no.target"}
     if not pace_range:
-        return _no_target
+        return _NO_TARGET, None, None
 
     pace_range = pace_range.replace("/km", "").strip()
-    fast_ms = slow_ms = None
+    fast_sec = slow_sec = None
 
-    # Try range separators (longer/spaced variants first to avoid false splits)
     for sep in (" – ", " - ", "–", "-"):
         if sep in pace_range:
             a, b = pace_range.split(sep, 1)
-            fast_ms = _pace_to_ms(a)  # first token is faster pace (lower MM:SS)
-            slow_ms = _pace_to_ms(b)  # second token is slower pace (higher MM:SS)
+            fast_sec = _pace_to_sec(a)  # first token = faster pace (lower sec/km)
+            slow_sec = _pace_to_sec(b)  # second token = slower pace (higher sec/km)
             break
     else:
-        # Single value: add ±3 % margin so it forms a narrow zone
-        speed = _pace_to_ms(pace_range)
-        if speed:
-            margin = round(speed * 0.03, 4)
-            slow_ms = round(speed - margin, 4)
-            fast_ms = round(speed + margin, 4)
+        sec = _pace_to_sec(pace_range)
+        if sec:
+            margin = max(5, round(sec * 0.04))  # ±4 % margin, min 5 sec
+            fast_sec = sec - margin
+            slow_sec = sec + margin
 
-    if slow_ms and fast_ms and 0 < slow_ms < fast_ms:
-        return {
-            "workoutTargetTypeId": 5,
-            "workoutTargetTypeKey": "speed.zone",
-            "targetValueOne": slow_ms,   # lower speed = slower pace
-            "targetValueTwo": fast_ms,   # higher speed = faster pace
-        }
-    return _no_target
+    if fast_sec and slow_sec and 0 < fast_sec < slow_sec:
+        return _PACE_ZONE, float(slow_sec), float(fast_sec)
+
+    return _NO_TARGET, None, None
 
 
 def _step(order: int, step_type_id: int, step_type_key: str,
           end_condition: str, end_value, description: str = "",
           pace_range: Optional[str] = None) -> dict:
-    """Build a single Garmin workout step dict with an optional pace target."""
+    """Build a single Garmin workout step dict with an optional pace target.
+    targetValueOne/Two must be at the step level (not inside targetType)."""
     cond_id = 3 if end_condition == "distance" else 2  # 3=distance, 2=time
-    return {
+    target_type, val_one, val_two = _pace_target(pace_range)
+    step: dict = {
         "type": "ExecutableStepDTO",
         "stepId": None,
         "stepOrder": order,
@@ -305,8 +305,12 @@ def _step(order: int, step_type_id: int, step_type_key: str,
         "description": description,
         "endCondition": {"conditionTypeKey": end_condition, "conditionTypeId": cond_id},
         "endConditionValue": end_value,
-        "targetType": _pace_target(pace_range),
+        "targetType": target_type,
     }
+    if val_one is not None:
+        step["targetValueOne"] = val_one
+        step["targetValueTwo"] = val_two
+    return step
 
 
 def _build_workout_payload(session: WorkoutSession) -> dict:

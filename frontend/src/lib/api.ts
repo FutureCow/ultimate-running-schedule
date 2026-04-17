@@ -66,6 +66,8 @@ export const plansApi = {
   create: (data: any) => api.post("/plans", data),
   update: (id: number, data: any) => api.put(`/plans/${id}`, data),
   delete: (id: number) => api.delete(`/plans/${id}`),
+  recalculateDates: (id: number, startDate?: string) =>
+    api.patch(`/plans/${id}/recalculate-dates`, { start_date: startDate ?? null }),
 };
 
 // Sessions
