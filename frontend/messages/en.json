@@ -242,9 +242,23 @@
   },
   "settings": {
     "title": "Settings",
-    "subtitle": "Manage your Garmin Connect connection",
+    "subtitle": "Manage your profile and Garmin Connect connection",
     "language": {
       "title": "Taal / Language"
+    },
+    "profile": {
+      "title": "Athlete profile",
+      "subtitle": "Automatically pre-filled when creating a new plan",
+      "age": "Age",
+      "height": "Height (cm)",
+      "weight": "Weight (kg)",
+      "weeklyKm": "km per week",
+      "weeklyRuns": "Sessions per week",
+      "injuries": "Injuries / limitations",
+      "injuriesPlaceholder": "e.g. mild knee pain, old hamstring injury…",
+      "save": "Save profile",
+      "saved": "Saved",
+      "saveFailed": "Save failed"
     },
     "garmin": {
       "title": "Garmin Connect",

@@ -242,9 +242,23 @@
   },
   "settings": {
     "title": "Instellingen",
-    "subtitle": "Beheer je Garmin Connect koppeling",
+    "subtitle": "Beheer je profiel en Garmin Connect koppeling",
     "language": {
       "title": "Taal / Language"
+    },
+    "profile": {
+      "title": "Atletenprofiel",
+      "subtitle": "Wordt automatisch ingevuld bij een nieuw plan",
+      "age": "Leeftijd",
+      "height": "Lengte (cm)",
+      "weight": "Gewicht (kg)",
+      "weeklyKm": "Km per week",
+      "weeklyRuns": "Trainingen per week",
+      "injuries": "Blessures / beperkingen",
+      "injuriesPlaceholder": "bijv. lichte kniepijn, oud hamstringletsel…",
+      "save": "Profiel opslaan",
+      "saved": "Opgeslagen",
+      "saveFailed": "Opslaan mislukt"
     },
     "garmin": {
       "title": "Garmin Connect",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -8,8 +8,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { ArrowLeft, ArrowRight, Zap, CheckCircle2, AlertCircle, RefreshCw } from "lucide-react";
-import { plansApi } from "@/lib/api";
-import { Plan, PlanFormData } from "@/types";
+import { plansApi, profileApi } from "@/lib/api";
+import { Plan, PlanFormData, UserProfile } from "@/types";
 import { StepGoal } from "./steps/StepGoal";
 import { StepAthleteProfile } from "./steps/StepAthleteProfile";
 import { StepTrainingPrefs } from "./steps/StepTrainingPrefs";
@@ -66,6 +66,7 @@ export function PlanCreatorForm({ editPlan }: Props) {
     watch,
     setValue,
     getValues,
+    reset,
     formState: { errors },
     trigger,
   } = useForm<FormSchema>({
@@ -99,6 +100,19 @@ export function PlanCreatorForm({ editPlan }: Props) {
     },
   });
 
+  // In create mode: pre-fill step-2 fields from the saved user profile
+  useEffect(() => {
+    if (isEditMode) return;
+    profileApi.get().then(({ data }: { data: UserProfile }) => {
+      if (data.age) setValue("age", data.age);
+      if (data.height_cm) setValue("height_cm", data.height_cm);
+      if (data.weight_kg) setValue("weight_kg", data.weight_kg);
+      if (data.weekly_km) setValue("weekly_km", data.weekly_km);
+      if (data.weekly_runs) setValue("weekly_runs", data.weekly_runs);
+      if (data.injuries) setValue("injuries", data.injuries);
+    }).catch(() => {/* no profile yet, leave fields empty */});
+  }, [isEditMode]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const values = watch();
 
   async function nextStep() {
@@ -122,11 +136,21 @@ export function PlanCreatorForm({ editPlan }: Props) {
       };
       if (isEditMode) {
         await plansApi.update(editPlan!.id, payload);
-        router.push(`/plans/${editPlan!.id}`);
       } else {
         const { data: plan } = await plansApi.create(payload);
+        // Auto-save athlete profile so next plan is pre-filled
+        profileApi.update({
+          age: data.age,
+          height_cm: data.height_cm,
+          weight_kg: data.weight_kg,
+          weekly_km: data.weekly_km,
+          weekly_runs: data.weekly_runs,
+          injuries: data.injuries,
+        }).catch(() => {/* non-critical, ignore errors */});
         router.push(`/plans/${plan.id}`);
+        return;
       }
+      router.push(`/plans/${editPlan!.id}`);
     } catch (e: any) {
       setError(e?.response?.data?.detail || t("errors.failed"));
       setLoading(false);

@@ -1,5 +1,6 @@
 from pydantic import BaseModel, EmailStr, ConfigDict
 from datetime import datetime
+from typing import Optional
 
 
 class UserCreate(BaseModel):
@@ -19,6 +20,26 @@ class UserResponse(BaseModel):
     email: str
     is_active: bool
     created_at: datetime
+
+
+class UserProfileUpdate(BaseModel):
+    age: Optional[int] = None
+    height_cm: Optional[float] = None
+    weight_kg: Optional[float] = None
+    weekly_km: Optional[float] = None
+    weekly_runs: Optional[int] = None
+    injuries: Optional[str] = None
+
+
+class UserProfileResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    age: Optional[int] = None
+    height_cm: Optional[float] = None
+    weight_kg: Optional[float] = None
+    weekly_km: Optional[float] = None
+    weekly_runs: Optional[int] = None
+    injuries: Optional[str] = None
 
 
 class TokenResponse(BaseModel):

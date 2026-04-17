@@ -5,6 +5,15 @@ export interface User {
   created_at: string;
 }
 
+export interface UserProfile {
+  age?: number | null;
+  height_cm?: number | null;
+  weight_kg?: number | null;
+  weekly_km?: number | null;
+  weekly_runs?: number | null;
+  injuries?: string | null;
+}
+
 export interface AuthTokens {
   access_token: string;
   refresh_token: string;
