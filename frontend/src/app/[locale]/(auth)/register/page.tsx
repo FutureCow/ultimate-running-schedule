@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter, Link } from "@/i18n/navigation";
 import { motion } from "framer-motion";
-import { Mail, Lock, Zap, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Mail, Lock, AlertCircle, CheckCircle2 } from "lucide-react";
 import { register, login } from "@/lib/auth";
 
 export default function RegisterPage() {
@@ -48,10 +48,14 @@ export default function RegisterPage() {
         className="relative w-full max-w-sm"
       >
         <div className="flex flex-col items-center mb-8">
-          <div className="w-12 h-12 rounded-2xl bg-brand-500 flex items-center justify-center mb-3 shadow-lg shadow-brand-500/30">
-            <Zap className="w-6 h-6 text-white" />
+          <div className="w-14 h-14 rounded-2xl bg-brand-500 flex items-center justify-center mb-4 shadow-lg shadow-brand-500/30">
+            <svg viewBox="0 0 18 18" fill="none" className="w-8 h-8">
+              <rect x="1"  y="10" width="3.5" height="7"  rx="1.5" fill="white"/>
+              <rect x="7"  y="3"  width="3.5" height="14" rx="1.5" fill="white"/>
+              <rect x="13" y="7"  width="3.5" height="10" rx="1.5" fill="white"/>
+            </svg>
           </div>
-          <h1 className="text-2xl font-bold text-white">{t("title")}</h1>
+          <h1 className="text-2xl font-bold text-white tracking-tight">Cadence</h1>
           <p className="text-sm text-slate-400 mt-1">{t("subtitle")}</p>
         </div>
 
