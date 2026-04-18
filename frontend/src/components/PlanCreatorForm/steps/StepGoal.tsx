@@ -72,6 +72,12 @@ export function StepGoal({ register, watch, setValue, errors, targetTimeDisplay 
   const currentStart = watch("start_date");
   const currentRaceDate = watch("race_date");
 
+  // Compute suggestion immediately from start + weeks when in weeks mode
+  const raceDateSuggestion =
+    durationMode === "weeks" && currentStart && currentWeeks
+      ? currentRaceDate || addWeeksToDate(currentStart, currentWeeks)
+      : currentRaceDate || null;
+
   return (
     <div className="space-y-5">
       <div>
@@ -195,11 +201,11 @@ export function StepGoal({ register, watch, setValue, errors, targetTimeDisplay 
             <div className="flex justify-between text-[10px] text-slate-600 mt-1">
               <span>4</span><span>12</span><span>24</span>
             </div>
-            {currentRaceDate && (
+            {raceDateSuggestion && (
               <p className="text-[11px] text-slate-500 mt-2">
                 {t("raceDateSuggestion")}{" "}
                 <span className="text-brand-400 font-medium">
-                  {new Date(currentRaceDate).toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" })}
+                  {new Date(raceDateSuggestion).toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" })}
                 </span>
               </p>
             )}
