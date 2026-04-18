@@ -339,6 +339,12 @@
         "2": "Nederlands & Engels"
       }
     },
+    "demo": {
+      "badge": "Interactieve preview",
+      "title": "Zo ziet jouw schema eruit",
+      "subtitle": "Klik op een dag om de trainingsdetails te zien. Push trainingen met één tik rechtstreeks naar je Garmin-horloge.",
+      "note": "Dit is een voorbeeldweek uit een echt AI-gegenereerd 10K-plan. Jouw plan wordt afgestemd op jouw eigen data."
+    },
     "features": {
       "title": "Alles om slimmer te trainen",
       "subtitle": "Cadence combineert AI, sportwetenschap en jouw eigen data om plannen te bouwen die écht werken.",

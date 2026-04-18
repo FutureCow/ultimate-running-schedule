@@ -339,6 +339,12 @@
         "2": "Dutch & English"
       }
     },
+    "demo": {
+      "badge": "Interactive preview",
+      "title": "See what your plan looks like",
+      "subtitle": "Click a day to see the workout details. Push workouts directly to your Garmin watch with one tap.",
+      "note": "This is a sample week from a real AI-generated 10K plan. Your plan will be tailored to your own data."
+    },
     "features": {
       "title": "Everything you need to train smarter",
       "subtitle": "Cadence combines AI, sports science and your own data to build plans that actually work.",
