@@ -34,7 +34,30 @@
       "password": "Password",
       "submit": "Log in",
       "noAccount": "Don't have an account?",
-      "registerLink": "Register"
+      "registerLink": "Register",
+      "forgotPassword": "Forgot password?"
+    },
+    "forgotPassword": {
+      "title": "Forgot password?",
+      "subtitle": "Enter your email address and we'll send you a link to reset your password.",
+      "email": "Email address",
+      "submit": "Send reset link",
+      "sentTitle": "Check your inbox",
+      "sentBody": "If an account exists for this email address, you'll receive a reset link shortly.",
+      "backToLogin": "Back to login",
+      "error": "Something went wrong. Please try again."
+    },
+    "resetPassword": {
+      "title": "Choose a new password",
+      "password": "New password",
+      "confirm": "Confirm password",
+      "submit": "Save password",
+      "mismatch": "Passwords do not match",
+      "tooShort": "Password must be at least 8 characters",
+      "noToken": "Invalid or missing reset link",
+      "error": "Something went wrong. Please try again.",
+      "doneTitle": "Password updated",
+      "doneBody": "Your password has been changed. You'll be redirected to login."
     },
     "register": {
       "title": "Create account",
@@ -286,6 +309,12 @@
     "subtitle": "Manage your profile and Garmin Connect connection",
     "language": {
       "title": "Taal / Language"
+    },
+    "theme": {
+      "title": "Appearance",
+      "light": "Light",
+      "dark": "Dark",
+      "system": "System"
     },
     "profile": {
       "title": "Athlete profile",

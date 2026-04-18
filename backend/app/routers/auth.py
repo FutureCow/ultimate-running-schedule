@@ -1,9 +1,14 @@
+import secrets
+from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from app.config import settings
 from app.database import get_db
 from app.schemas.user import UserCreate, UserLogin, UserResponse, TokenResponse, RefreshRequest, UserProfileUpdate, UserProfileResponse
 from app.services import auth_service
+from app.services.email_service import send_password_reset_email
 from app.routers.deps import get_current_user
 from app.models.user import User
 
@@ -55,6 +60,50 @@ async def refresh(payload: RefreshRequest, db: AsyncSession = Depends(get_db)):
 @router.get("/profile", response_model=UserProfileResponse)
 async def get_profile(user: User = Depends(get_current_user)):
     return user
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+
+@router.post("/forgot-password", status_code=200)
+async def forgot_password(payload: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(User).where(User.email == payload.email))
+    user = result.scalar_one_or_none()
+    # Always return 200 to avoid email enumeration
+    if not user:
+        return {"detail": "If that email exists, a reset link has been sent."}
+
+    token = secrets.token_urlsafe(32)
+    user.password_reset_token = token
+    user.password_reset_expires = datetime.now(timezone.utc) + timedelta(hours=1)
+    await db.commit()
+
+    send_password_reset_email(user.email, token)
+    return {"detail": "If that email exists, a reset link has been sent."}
+
+
+@router.post("/reset-password", status_code=200)
+async def reset_password(payload: ResetPasswordRequest, db: AsyncSession = Depends(get_db)):
+    if len(payload.new_password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+
+    result = await db.execute(select(User).where(User.password_reset_token == payload.token))
+    user = result.scalar_one_or_none()
+    if not user or user.password_reset_expires is None:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+    if datetime.now(timezone.utc) > user.password_reset_expires:
+        raise HTTPException(status_code=400, detail="Reset token expired")
+
+    user.hashed_password = auth_service.hash_password(payload.new_password)
+    user.password_reset_token = None
+    user.password_reset_expires = None
+    await db.commit()
+    return {"detail": "Password updated successfully"}
 
 
 @router.patch("/profile", response_model=UserProfileResponse)

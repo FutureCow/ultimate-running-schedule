@@ -14,13 +14,24 @@ from app.services import claude_service, garmin_service
 router = APIRouter(prefix="/plans", tags=["plans"])
 
 
+_POST_RACE_TYPES = {"easy_run", "recovery", "rest"}
+
+
 def _create_sessions_from_json(plan: Plan, plan_json: dict) -> list[WorkoutSession]:
     sessions = []
     actual_start = plan.start_date or date.today()
-    # Week 1 starts on the Monday of the week that contains actual_start.
-    # Sessions scheduled before actual_start are skipped so no training
-    # appears in the past or before the user's chosen start date.
     week1_monday = actual_start - timedelta(days=actual_start.weekday())
+
+    # Find the race week number and day so we can enforce post-race workout types
+    race_week_num: int | None = None
+    race_day_num: int | None = None
+    if plan.race_date:
+        for week in plan_json.get("weeks", []):
+            for workout in week.get("workouts", []):
+                if workout.get("workout_type") == "race":
+                    race_week_num = week["week_number"]
+                    race_day_num = workout.get("day_number")
+                    break
 
     for week in plan_json.get("weeks", []):
         wnum = week["week_number"]
@@ -28,15 +39,23 @@ def _create_sessions_from_json(plan: Plan, plan_json: dict) -> list[WorkoutSessi
         for workout in week.get("workouts", []):
             day_num = workout.get("day_number", 1)
             scheduled = week_start + timedelta(days=day_num - 1)
-            # Skip sessions that fall before the actual start date
             if scheduled < actual_start:
                 continue
+
+            workout_type = workout.get("workout_type", "easy_run")
+
+            # Guard: any session after the race in the same week must be recovery/rest
+            if (race_week_num is not None and race_day_num is not None
+                    and wnum == race_week_num and day_num > race_day_num
+                    and workout_type not in _POST_RACE_TYPES):
+                workout_type = "recovery"
+
             session = WorkoutSession(
                 plan_id=plan.id,
                 week_number=wnum,
                 day_number=day_num,
                 scheduled_date=scheduled,
-                workout_type=workout.get("workout_type", "easy_run"),
+                workout_type=workout_type,
                 title=workout.get("title", "Run"),
                 description=workout.get("description"),
                 distance_km=workout.get("distance_km"),

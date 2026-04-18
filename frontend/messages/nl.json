@@ -34,7 +34,30 @@
       "password": "Wachtwoord",
       "submit": "Inloggen",
       "noAccount": "Nog geen account?",
-      "registerLink": "Registreer"
+      "registerLink": "Registreer",
+      "forgotPassword": "Wachtwoord vergeten?"
+    },
+    "forgotPassword": {
+      "title": "Wachtwoord vergeten?",
+      "subtitle": "Voer je e-mailadres in en we sturen je een link om je wachtwoord te resetten.",
+      "email": "E-mailadres",
+      "submit": "Resetlink versturen",
+      "sentTitle": "Controleer je inbox",
+      "sentBody": "Als er een account bestaat voor dit e-mailadres ontvang je de resetlink zo meteen.",
+      "backToLogin": "Terug naar inloggen",
+      "error": "Er is iets misgegaan. Probeer opnieuw."
+    },
+    "resetPassword": {
+      "title": "Kies een nieuw wachtwoord",
+      "password": "Nieuw wachtwoord",
+      "confirm": "Bevestig wachtwoord",
+      "submit": "Wachtwoord opslaan",
+      "mismatch": "Wachtwoorden komen niet overeen",
+      "tooShort": "Wachtwoord moet minstens 8 tekens lang zijn",
+      "noToken": "Ongeldige of ontbrekende resetlink",
+      "error": "Er is iets misgegaan. Probeer opnieuw.",
+      "doneTitle": "Wachtwoord bijgewerkt",
+      "doneBody": "Je wachtwoord is gewijzigd. Je wordt doorgestuurd naar de inlogpagina."
     },
     "register": {
       "title": "Account aanmaken",
@@ -286,6 +309,12 @@
     "subtitle": "Beheer je profiel en Garmin Connect koppeling",
     "language": {
       "title": "Taal / Language"
+    },
+    "theme": {
+      "title": "Weergave",
+      "light": "Licht",
+      "dark": "Donker",
+      "system": "Systeem"
     },
     "profile": {
       "title": "Atletenprofiel",

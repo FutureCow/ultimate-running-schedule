@@ -15,7 +15,7 @@ from typing import Optional
 from pathlib import Path
 from cryptography.fernet import Fernet
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, and_
 
 from garminconnect import (
     Garmin,
@@ -224,6 +224,9 @@ async def fetch_activities(db: AsyncSession, user_id: int, months: int = 3) -> d
     avg_paces = [a["average_pace_per_km"] for a in activities if a["average_pace_per_km"]]
     weekly_km = total_km / (months * 4.3) if activities else 0
 
+    # Match activities to planned WorkoutSessions by date
+    matched = await _match_activities_to_sessions(db, user_id, activities)
+
     return {
         "activities": activities,
         "summary": {
@@ -232,8 +235,58 @@ async def fetch_activities(db: AsyncSession, user_id: int, months: int = 3) -> d
             "avg_weekly_km": round(weekly_km, 1),
             "avg_pace_per_km": avg_paces[0] if avg_paces else None,
             "date_range": {"from": start_date.isoformat(), "to": end_date.isoformat()},
+            "matched_sessions": matched,
         },
     }
+
+
+async def _match_activities_to_sessions(db: AsyncSession, user_id: int, activities: list[dict]) -> int:
+    """Mark WorkoutSessions as completed when a Garmin activity falls on the same date."""
+    from app.models.plan import Plan, WorkoutSession
+
+    # Build date → activity map (keep the largest distance per date)
+    date_to_activity: dict[date, dict] = {}
+    for act in activities:
+        start_str = act.get("start_time", "")
+        if not start_str:
+            continue
+        try:
+            act_date = date.fromisoformat(start_str[:10])
+        except ValueError:
+            continue
+        existing = date_to_activity.get(act_date)
+        if existing is None or act["distance_km"] > existing["distance_km"]:
+            date_to_activity[act_date] = act
+
+    if not date_to_activity:
+        return 0
+
+    # Fetch unmatched running sessions belonging to user's plans
+    from sqlalchemy import Date as SADate
+    result = await db.execute(
+        select(WorkoutSession)
+        .join(WorkoutSession.plan)
+        .where(
+            Plan.user_id == user_id,
+            WorkoutSession.scheduled_date.isnot(None),
+            WorkoutSession.workout_type.notin_(["rest"]),
+            WorkoutSession.completed_at.is_(None),
+        )
+    )
+    sessions = result.scalars().all()
+
+    matched = 0
+    now = datetime.now(timezone.utc)
+    for session in sessions:
+        act = date_to_activity.get(session.scheduled_date)
+        if act:
+            session.completed_at = now
+            session.garmin_activity_id = act["activity_id"]
+            matched += 1
+
+    if matched:
+        await db.commit()
+    return matched
 
 
 # ── Workout builder ───────────────────────────────────────────────────────────

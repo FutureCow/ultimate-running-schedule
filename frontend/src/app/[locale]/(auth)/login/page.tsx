@@ -101,12 +101,19 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <p className="text-center text-sm text-slate-500 mt-4">
-            {t("noAccount")}{" "}
-            <Link href="/register" className="text-brand-400 hover:text-brand-300 font-medium">
-              {t("registerLink")}
-            </Link>
-          </p>
+          <div className="mt-4 space-y-2 text-center text-sm">
+            <p className="text-slate-500">
+              {t("noAccount")}{" "}
+              <Link href="/register" className="text-brand-400 hover:text-brand-300 font-medium">
+                {t("registerLink")}
+              </Link>
+            </p>
+            <p>
+              <Link href="/forgot-password" className="text-slate-500 hover:text-slate-300 text-xs">
+                {t("forgotPassword")}
+              </Link>
+            </p>
+          </div>
         </div>
       </motion.div>
     </div>

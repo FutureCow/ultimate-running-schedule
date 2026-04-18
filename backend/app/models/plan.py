@@ -90,6 +90,8 @@ class WorkoutSession(Base):
     intervals: Mapped[list | None] = mapped_column(JSON, nullable=True)
     garmin_workout_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
     garmin_pushed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    garmin_activity_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     plan: Mapped["Plan"] = relationship("Plan", back_populates="sessions")

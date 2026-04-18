@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.database import init_db
-from app.routers import auth, garmin, plans, sessions
+from app.routers import auth, garmin, plans, sessions, admin
 
 logging.basicConfig(
     level=getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO),
@@ -38,6 +38,7 @@ app.include_router(auth.router, prefix="/api/v1")
 app.include_router(garmin.router, prefix="/api/v1")
 app.include_router(plans.router, prefix="/api/v1")
 app.include_router(sessions.router, prefix="/api/v1")
+app.include_router(admin.router, prefix="/api/v1")
 
 
 @app.get("/health")

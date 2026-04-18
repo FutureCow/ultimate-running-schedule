@@ -43,6 +43,8 @@ class WorkoutSessionResponse(BaseModel):
     intervals: Optional[list] = None
     garmin_workout_id: Optional[str] = None
     garmin_pushed_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    garmin_activity_id: Optional[str] = None
 
 
 class PlanCreate(BaseModel):

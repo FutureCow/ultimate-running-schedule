@@ -76,6 +76,8 @@ export interface WorkoutSession {
   intervals?: IntervalStep[] | null;
   garmin_workout_id?: string | null;
   garmin_pushed_at?: string | null;
+  completed_at?: string | null;
+  garmin_activity_id?: string | null;
 }
 
 export interface PaceZones {

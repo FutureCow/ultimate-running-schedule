@@ -4,20 +4,45 @@
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
 
+/* ── Theme CSS variables ── */
+:root {
+  /* Dark theme (default) */
+  --surface:          15 23 42;    /* #0f172a  slate-900 */
+  --surface-card:     30 41 59;    /* #1e293b  slate-800 */
+  --surface-elevated: 51 65 85;    /* #334155  slate-700 */
+  --border:           255 255 255; /* used at low opacity */
+  --text-primary:     226 232 240; /* slate-200 */
+  --text-secondary:   148 163 184; /* slate-400 */
+  --text-muted:       100 116 139; /* slate-500 */
+}
+
+html.light {
+  --surface:          248 250 252; /* slate-50 */
+  --surface-card:     255 255 255; /* white */
+  --surface-elevated: 241 245 249; /* slate-100 */
+  --border:           0 0 0;
+  --text-primary:     15 23 42;    /* slate-900 */
+  --text-secondary:   71 85 105;   /* slate-600 */
+  --text-muted:       148 163 184; /* slate-400 */
+}
+
 @layer base {
   * { box-sizing: border-box; }
 
   html, body {
-    @apply bg-surface text-slate-100 antialiased;
+    background-color: rgb(var(--surface));
+    color: rgb(var(--text-primary));
     font-family: 'Inter', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
+    antialiased: true;
     min-height: 100dvh;
+    transition: background-color 0.2s, color 0.2s;
   }
 
   ::-webkit-scrollbar { width: 6px; height: 6px; }
-  ::-webkit-scrollbar-track { @apply bg-surface; }
-  ::-webkit-scrollbar-thumb { @apply bg-slate-600 rounded-full; }
-  ::-webkit-scrollbar-thumb:hover { @apply bg-slate-500; }
+  ::-webkit-scrollbar-track { background: rgb(var(--surface)); }
+  ::-webkit-scrollbar-thumb { background: rgb(var(--surface-elevated)); border-radius: 9999px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgb(var(--text-muted)); }
 }
 
 @layer components {
@@ -29,35 +54,54 @@
   }
 
   .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-slate-600
-           bg-surface-card px-5 py-2.5 text-sm font-semibold text-slate-200
-           transition-all duration-200 hover:border-slate-500 hover:bg-surface-elevated
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5
+           text-sm font-semibold transition-all duration-200
            active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
+    border: 1px solid rgb(var(--surface-elevated));
+    background: rgb(var(--surface-card));
+    color: rgb(var(--text-primary));
+  }
+  .btn-secondary:hover {
+    background: rgb(var(--surface-elevated));
   }
 
   .btn-ghost {
     @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2
-           text-sm font-medium text-slate-400 transition-all duration-200
-           hover:bg-surface-card hover:text-slate-200 active:scale-95;
+           text-sm font-medium transition-all duration-200 active:scale-95;
+    color: rgb(var(--text-secondary));
+  }
+  .btn-ghost:hover {
+    background: rgb(var(--surface-card));
+    color: rgb(var(--text-primary));
   }
 
   .card {
-    @apply rounded-2xl border border-slate-700/50 bg-surface-card p-5 shadow-xl shadow-black/20;
+    @apply rounded-2xl p-5 shadow-xl;
+    border: 1px solid rgb(var(--border) / 0.12);
+    background: rgb(var(--surface-card));
+    box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.15), 0 8px 10px -6px rgb(0 0 0 / 0.1);
   }
 
   .card-elevated {
-    @apply rounded-2xl border border-slate-600/50 bg-surface-elevated p-5;
+    @apply rounded-2xl p-5;
+    border: 1px solid rgb(var(--border) / 0.1);
+    background: rgb(var(--surface-elevated));
   }
 
   .input {
-    @apply w-full rounded-xl border border-slate-600 bg-surface-card px-4 py-2.5
-           text-sm text-slate-100 placeholder-slate-500
-           transition-colors focus:border-brand-500 focus:outline-none focus:ring-2
+    @apply w-full rounded-xl px-4 py-2.5 text-sm
+           transition-colors focus:outline-none focus:ring-2
            focus:ring-brand-500/20 disabled:opacity-50;
+    border: 1px solid rgb(var(--surface-elevated));
+    background: rgb(var(--surface-card));
+    color: rgb(var(--text-primary));
   }
+  .input::placeholder { color: rgb(var(--text-muted)); }
+  .input:focus { border-color: #22c55e; }
 
   .label {
-    @apply block text-sm font-medium text-slate-300 mb-1.5;
+    @apply block text-sm font-medium mb-1.5;
+    color: rgb(var(--text-secondary));
   }
 
   .pace-badge {
@@ -65,10 +109,40 @@
   }
 
   .section-title {
-    @apply text-xl font-bold text-white mb-1;
+    @apply text-xl font-bold mb-1;
+    color: rgb(var(--text-primary));
   }
 
   .section-subtitle {
-    @apply text-sm text-slate-400;
+    @apply text-sm;
+    color: rgb(var(--text-secondary));
   }
+
+  /* Light theme text overrides for hardcoded classes */
+  html.light .text-white { color: rgb(var(--text-primary)) !important; }
+  html.light .text-slate-100 { color: rgb(var(--text-primary)) !important; }
+  html.light .text-slate-200 { color: rgb(15 23 42) !important; }
+  html.light .text-slate-300 { color: rgb(var(--text-secondary)) !important; }
+  html.light .text-slate-400 { color: rgb(var(--text-secondary)) !important; }
+  html.light .text-slate-500 { color: rgb(var(--text-muted)) !important; }
+  html.light .text-slate-600 { color: rgb(203 213 225) !important; }
+  html.light .text-slate-700 { color: rgb(203 213 225) !important; }
+
+  html.light .bg-surface { background-color: rgb(var(--surface)) !important; }
+  html.light .bg-surface-card { background-color: rgb(var(--surface-card)) !important; }
+  html.light .bg-surface-elevated { background-color: rgb(var(--surface-elevated)) !important; }
+  html.light .bg-slate-800\/50 { background-color: rgb(241 245 249 / 0.8) !important; }
+  html.light .bg-slate-700\/50 { background-color: rgb(226 232 240 / 0.8) !important; }
+  html.light .bg-slate-700\/60 { background-color: rgb(226 232 240 / 0.8) !important; }
+  html.light .bg-slate-800 { background-color: rgb(241 245 249) !important; }
+
+  html.light .border-slate-700\/50 { border-color: rgb(0 0 0 / 0.1) !important; }
+  html.light .border-slate-700\/40 { border-color: rgb(0 0 0 / 0.08) !important; }
+  html.light .border-slate-700\/60 { border-color: rgb(0 0 0 / 0.12) !important; }
+  html.light .border-slate-600 { border-color: rgb(203 213 225) !important; }
+  html.light .border-slate-700 { border-color: rgb(226 232 240) !important; }
+
+  /* Ambient background in light mode */
+  html.light .from-brand-950\/40 { --tw-gradient-from: rgb(240 253 244 / 0.6) !important; }
+  html.light .via-surface { --tw-gradient-via: rgb(var(--surface)) !important; }
 }

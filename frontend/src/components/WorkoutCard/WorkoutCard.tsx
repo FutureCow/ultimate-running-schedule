@@ -76,6 +76,11 @@ export function WorkoutCard({ session, onPushToGarmin, isPushing, onMove, isMovi
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
+            {session.completed_at && (
+              <span title="Afgerond" className="shrink-0">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+              </span>
+            )}
             <div className="flex flex-col sm:flex-row items-end sm:items-center gap-1 sm:gap-3">
               {session.workout_type === "strength" ? (
                 <>

@@ -5,7 +5,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { useTranslations, useLocale } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
-import { Watch, Trash2, RefreshCw, CheckCircle2, AlertCircle, Lock, Globe, User } from "lucide-react";
+import { Watch, Trash2, RefreshCw, CheckCircle2, AlertCircle, Lock, Globe, User, Sun, Moon, Monitor } from "lucide-react";
+import { useTheme } from "@/components/ui/ThemeProvider";
 import { garminApi, profileApi } from "@/lib/api";
 import { GarminStatus, UserProfile } from "@/types";
 import { Navbar } from "@/components/ui/Navbar";
@@ -18,6 +19,7 @@ export default function SettingsPage() {
   const tp = useTranslations("settings.profile");
   const locale = useLocale();
   const router = useRouter();
+  const { theme, setTheme } = useTheme();
   const dateFnsLocale = locale === "nl" ? nl : enUS;
 
   const qc = useQueryClient();
@@ -140,6 +142,35 @@ export default function SettingsPage() {
                 }`}
               >
                 {loc === "nl" ? "🇳🇱 Nederlands" : "🇬🇧 English"}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Theme switcher */}
+        <div className="card space-y-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-brand-500/10 border border-brand-500/20 flex items-center justify-center">
+              <Sun className="w-5 h-5 text-brand-400" />
+            </div>
+            <h2 className="font-bold text-white">{t("theme.title")}</h2>
+          </div>
+          <div className="flex gap-2">
+            {([
+              { value: "light", label: t("theme.light"), icon: <Sun className="w-4 h-4" /> },
+              { value: "dark",  label: t("theme.dark"),  icon: <Moon className="w-4 h-4" /> },
+              { value: "system", label: t("theme.system"), icon: <Monitor className="w-4 h-4" /> },
+            ] as const).map(({ value, label, icon }) => (
+              <button
+                key={value}
+                onClick={() => setTheme(value)}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+                  theme === value
+                    ? "bg-brand-500 text-white"
+                    : "bg-surface-elevated text-slate-400 hover:text-white"
+                }`}
+              >
+                {icon}{label}
               </button>
             ))}
           </div>

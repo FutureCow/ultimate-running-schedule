@@ -50,7 +50,7 @@ Create a complete {total_weeks}-week running training plan ({duration_weeks} tra
 
 ## Planning Rules
 - The final 2 weeks before the race (weeks {taper_week_1} and {taper_week_2}) must be a proper TAPER: sharply reduced volume, no heavy sessions within 3 days of race day.
-- Week {duration_weeks}: the race workout goes on day {race_day_number}. No hard sessions in the 3 days before it.
+- Week {duration_weeks}: the race workout goes on day {race_day_number}. No hard sessions in the 3 days before it. Any workout scheduled AFTER day {race_day_number} in this same week must be of type "recovery" (short, very easy run or rest) — never tempo, interval, long_run or strength after the race.
 - Week {post_week_1}: light recovery runs only (easy pace, short distance). Label theme as "Post-race recovery".
 
 ## Recent Garmin Activity Summary (last 3 months)

@@ -48,6 +48,18 @@ api.interceptors.response.use(
 export const authApi = {
   register: (email: string, password: string) => api.post("/auth/register", { email, password }),
   login: (email: string, password: string) => api.post("/auth/login", { email, password }),
+  forgotPassword: (email: string) => api.post("/auth/forgot-password", { email }),
+  resetPassword: (token: string, newPassword: string) => api.post("/auth/reset-password", { token, new_password: newPassword }),
+};
+
+// Admin
+export const adminApi = {
+  getUsers: () => api.get("/admin/users"),
+  updateUser: (id: number, data: { is_active?: boolean; is_admin?: boolean }) => api.patch(`/admin/users/${id}`, data),
+  deleteUser: (id: number) => api.delete(`/admin/users/${id}`),
+  resetPassword: (id: number, newPassword: string) => api.post(`/admin/users/${id}/reset-password`, { new_password: newPassword }),
+  getSettings: () => api.get("/admin/settings"),
+  updateSettings: (data: { registration_open?: boolean }) => api.patch("/admin/settings", data),
 };
 
 // Profile

@@ -23,9 +23,9 @@ const config: Config = {
           950: "#052e16",
         },
         surface: {
-          DEFAULT: "#0f172a",
-          card: "#1e293b",
-          elevated: "#334155",
+          DEFAULT: "rgb(var(--surface) / <alpha-value>)",
+          card: "rgb(var(--surface-card) / <alpha-value>)",
+          elevated: "rgb(var(--surface-elevated) / <alpha-value>)",
         },
       },
       fontFamily: {
