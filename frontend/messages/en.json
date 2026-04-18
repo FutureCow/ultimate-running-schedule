@@ -1,4 +1,10 @@
 {
+  "errors": {
+    "title": "Something went wrong",
+    "subtitle": "An unexpected error occurred. Please try again or go back to the dashboard.",
+    "retry": "Try again",
+    "home": "Dashboard"
+  },
   "common": {
     "loading": "Loading…",
     "notFound": "Not found",

@@ -153,6 +153,8 @@ export function PlanCreatorForm({ editPlan }: Props) {
         ...data,
         training_days: data.training_days,
         language: data.plan_language,
+        start_date: data.start_date || undefined,
+        race_date: data.race_date || undefined,
         strength: data.strength?.enabled ? {
           enabled: true,
           location: data.strength.location ?? null,
@@ -180,7 +182,13 @@ export function PlanCreatorForm({ editPlan }: Props) {
       }
       router.push(`/plans/${editPlan!.public_id}`);
     } catch (e: any) {
-      setError(e?.response?.data?.detail || t("errors.failed"));
+      const detail = e?.response?.data?.detail;
+      const msg = Array.isArray(detail)
+        ? detail.map((d: any) => `${d.loc?.slice(-1)[0] ?? "field"}: ${d.msg}`).join(" · ")
+        : typeof detail === "string"
+        ? detail
+        : t("errors.failed");
+      setError(msg);
       setLoading(false);
     }
   }

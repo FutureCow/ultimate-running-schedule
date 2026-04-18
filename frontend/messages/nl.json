@@ -1,4 +1,10 @@
 {
+  "errors": {
+    "title": "Er is iets misgegaan",
+    "subtitle": "Er is een onverwachte fout opgetreden. Probeer het opnieuw of ga terug naar het dashboard.",
+    "retry": "Opnieuw proberen",
+    "home": "Dashboard"
+  },
   "common": {
     "loading": "Laden…",
     "notFound": "Niet gevonden",

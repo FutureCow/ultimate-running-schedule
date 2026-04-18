@@ -35,7 +35,8 @@ api.interceptors.response.use(
           if (typeof window !== "undefined") {
             localStorage.removeItem("access_token");
             localStorage.removeItem("refresh_token");
-            window.location.href = "/login";
+            const locale = window.location.pathname.split("/")[1] || "nl";
+            window.location.href = `/${locale}/login`;
           }
         }
       }
