@@ -264,7 +264,9 @@ def _pace_target(pace_range: Optional[str]) -> tuple[dict, Optional[float], Opti
     Parse a pace range string.
     Returns (targetType dict, targetValueOne, targetValueTwo) where:
       - targetType uses pace.zone (typeId=6) so Garmin displays min/km
-      - values are in m/s: targetValueOne = slower (lower m/s), targetValueTwo = faster
+      - targetValueOne = faster speed (higher m/s = lower MM:SS, e.g. 6:20)
+      - targetValueTwo = slower speed (lower m/s = higher MM:SS, e.g. 6:40)
+    Garmin displays them as one→two in pace: "6:20 – 6:40" ✓
     Both values go at the step level, NOT inside targetType.
     """
     if not pace_range:
@@ -287,7 +289,8 @@ def _pace_target(pace_range: Optional[str]) -> tuple[dict, Optional[float], Opti
             fast_ms = round(speed + margin, 4)
 
     if slow_ms and fast_ms and 0 < slow_ms < fast_ms:
-        return _PACE_ZONE, slow_ms, fast_ms
+        # one=fast, two=slow → Garmin renders as "6:20 – 6:40" (fast first in pace notation)
+        return _PACE_ZONE, fast_ms, slow_ms
 
     return _NO_TARGET, None, None
 

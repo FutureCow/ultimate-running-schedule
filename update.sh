@@ -1,6 +1,11 @@
 #!/bin/sh
 # update.sh — pull latest code and rebuild only what changed
 #
+# Versienummering via GitHub tags:
+#   Maak een release/tag aan op GitHub (bijv. v1.0.1, v1.2, v2.0).
+#   update.sh haalt de laatste tag op en schrijft die naar de frontend build.
+#   Conventies: v1.0.x = kleine fix, v1.x = grote aanpassing, v2 = hele grote release.
+#
 # Usage:
 #   ./update.sh              — normaal: git pull, update alleen wat gewijzigd is
 #   ./update.sh --backend    — forceer backend update (ook zonder git-wijzigingen)
@@ -45,31 +50,30 @@ else
     error "Geen ondersteunde service manager gevonden (systemd of OpenRC)."
 fi
 
-# ── Versie helper ─────────────────────────────────────────────────────────────
-VERSION_FILE="$APP_DIR/VERSION"
-
-bump_version() {
-    current=$(cat "$VERSION_FILE" 2>/dev/null || echo "1.0")
-    major=$(echo "$current" | cut -d. -f1)
-    minor=$(echo "$current" | cut -d. -f2)
-    next="${major}.$((minor + 1))"
-    echo "$next" > "$VERSION_FILE"
+# ── Versie uit GitHub tags ────────────────────────────────────────────────────
+write_version() {
+    # Lees de meest recente tag gesorteerd op versienummer (bijv. v1.0.3, v1.2, v2.0)
+    APP_TAG=$(git tag --sort=-v:refname 2>/dev/null | head -1)
+    APP_VERSION="${APP_TAG:-v1.0.0}"
+    # Strip de 'v' prefix voor de weergave
+    DISPLAY_VERSION=$(echo "$APP_VERSION" | sed 's/^v//')
     # Schrijf of update NEXT_PUBLIC_APP_VERSION in frontend/.env.local
     ENV_LOCAL="$FRONTEND_DIR/.env.local"
     if [ -f "$ENV_LOCAL" ] && grep -q "^NEXT_PUBLIC_APP_VERSION=" "$ENV_LOCAL"; then
-        sed -i "s/^NEXT_PUBLIC_APP_VERSION=.*/NEXT_PUBLIC_APP_VERSION=$next/" "$ENV_LOCAL"
+        sed -i "s/^NEXT_PUBLIC_APP_VERSION=.*/NEXT_PUBLIC_APP_VERSION=$DISPLAY_VERSION/" "$ENV_LOCAL"
     else
-        printf 'NEXT_PUBLIC_APP_VERSION=%s\n' "$next" >> "$ENV_LOCAL"
+        printf 'NEXT_PUBLIC_APP_VERSION=%s\n' "$DISPLAY_VERSION" >> "$ENV_LOCAL"
     fi
-    info "Versie → v$next"
+    info "Versie → v$DISPLAY_VERSION"
 }
 
-# ── Git pull ──────────────────────────────────────────────────────────────────
+# ── Git pull + tags ───────────────────────────────────────────────────────────
 cd "$APP_DIR"
 info "Git pull…"
 
 BEFORE=$(git rev-parse HEAD)
 git pull --ff-only || error "git pull mislukt. Los conflicten op en probeer opnieuw."
+git fetch --tags --quiet
 AFTER=$(git rev-parse HEAD)
 
 # Bepaal gewijzigde bestanden (leeg als er niets veranderd is)
@@ -140,7 +144,7 @@ if $FRONTEND_CHANGED; then
         npm ci --frozen-lockfile --silent
     fi
 
-    bump_version
+    write_version
     info "Frontend bouwen…"
     npm run build
 
@@ -155,4 +159,4 @@ fi
 
 # ── Klaar ─────────────────────────────────────────────────────────────────────
 printf '\n'
-success "Update klaar! $(git log -1 --format='%h %s')"
+success "Update klaar! $(git log -1 --format='%h %s') — $(git tag --sort=-v:refname | head -1)"
