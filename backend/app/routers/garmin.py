@@ -90,6 +90,30 @@ async def push_sessions(
         raise HTTPException(status_code=502, detail=f"Garmin push failed: {str(e)}")
 
 
+@router.delete("/sessions/{session_id}", status_code=204)
+async def remove_session_from_garmin(
+    session_id: int,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    result = await db.execute(
+        select(WorkoutSession)
+        .join(WorkoutSession.plan)
+        .where(WorkoutSession.id == session_id)
+        .where(Plan.user_id == user.id)
+    )
+    session = result.scalar_one_or_none()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if not session.garmin_workout_id:
+        raise HTTPException(status_code=400, detail="Session has no Garmin workout ID")
+
+    await garmin_service.delete_workout_from_garmin(db, user.id, session.garmin_workout_id)
+    session.garmin_workout_id = None
+    session.garmin_pushed_at = None
+    await db.commit()
+
+
 @router.post("/push/week")
 async def push_week(
     payload: GarminPushWeekRequest,

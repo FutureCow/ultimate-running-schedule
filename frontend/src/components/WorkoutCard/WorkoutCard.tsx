@@ -2,7 +2,7 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations } from "next-intl";
-import { Clock, Ruler, Watch, ChevronDown, ChevronUp, Zap, CheckCircle2, ArrowLeftRight, Trash2 } from "lucide-react";
+import { Clock, Ruler, Watch, ChevronDown, ChevronUp, Zap, CheckCircle2, ArrowLeftRight, Trash2, X } from "lucide-react";
 import { useState } from "react";
 import { WorkoutSession } from "@/types";
 import { cn, WORKOUT_COLORS } from "@/lib/utils";
@@ -15,6 +15,8 @@ interface Props {
   isMoving?: boolean;
   onDelete?: (sessionId: number) => void;
   isDeleting?: boolean;
+  onRemoveFromGarmin?: (sessionId: number) => void;
+  isRemovingFromGarmin?: boolean;
 }
 
 const ACCENT_COLORS: Record<string, string> = {
@@ -27,7 +29,7 @@ const ACCENT_COLORS: Record<string, string> = {
   rest:      "bg-slate-600",
 };
 
-export function WorkoutCard({ session, onPushToGarmin, isPushing, onMove, isMoving, onDelete, isDeleting }: Props) {
+export function WorkoutCard({ session, onPushToGarmin, isPushing, onMove, isMoving, onDelete, isDeleting, onRemoveFromGarmin, isRemovingFromGarmin }: Props) {
   const t = useTranslations("workout");
   const tDays = useTranslations("days");
 
@@ -160,6 +162,19 @@ export function WorkoutCard({ session, onPushToGarmin, isPushing, onMove, isMovi
                   {session.garmin_pushed_at && (
                     <span className="flex items-center gap-1.5 text-xs text-brand-400 font-medium">
                       <CheckCircle2 className="w-3.5 h-3.5" /> {t("onGarmin")}
+                      {onRemoveFromGarmin && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); onRemoveFromGarmin(session.id); }}
+                          disabled={isRemovingFromGarmin}
+                          title={t("removeFromGarmin")}
+                          className="ml-0.5 text-slate-500 hover:text-red-400 transition-colors"
+                        >
+                          {isRemovingFromGarmin
+                            ? <span className="w-3 h-3 rounded-full border border-current border-t-transparent animate-spin inline-block" />
+                            : <X className="w-3.5 h-3.5" />
+                          }
+                        </button>
+                      )}
                     </span>
                   )}
                 </div>

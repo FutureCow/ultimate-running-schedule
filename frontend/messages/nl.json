@@ -207,6 +207,8 @@
     "intervals": "Intervalstructuur",
     "pushToGarmin": "Push naar Garmin",
     "onGarmin": "Op Garmin",
+    "removeFromGarmin": "Verwijderen van Garmin",
+    "removeFromGarminConfirm": "Training verwijderen van Garmin Connect?",
     "move": "Verplaatsen",
     "delete": "Verwijderen",
     "deleteConfirm": "Training verwijderen?",

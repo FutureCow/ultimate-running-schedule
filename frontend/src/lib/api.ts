@@ -85,4 +85,5 @@ export const garminApi = {
   pushSessions: (sessionIds: number[]) => api.post("/garmin/push/sessions", { session_ids: sessionIds }),
   pushWeek: (planId: number, weekNumber: number) =>
     api.post("/garmin/push/week", { plan_id: planId, week_number: weekNumber }),
+  removeSession: (sessionId: number) => api.delete(`/garmin/sessions/${sessionId}`),
 };
