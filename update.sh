@@ -45,6 +45,23 @@ else
     error "Geen ondersteunde service manager gevonden (systemd of OpenRC)."
 fi
 
+# ── Versie helper ─────────────────────────────────────────────────────────────
+VERSION_FILE="$APP_DIR/VERSION"
+
+bump_version() {
+    current=$(cat "$VERSION_FILE" 2>/dev/null || echo "0")
+    next=$((current + 1))
+    echo "$next" > "$VERSION_FILE"
+    # Schrijf of update NEXT_PUBLIC_APP_VERSION in frontend/.env.local
+    ENV_LOCAL="$FRONTEND_DIR/.env.local"
+    if [ -f "$ENV_LOCAL" ] && grep -q "^NEXT_PUBLIC_APP_VERSION=" "$ENV_LOCAL"; then
+        sed -i "s/^NEXT_PUBLIC_APP_VERSION=.*/NEXT_PUBLIC_APP_VERSION=$next/" "$ENV_LOCAL"
+    else
+        printf 'NEXT_PUBLIC_APP_VERSION=%s\n' "$next" >> "$ENV_LOCAL"
+    fi
+    info "Versie → v$next"
+}
+
 # ── Git pull ──────────────────────────────────────────────────────────────────
 cd "$APP_DIR"
 info "Git pull…"
@@ -121,6 +138,7 @@ if $FRONTEND_CHANGED; then
         npm ci --frozen-lockfile --silent
     fi
 
+    bump_version
     info "Frontend bouwen…"
     npm run build
 

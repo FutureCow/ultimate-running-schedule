@@ -1,11 +1,19 @@
 "use client";
 
+import { useRef, useState, useEffect } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { Link, usePathname, useRouter } from "@/i18n/navigation";
 import { motion } from "framer-motion";
-import { Zap, LayoutDashboard, Plus, Settings, LogOut, Globe } from "lucide-react";
+import { Zap, LayoutDashboard, Plus, Settings, LogOut, ChevronDown } from "lucide-react";
 import { logout } from "@/lib/auth";
 import { cn } from "@/lib/utils";
+
+const LOCALES = [
+  { code: "nl", flag: "🇳🇱", label: "Nederlands", short: "NL" },
+  { code: "en", flag: "🇬🇧", label: "English",    short: "EN" },
+] as const;
+
+const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION ?? "1";
 
 export function Navbar() {
   const t = useTranslations("nav");
@@ -13,16 +21,31 @@ export function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
 
+  const [langOpen, setLangOpen] = useState(false);
+  const langRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (langRef.current && !langRef.current.contains(e.target as Node)) {
+        setLangOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  function switchLocale(code: string) {
+    setLangOpen(false);
+    if (code !== locale) router.replace(pathname, { locale: code });
+  }
+
+  const currentLang = LOCALES.find((l) => l.code === locale) ?? LOCALES[0];
+
   const NAV_ITEMS = [
     { href: "/dashboard" as const, label: t("dashboard"), icon: LayoutDashboard },
     { href: "/plans/new" as const, label: t("newPlan"), icon: Plus },
     { href: "/settings" as const, label: t("settings"), icon: Settings },
   ];
-
-  function switchLocale() {
-    const next = locale === "nl" ? "en" : "nl";
-    router.replace(pathname, { locale: next });
-  }
 
   return (
     <>
@@ -59,13 +82,36 @@ export function Navbar() {
           })}
         </nav>
 
-        <button
-          onClick={switchLocale}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-500 hover:bg-surface-elevated hover:text-slate-300 transition-all"
-        >
-          <Globe className="w-4 h-4" />
-          {locale === "nl" ? "English" : "Nederlands"}
-        </button>
+        {/* Language dropdown */}
+        <div ref={langRef} className="relative">
+          <button
+            onClick={() => setLangOpen((v) => !v)}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:bg-surface-elevated hover:text-slate-200 transition-all"
+          >
+            <span className="text-base leading-none">{currentLang.flag}</span>
+            <span className="flex-1 text-left">{currentLang.label}</span>
+            <ChevronDown className={cn("w-3.5 h-3.5 transition-transform duration-200", langOpen && "rotate-180")} />
+          </button>
+          {langOpen && (
+            <div className="absolute bottom-full mb-1 left-0 right-0 bg-surface-elevated border border-slate-700/60 rounded-xl overflow-hidden shadow-xl">
+              {LOCALES.map((l) => (
+                <button
+                  key={l.code}
+                  onClick={() => switchLocale(l.code)}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-colors",
+                    l.code === locale
+                      ? "bg-brand-500/10 text-brand-300"
+                      : "text-slate-400 hover:bg-slate-700/50 hover:text-slate-200"
+                  )}
+                >
+                  <span className="text-base leading-none">{l.flag}</span>
+                  {l.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
 
         <button
           onClick={logout}
@@ -74,6 +120,8 @@ export function Navbar() {
           <LogOut className="w-4 h-4" />
           {t("logout")}
         </button>
+
+        <p className="text-center text-[10px] text-slate-700 mt-1">v{APP_VERSION}</p>
       </aside>
 
       {/* Mobile bottom nav */}
@@ -95,13 +143,16 @@ export function Navbar() {
             </Link>
           );
         })}
+
+        {/* Mobile: compact language switcher — tap cycles between nl/en */}
         <button
-          onClick={switchLocale}
+          onClick={() => switchLocale(locale === "nl" ? "en" : "nl")}
           className="flex flex-col items-center gap-1 px-4 py-1.5 rounded-xl text-slate-500 hover:text-slate-300 transition-all"
         >
-          <Globe className="w-5 h-5" />
-          <span className="text-[10px] font-medium">{locale === "nl" ? "EN" : "NL"}</span>
+          <span className="text-xl leading-none">{currentLang.flag}</span>
+          <span className="text-[10px] font-medium">{currentLang.short}</span>
         </button>
+
         <button
           onClick={logout}
           className="flex flex-col items-center gap-1 px-4 py-1.5 rounded-xl text-slate-500 hover:text-slate-300 transition-all"
