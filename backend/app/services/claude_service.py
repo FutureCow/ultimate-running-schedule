@@ -18,7 +18,7 @@ You create highly personalized, science-backed training plans.
 ** LANGUAGE: YOU MUST WRITE EVERY TEXT VALUE IN THE JSON IN {language}. THIS IS MANDATORY. **
 
 IMPORTANT OUTPUT RULES:
-- Return ONLY valid JSON. Start your response with `{` and end with `}`. No preamble, no explanation, no markdown.
+- Return ONLY valid JSON. Start your response with `{{` and end with `}}`. No preamble, no explanation, no markdown.
 - Every workout must include precise target paces in "MM:SS" format per km.
 - Paces must be realistic and consistent with the athlete's history and goal.
 - Pace calculations must use the Jack Daniels VDOT methodology.
