@@ -318,6 +318,84 @@
       "connectButton": "Connect Garmin"
     }
   },
+  "landing": {
+    "tagline": "Bringing rhythm to your training",
+    "nav": {
+      "login": "Log in",
+      "register": "Get started"
+    },
+    "hero": {
+      "badge": "Powered by Claude AI · Jack Daniels VDOT",
+      "title1": "Your personal",
+      "title2": "running coach,",
+      "title3": "powered by AI.",
+      "subtitle": "Cadence generates science-backed training plans tailored to your fitness level and Garmin data — and pushes them directly to your watch.",
+      "cta": "Start for free",
+      "login": "Already have an account",
+      "trust": {
+        "0": "No credit card",
+        "1": "Garmin Connect sync",
+        "2": "Dutch & English"
+      }
+    },
+    "features": {
+      "title": "Everything you need to train smarter",
+      "subtitle": "Cadence combines AI, sports science and your own data to build plans that actually work.",
+      "ai": {
+        "title": "AI-generated training plans",
+        "desc": "Claude AI analyzes your profile and goals to build a periodized plan based on Jack Daniels VDOT methodology — the gold standard in running science."
+      },
+      "garmin": {
+        "title": "Garmin Connect integration",
+        "desc": "Sync your activity history for smarter pace targets, and push workouts directly to your Garmin device — with structured intervals and pace zones."
+      },
+      "strength": {
+        "title": "Strength training included",
+        "desc": "Runner-specific strength sessions are woven into your schedule. Choose your location, equipment and focus — from core stability to plyometrics."
+      },
+      "calendar": {
+        "title": "Visual training calendar",
+        "desc": "See your entire plan at a glance. Every workout shows type, distance, paces and structure. Move, delete or reschedule with ease."
+      },
+      "paceZones": {
+        "title": "Personalized pace zones",
+        "desc": "Your VDOT score translates into exact pace ranges for every zone — easy, marathon, threshold, interval and repetition."
+      },
+      "bilingual": {
+        "title": "Dutch & English",
+        "desc": "Generate your training plan in Dutch or English. The full app interface is available in both languages and switches instantly."
+      }
+    },
+    "how": {
+      "title": "How it works",
+      "subtitle": "From profile to personalized plan in under a minute.",
+      "step1": {
+        "title": "Enter your profile",
+        "desc": "Tell Cadence your age, current fitness, target race and preferences. Connect Garmin to automatically pull in your training history."
+      },
+      "step2": {
+        "title": "Claude AI builds your plan",
+        "desc": "Our AI analyses your data and generates a periodized weekly schedule — base, build, peak and taper phases included."
+      },
+      "step3": {
+        "title": "Review and customize",
+        "desc": "View every workout in a clear calendar. Adjust days, move sessions or add strength training to fit your life."
+      },
+      "step4": {
+        "title": "Sync to your Garmin",
+        "desc": "Push any workout or full week to Garmin Connect with a single tap. Structured workouts appear on your watch with guided pace targets."
+      }
+    },
+    "cta": {
+      "title": "Ready to find your rhythm?",
+      "subtitle": "Join Cadence and start training with a plan built just for you.",
+      "button": "Create free account",
+      "note": "No credit card required · Cancel anytime"
+    },
+    "footer": {
+      "tagline": "Bringing rhythm to your training"
+    }
+  },
   "days": {
     "full": {
       "0": "Monday", "1": "Tuesday", "2": "Wednesday", "3": "Thursday",

@@ -318,6 +318,84 @@
       "connectButton": "Koppel Garmin"
     }
   },
+  "landing": {
+    "tagline": "Ritme brengen in je training",
+    "nav": {
+      "login": "Inloggen",
+      "register": "Aan de slag"
+    },
+    "hero": {
+      "badge": "Aangedreven door Claude AI · Jack Daniels VDOT",
+      "title1": "Jouw persoonlijke",
+      "title2": "hardloopcoach,",
+      "title3": "aangedreven door AI.",
+      "subtitle": "Cadence genereert wetenschappelijk onderbouwde trainingsplannen op maat van jouw niveau en Garmin-data — en stuurt ze rechtstreeks naar je horloge.",
+      "cta": "Gratis starten",
+      "login": "Al een account",
+      "trust": {
+        "0": "Geen creditcard nodig",
+        "1": "Garmin Connect sync",
+        "2": "Nederlands & Engels"
+      }
+    },
+    "features": {
+      "title": "Alles om slimmer te trainen",
+      "subtitle": "Cadence combineert AI, sportwetenschap en jouw eigen data om plannen te bouwen die écht werken.",
+      "ai": {
+        "title": "AI-gegenereerde trainingsplannen",
+        "desc": "Claude AI analyseert je profiel en doelen en bouwt een geperiodiseerd plan op basis van de Jack Daniels VDOT-methode — de gouden standaard in de loopsport."
+      },
+      "garmin": {
+        "title": "Garmin Connect koppeling",
+        "desc": "Synchroniseer je activiteitenhistorie voor nauwkeurigere paceberekeningen en stuur trainingen direct naar je Garmin — inclusief intervalstructuur en pacezones."
+      },
+      "strength": {
+        "title": "Krachttraining inbegrepen",
+        "desc": "Loopspecifieke krachtsessies worden verweven in je schema. Kies je locatie, materiaal en focus — van core stabiliteit tot pliometrie."
+      },
+      "calendar": {
+        "title": "Visuele trainingskalender",
+        "desc": "Bekijk je volledige plan in één oogopslag. Elke training toont type, afstand, tempo en structuur. Verplaats, verwijder of herplan eenvoudig."
+      },
+      "paceZones": {
+        "title": "Persoonlijke pacezones",
+        "desc": "Je VDOT-score vertaalt zich naar exacte pacebereiken per zone — easy, marathon, drempel, interval en repetitie."
+      },
+      "bilingual": {
+        "title": "Nederlands & Engels",
+        "desc": "Genereer je trainingsplan in het Nederlands of Engels. De volledige app-interface is in beide talen beschikbaar en schakelt direct om."
+      }
+    },
+    "how": {
+      "title": "Hoe werkt het?",
+      "subtitle": "Van profiel naar persoonlijk plan in minder dan een minuut.",
+      "step1": {
+        "title": "Vul je profiel in",
+        "desc": "Vertel Cadence je leeftijd, huidige conditie, doelwedstrijd en voorkeuren. Koppel Garmin om je trainingshistorie automatisch mee te nemen."
+      },
+      "step2": {
+        "title": "Claude AI bouwt je plan",
+        "desc": "Onze AI analyseert je data en genereert een geperiodiseerd weekschema — inclusief opbouw-, piek- en taperfasen."
+      },
+      "step3": {
+        "title": "Bekijk en pas aan",
+        "desc": "Bekijk elke training in een duidelijke kalender. Verschuif sessies, verwijder dagen of voeg krachttraining toe om het bij je leven te laten passen."
+      },
+      "step4": {
+        "title": "Sync naar je Garmin",
+        "desc": "Stuur elke training of een volledige week met één tik naar Garmin Connect. Gestructureerde trainingen verschijnen op je horloge met pace-doelen."
+      }
+    },
+    "cta": {
+      "title": "Klaar om je ritme te vinden?",
+      "subtitle": "Word lid van Cadence en train met een plan dat speciaal voor jou is gemaakt.",
+      "button": "Gratis account aanmaken",
+      "note": "Geen creditcard nodig · Altijd opzegbaar"
+    },
+    "footer": {
+      "tagline": "Ritme brengen in je training"
+    }
+  },
   "days": {
     "full": {
       "0": "Maandag", "1": "Dinsdag", "2": "Woensdag", "3": "Donderdag",
