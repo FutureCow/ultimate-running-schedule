@@ -49,8 +49,10 @@ fi
 VERSION_FILE="$APP_DIR/VERSION"
 
 bump_version() {
-    current=$(cat "$VERSION_FILE" 2>/dev/null || echo "0")
-    next=$((current + 1))
+    current=$(cat "$VERSION_FILE" 2>/dev/null || echo "1.0")
+    major=$(echo "$current" | cut -d. -f1)
+    minor=$(echo "$current" | cut -d. -f2)
+    next="${major}.$((minor + 1))"
     echo "$next" > "$VERSION_FILE"
     # Schrijf of update NEXT_PUBLIC_APP_VERSION in frontend/.env.local
     ENV_LOCAL="$FRONTEND_DIR/.env.local"

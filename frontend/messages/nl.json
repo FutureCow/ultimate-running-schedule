@@ -187,6 +187,20 @@
         "injury_prevention":   { "label": "Blessurepreventie & Mobiliteit",  "desc": "Heup, enkel, knie – kwetsbaarheid verminderen" },
         "full_body":           { "label": "Algemene Full-Body",               "desc": "Uitgebalanceerde krachttraining voor hardlopers" }
       },
+      "equipmentLabel": "Beschikbaar materiaal",
+      "equipmentHint": "Vink aan wat je thuis beschikbaar hebt.",
+      "equipment": {
+        "dumbbells":          "Dumbbells / Halters",
+        "resistance_bands":   "Weerstandsbanden",
+        "kettlebell":         "Kettlebell",
+        "pull_up_bar":        "Optrekstang",
+        "foam_roller":        "Foam roller",
+        "yoga_mat":           "Yogamat",
+        "jump_rope":          "Springtouw",
+        "stability_ball":     "Fitball / Zwangerschapsbal",
+        "trx":                "TRX / Suspension trainer",
+        "step":               "Aerobic step / Stepper"
+      },
       "daysLabel": "Voorkeursdagen",
       "daysHint": "De AI plant krachtsessies zoveel mogelijk op deze dagen in."
     },

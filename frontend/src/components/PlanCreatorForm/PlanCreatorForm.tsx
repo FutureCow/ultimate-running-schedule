@@ -40,6 +40,7 @@ const schema = z.object({
     location: z.enum(["bodyweight", "home_equipment", "gym"]).optional(),
     type: z.enum(["core_stability", "max_strength", "plyometrics", "injury_prevention", "full_body"]).optional(),
     days: z.array(z.number()).optional(),
+    equipment: z.array(z.string()).optional(),
   }).optional(),
 });
 
@@ -156,6 +157,7 @@ export function PlanCreatorForm({ editPlan }: Props) {
           location: data.strength.location ?? null,
           type: data.strength.type ?? null,
           days: data.strength.days ?? null,
+          equipment: data.strength.equipment ?? null,
         } : undefined,
       };
       if (isEditMode) {

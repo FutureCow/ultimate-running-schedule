@@ -187,6 +187,20 @@
         "injury_prevention":   { "label": "Injury Prevention & Mobility",  "desc": "Hip, ankle, knee – reduce vulnerability" },
         "full_body":           { "label": "General Full-Body",              "desc": "Balanced strength training for runners" }
       },
+      "equipmentLabel": "Available equipment",
+      "equipmentHint": "Check everything you have at home.",
+      "equipment": {
+        "dumbbells":          "Dumbbells",
+        "resistance_bands":   "Resistance bands",
+        "kettlebell":         "Kettlebell",
+        "pull_up_bar":        "Pull-up bar",
+        "foam_roller":        "Foam roller",
+        "yoga_mat":           "Yoga mat",
+        "jump_rope":          "Jump rope",
+        "stability_ball":     "Stability ball",
+        "trx":                "TRX / Suspension trainer",
+        "step":               "Aerobic step / Stepper"
+      },
       "daysLabel": "Preferred days",
       "daysHint": "The AI will schedule strength sessions on these days where possible."
     },

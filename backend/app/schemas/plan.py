@@ -5,9 +5,10 @@ from typing import Optional, Any
 
 class StrengthPreferences(BaseModel):
     enabled: bool = False
-    location: Optional[str] = None   # bodyweight / home_equipment / gym
-    type: Optional[str] = None       # core_stability / max_strength / plyometrics / injury_prevention / full_body
-    days: Optional[list[int]] = None # [1, 3, 5] — day numbers (1=Mon)
+    location: Optional[str] = None        # bodyweight / home_equipment / gym
+    type: Optional[str] = None            # core_stability / max_strength / plyometrics / injury_prevention / full_body
+    days: Optional[list[int]] = None      # [1, 3, 5] — day numbers (1=Mon)
+    equipment: Optional[list[str]] = None # ["dumbbells", "resistance_bands", ...] — only for home_equipment
 
 
 class TargetPaces(BaseModel):
@@ -115,6 +116,7 @@ class PlanResponse(BaseModel):
     strength_location: Optional[str] = None
     strength_type: Optional[str] = None
     strength_days: Optional[list] = None
+    strength_equipment: Optional[list] = None
     created_at: datetime
     updated_at: datetime
     sessions: list[WorkoutSessionResponse] = []

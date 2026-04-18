@@ -77,6 +77,7 @@ async def create_plan(
     plan_data["strength_location"] = strength.get("location")
     plan_data["strength_type"] = strength.get("type")
     plan_data["strength_days"] = strength.get("days")
+    plan_data["strength_equipment"] = strength.get("equipment")
 
     # Persist plan
     plan = Plan(
@@ -162,6 +163,7 @@ async def update_plan(
             location=plan.strength_location,
             type=plan.strength_type,
             days=plan.strength_days,
+            equipment=plan.strength_equipment,
         ) if plan.strength_enabled else None,
     )
 

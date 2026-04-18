@@ -145,11 +145,15 @@ def _format_strength_section(plan: PlanCreate) -> str:
     day_names = [_STRENGTH_DAY_NAMES[d] for d in (s.days or []) if d in _STRENGTH_DAY_NAMES]
     days_str = ", ".join(day_names) if day_names else "flexible (you decide)"
 
+    equipment_str = ""
+    if s.location == "home_equipment" and s.equipment:
+        equipment_str = f"\n- Available equipment: {', '.join(s.equipment)}"
+
     return f"""## Strength Training Integration
 The athlete wants to include runner-specific strength training in the schedule.
 
 - Preferred strength days: {days_str}
-- Location / equipment: {location_label}
+- Location / equipment: {location_label}{equipment_str}
 - Training focus: {type_label}
 
 ### Strength Scheduling Rules (MANDATORY)

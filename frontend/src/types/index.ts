@@ -43,6 +43,7 @@ export interface StrengthPreferences {
   location?: StrengthLocation | null;
   type?: StrengthFocusType | null;
   days?: number[] | null;
+  equipment?: string[] | null;
 }
 
 export interface TargetPaces {

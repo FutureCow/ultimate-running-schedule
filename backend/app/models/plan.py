@@ -53,6 +53,7 @@ class Plan(Base):
     strength_location: Mapped[str | None] = mapped_column(String(50), nullable=True)  # bodyweight/home_equipment/gym
     strength_type: Mapped[str | None] = mapped_column(String(50), nullable=True)      # core_stability/max_strength/...
     strength_days: Mapped[list | None] = mapped_column(JSON, nullable=True)           # [1,3,5] (day numbers)
+    strength_equipment: Mapped[list | None] = mapped_column(JSON, nullable=True)      # ["dumbbells","resistance_bands",...]
     # Full AI-generated plan stored as JSON
     plan_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     garmin_synced: Mapped[bool] = mapped_column(Boolean, default=False)
