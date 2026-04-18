@@ -2,11 +2,14 @@
 Claude AI service – generates a structured running plan with pace targets.
 """
 import json
+import logging
 import re
 from typing import Optional
 import anthropic
 from app.config import settings
 from app.schemas.plan import PlanCreate
+
+logger = logging.getLogger(__name__)
 
 
 SYSTEM_PROMPT_BASE = """You are an elite running coach and sports scientist with 20+ years of experience.
@@ -265,11 +268,28 @@ async def generate_plan(plan: PlanCreate, garmin_summary: Optional[dict] = None,
         messages=[{"role": "user", "content": prompt}],
     )
 
-    raw = message.content[0].text.strip()
+    logger.info("Claude response: stop_reason=%s, content_blocks=%d", message.stop_reason, len(message.content))
+    if not message.content:
+        raise ValueError(f"Empty content from Claude API (stop_reason={message.stop_reason})")
+
+    block = message.content[0]
+    logger.info("First content block type=%s", getattr(block, "type", "unknown"))
+    raw = block.text.strip()
+    logger.info("Raw response length=%d, first 200 chars: %s", len(raw), raw[:200])
 
     # Strip any accidental markdown code fences
     raw = re.sub(r"^```(?:json)?\s*", "", raw)
     raw = re.sub(r"\s*```$", "", raw)
 
-    plan_data = json.loads(raw)
+    if not raw:
+        raise ValueError(
+            f"Claude returned empty response (stop_reason={message.stop_reason}, "
+            f"usage={message.usage})"
+        )
+
+    try:
+        plan_data = json.loads(raw)
+    except json.JSONDecodeError as e:
+        logger.error("JSON parse failed. stop_reason=%s, raw[:500]=%s", message.stop_reason, raw[:500])
+        raise ValueError(f"Claude response is not valid JSON: {e}. First 200 chars: {raw[:200]!r}") from e
     return plan_data
