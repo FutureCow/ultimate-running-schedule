@@ -13,6 +13,7 @@ import { Plan, PlanFormData, UserProfile } from "@/types";
 import { StepGoal } from "./steps/StepGoal";
 import { StepAthleteProfile } from "./steps/StepAthleteProfile";
 import { StepTrainingPrefs } from "./steps/StepTrainingPrefs";
+import { StepStrength } from "./steps/StepStrength";
 import { StepReview } from "./steps/StepReview";
 
 const schema = z.object({
@@ -34,6 +35,12 @@ const schema = z.object({
   surface: z.string().min(1, "Verplicht"),
   start_date: z.string().optional(),
   race_date: z.string().optional(),
+  strength: z.object({
+    enabled: z.boolean(),
+    location: z.enum(["bodyweight", "home_equipment", "gym"]).optional(),
+    type: z.enum(["core_stability", "max_strength", "plyometrics", "injury_prevention", "full_body"]).optional(),
+    days: z.array(z.number()).optional(),
+  }).optional(),
 });
 
 export type FormSchema = z.infer<typeof schema>;
@@ -50,6 +57,8 @@ function secondsToDisplay(seconds?: number | null): string | undefined {
 interface Props {
   editPlan?: Plan;
 }
+
+const TOTAL_STEPS = 5;
 
 export function PlanCreatorForm({ editPlan }: Props) {
   const t = useTranslations("form");
@@ -90,6 +99,12 @@ export function PlanCreatorForm({ editPlan }: Props) {
       surface: editPlan.surface ?? "road",
       start_date: editPlan.start_date ?? undefined,
       race_date: editPlan.race_date ?? undefined,
+      strength: editPlan.strength_enabled ? {
+        enabled: true,
+        location: (editPlan.strength_location as any) ?? "bodyweight",
+        type: (editPlan.strength_type as any) ?? "full_body",
+        days: editPlan.strength_days ?? [],
+      } : { enabled: false },
     } : {
       goal: "10k",
       plan_language: (locale === "en" ? "en" : "nl") as "nl" | "en",
@@ -98,6 +113,7 @@ export function PlanCreatorForm({ editPlan }: Props) {
       training_days: ["tuesday", "thursday", "saturday", "sunday"],
       long_run_day: "sunday",
       start_date: new Date().toISOString().split("T")[0],
+      strength: { enabled: false },
     },
   });
 
@@ -121,9 +137,10 @@ export function PlanCreatorForm({ editPlan }: Props) {
       ["name", "goal", "duration_weeks"],
       ["age", "height_cm", "weight_kg", "weekly_km", "weekly_runs"],
       ["training_days", "long_run_day", "surface"],
+      [], // strength step has no required fields
     ];
     const valid = await trigger(fields[step - 1] as any);
-    if (valid) setStep((s) => Math.min(4, s + 1));
+    if (valid) setStep((s) => Math.min(TOTAL_STEPS, s + 1));
   }
 
   async function onSubmit(data: FormSchema) {
@@ -134,6 +151,12 @@ export function PlanCreatorForm({ editPlan }: Props) {
         ...data,
         training_days: data.training_days,
         language: data.plan_language,
+        strength: data.strength?.enabled ? {
+          enabled: true,
+          location: data.strength.location ?? null,
+          type: data.strength.type ?? null,
+          days: data.strength.days ?? null,
+        } : undefined,
       };
       if (isEditMode) {
         await plansApi.update(editPlan!.id, payload);
@@ -161,7 +184,7 @@ export function PlanCreatorForm({ editPlan }: Props) {
   const targetTimeDisplay = secondsToDisplay(editPlan?.target_time_seconds);
   const stepProps = { register, watch, setValue, getValues, errors };
 
-  const STEPS = [1, 2, 3, 4] as const;
+  const STEPS = Array.from({ length: TOTAL_STEPS }, (_, i) => i + 1);
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -219,7 +242,8 @@ export function PlanCreatorForm({ editPlan }: Props) {
             {step === 1 && <StepGoal {...stepProps} targetTimeDisplay={targetTimeDisplay} />}
             {step === 2 && <StepAthleteProfile {...stepProps} />}
             {step === 3 && <StepTrainingPrefs {...stepProps} />}
-            {step === 4 && <StepReview values={values} />}
+            {step === 4 && <StepStrength watch={watch} setValue={setValue} />}
+            {step === 5 && <StepReview values={values} />}
           </motion.div>
         </AnimatePresence>
 
@@ -233,7 +257,7 @@ export function PlanCreatorForm({ editPlan }: Props) {
             <ArrowLeft className="w-4 h-4" /> {t("prev")}
           </button>
 
-          {step < 4 ? (
+          {step < TOTAL_STEPS ? (
             <button type="button" onClick={nextStep} className="btn-primary">
               {t("next")} <ArrowRight className="w-4 h-4" />
             </button>

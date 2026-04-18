@@ -56,6 +56,8 @@ Create a complete {total_weeks}-week running training plan ({duration_weeks} tra
 ## Recent Garmin Activity Summary (last 3 months)
 {garmin_summary}
 
+{strength_section}
+
 ## Required JSON Output Schema
 {{
   "plan_overview": {{
@@ -81,14 +83,14 @@ Create a complete {total_weeks}-week running training plan ({duration_weeks} tra
       "workouts": [
         {{
           "day_number": number,          // 1=Mon … 7=Sun
-          "workout_type": string,        // easy_run|long_run|tempo|interval|recovery|rest
+          "workout_type": string,        // easy_run|long_run|tempo|interval|recovery|rest|strength
           "title": string,
-          "description": string,
-          "distance_km": number | null,
+          "description": string,         // for strength: numbered exercise list with sets/reps/rest
+          "distance_km": number | null,  // null for strength workouts
           "duration_minutes": number | null,
           "target_paces": {{
             "warmup": string | null,     // "MM:SS – MM:SS"
-            "main": string,             // "MM:SS – MM:SS"
+            "main": string,             // "MM:SS – MM:SS" — use "N/A" for strength
             "cooldown": string | null,
             "strides": {{              // optional: include when strides are prescribed
               "reps": number,          // typically 4–8
@@ -114,6 +116,58 @@ Create a complete {total_weeks}-week running training plan ({duration_weeks} tra
 }}
 
 Generate the full {total_weeks}-week plan now ({duration_weeks} training + 1 recovery)."""
+
+
+_STRENGTH_TYPE_LABELS = {
+    "core_stability": "Core & Stability",
+    "max_strength": "Maximum Strength",
+    "plyometrics": "Plyometrics & Explosiveness",
+    "injury_prevention": "Injury Prevention & Mobility",
+    "full_body": "General Full-Body",
+}
+
+_STRENGTH_LOCATION_LABELS = {
+    "bodyweight": "Home (Bodyweight only)",
+    "home_equipment": "Home (Dumbbells / resistance bands)",
+    "gym": "Gym / fitness center",
+}
+
+_STRENGTH_DAY_NAMES = {1: "Monday", 2: "Tuesday", 3: "Wednesday", 4: "Thursday", 5: "Friday", 6: "Saturday", 7: "Sunday"}
+
+
+def _format_strength_section(plan: PlanCreate) -> str:
+    s = plan.strength
+    if not s or not s.enabled:
+        return ""
+
+    location_label = _STRENGTH_LOCATION_LABELS.get(s.location or "", s.location or "unspecified")
+    type_label = _STRENGTH_TYPE_LABELS.get(s.type or "", s.type or "full_body")
+    day_names = [_STRENGTH_DAY_NAMES[d] for d in (s.days or []) if d in _STRENGTH_DAY_NAMES]
+    days_str = ", ".join(day_names) if day_names else "flexible (you decide)"
+
+    return f"""## Strength Training Integration
+The athlete wants to include runner-specific strength training in the schedule.
+
+- Preferred strength days: {days_str}
+- Location / equipment: {location_label}
+- Training focus: {type_label}
+
+### Strength Scheduling Rules (MANDATORY)
+1. Schedule strength sessions ONLY on the specified preferred days. If a preferred day conflicts with a hard run, keep the run and skip strength that day.
+2. NEVER place a heavy strength session (max_strength, plyometrics) on the day before OR the same day as an interval run, tempo run, or long run.
+3. Core & stability or mobility sessions MAY be placed after an easy run on the same day.
+4. During taper weeks (last 2 weeks): reduce strength to 1 light session max (core/mobility only).
+5. Post-race recovery week: no strength training.
+
+### Strength Workout Content Rules
+- Use `"workout_type": "strength"` for these sessions.
+- Set `distance_km` to null and `duration_minutes` to the estimated total session time (typically 30–50 min).
+- Set `target_paces` to `{{"main": "N/A"}}`.
+- The `description` field MUST contain a numbered list of 6–10 exercises appropriate for the location/equipment and focus type. Each exercise must include: sets × reps (or duration), rest time, and a brief cue. Example format:
+  "1. Romanian Deadlift – 3×10, 60s rust. Houd rug recht, duw heupen naar achteren.\\n2. ..."
+- Write ALL exercise names and cues in {output_language}.
+- Adapt exercises to available equipment: bodyweight = no weights; home_equipment = dumbbells/bands allowed; gym = machines/barbells allowed.
+"""
 
 
 def _format_garmin_summary(summary: Optional[dict]) -> str:
@@ -194,6 +248,7 @@ async def generate_plan(plan: PlanCreate, garmin_summary: Optional[dict] = None,
         long_run_day=plan.long_run_day or "Sunday",
         surface=plan.surface or "road",
         garmin_summary=_format_garmin_summary(garmin_summary),
+        strength_section=_format_strength_section(plan),
         **race_ctx,
     )
 

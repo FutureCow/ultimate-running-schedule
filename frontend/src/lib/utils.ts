@@ -14,6 +14,7 @@ export const WORKOUT_COLORS: Record<WorkoutType, string> = {
   recovery:  "bg-teal-500/20 text-teal-300 border-teal-500/30",
   race:      "bg-yellow-500/20 text-yellow-300 border-yellow-500/30",
   rest:      "bg-slate-500/20 text-slate-400 border-slate-500/30",
+  strength:  "bg-violet-500/20 text-violet-300 border-violet-500/30",
 };
 
 export function secondsToTime(secs: number): string {

@@ -27,7 +27,23 @@ export type WorkoutType =
   | "interval"
   | "recovery"
   | "race"
-  | "rest";
+  | "rest"
+  | "strength";
+
+export type StrengthLocation = "bodyweight" | "home_equipment" | "gym";
+export type StrengthFocusType =
+  | "core_stability"
+  | "max_strength"
+  | "plyometrics"
+  | "injury_prevention"
+  | "full_body";
+
+export interface StrengthPreferences {
+  enabled: boolean;
+  location?: StrengthLocation | null;
+  type?: StrengthFocusType | null;
+  days?: number[] | null;
+}
 
 export interface TargetPaces {
   warmup?: string | null;
@@ -113,6 +129,10 @@ export interface Plan {
   race_date?: string | null;
   plan_json?: PlanJson | null;
   garmin_synced: boolean;
+  strength_enabled: boolean;
+  strength_location?: string | null;
+  strength_type?: string | null;
+  strength_days?: number[] | null;
   created_at: string;
   updated_at: string;
   sessions: WorkoutSession[];
@@ -144,4 +164,5 @@ export interface PlanFormData {
   surface: string;
   start_date?: string;
   race_date?: string;
+  strength?: StrengthPreferences;
 }

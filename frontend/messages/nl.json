@@ -95,7 +95,8 @@
       "1": { "title": "Doel & Plan", "subtitle": "Wat wil je bereiken?" },
       "2": { "title": "Jouw Profiel", "subtitle": "Vertel ons over jezelf" },
       "3": { "title": "Trainingsvoorkeur", "subtitle": "Hoe train jij het liefst?" },
-      "4": { "title": "Overzicht", "subtitle": "Controleer en genereer" }
+      "4": { "title": "Krachttraining", "subtitle": "Kracht voor hardlopers" },
+      "5": { "title": "Overzicht", "subtitle": "Controleer en genereer" }
     },
     "editPrefix": "Bewerken:",
     "prev": "Vorige",
@@ -169,6 +170,26 @@
       "extraNotesPlaceholder": "bijv. geen intervallen op maandag, voorkeur voor ochtendtraining, wil meer heuvels…",
       "extraNotesHint": "Vrije tekst die de AI meeneemt bij het opstellen van je schema."
     },
+    "strength": {
+      "toggleLabel": "Krachttraining toevoegen aan je schema?",
+      "toggleHint": "De AI plant krachtsessies in op de door jou gekozen dagen, afgestemd op je loopbelasting.",
+      "locationLabel": "Locatie & Materiaal",
+      "locations": {
+        "bodyweight":      { "label": "Thuis – Lichaamsgewicht", "desc": "Alleen eigen lichaamsgewicht, geen materiaal" },
+        "home_equipment":  { "label": "Thuis – Met materiaal",   "desc": "Dumbbells, elastieken of kettlebells beschikbaar" },
+        "gym":             { "label": "Sportschool / Fitness",   "desc": "Volledige apparatuur beschikbaar" }
+      },
+      "focusLabel": "Type Training",
+      "focusTypes": {
+        "core_stability":      { "label": "Core & Stabiliteit",               "desc": "Rompkracht, balans en loopeconomie" },
+        "max_strength":        { "label": "Maximale Kracht",                  "desc": "Zware samengestelde oefeningen, laag volume" },
+        "plyometrics":         { "label": "Pliometrie & Explosiviteit",       "desc": "Sprongkracht, snelheid en reactievermogen" },
+        "injury_prevention":   { "label": "Blessurepreventie & Mobiliteit",  "desc": "Heup, enkel, knie – kwetsbaarheid verminderen" },
+        "full_body":           { "label": "Algemene Full-Body",               "desc": "Uitgebalanceerde krachttraining voor hardlopers" }
+      },
+      "daysLabel": "Voorkeursdagen",
+      "daysHint": "De AI plant krachtsessies zoveel mogelijk op deze dagen in."
+    },
     "review": {
       "checkNote": "Controleer je gegevens. Als alles klopt klik je op",
       "checkNoteButton": "Genereer Plan",
@@ -221,8 +242,10 @@
       "interval":  "Intervallen",
       "recovery":  "Herstel",
       "race":      "Race",
-      "rest":      "Rust"
-    }
+      "rest":      "Rust",
+      "strength":  "Kracht"
+    },
+    "exercises": "Oefeningen"
   },
   "calendar": {
     "weekTitle": "Week {current} / {total}",

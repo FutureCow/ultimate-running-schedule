@@ -2,7 +2,7 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations } from "next-intl";
-import { Clock, Ruler, Watch, ChevronDown, ChevronUp, Zap, CheckCircle2, ArrowLeftRight, Trash2, X } from "lucide-react";
+import { Clock, Ruler, Watch, ChevronDown, ChevronUp, Zap, CheckCircle2, ArrowLeftRight, Trash2, X, Dumbbell } from "lucide-react";
 import { useState } from "react";
 import { WorkoutSession } from "@/types";
 import { cn, WORKOUT_COLORS } from "@/lib/utils";
@@ -27,6 +27,7 @@ const ACCENT_COLORS: Record<string, string> = {
   recovery:  "bg-teal-500",
   race:      "bg-yellow-500",
   rest:      "bg-slate-600",
+  strength:  "bg-violet-500",
 };
 
 export function WorkoutCard({ session, onPushToGarmin, isPushing, onMove, isMoving, onDelete, isDeleting, onRemoveFromGarmin, isRemovingFromGarmin }: Props) {
@@ -76,14 +77,25 @@ export function WorkoutCard({ session, onPushToGarmin, isPushing, onMove, isMovi
 
           <div className="flex items-center gap-2 shrink-0">
             <div className="flex flex-col sm:flex-row items-end sm:items-center gap-1 sm:gap-3">
-              {session.distance_km && (
-                <Stat icon={<Ruler className="w-3.5 h-3.5" />} value={`${session.distance_km} km`} />
-              )}
-              {session.duration_minutes && (
-                <Stat icon={<Clock className="w-3.5 h-3.5" />} value={`${session.duration_minutes} min`} />
-              )}
-              {session.target_paces?.main && (
-                <Stat icon={<Watch className="w-3.5 h-3.5" />} value={session.target_paces.main} mono highlight />
+              {session.workout_type === "strength" ? (
+                <>
+                  <Stat icon={<Dumbbell className="w-3.5 h-3.5" />} value={t("types.strength")} />
+                  {session.duration_minutes && (
+                    <Stat icon={<Clock className="w-3.5 h-3.5" />} value={`${session.duration_minutes} min`} />
+                  )}
+                </>
+              ) : (
+                <>
+                  {session.distance_km && (
+                    <Stat icon={<Ruler className="w-3.5 h-3.5" />} value={`${session.distance_km} km`} />
+                  )}
+                  {session.duration_minutes && (
+                    <Stat icon={<Clock className="w-3.5 h-3.5" />} value={`${session.duration_minutes} min`} />
+                  )}
+                  {session.target_paces?.main && session.target_paces.main !== "N/A" && (
+                    <Stat icon={<Watch className="w-3.5 h-3.5" />} value={session.target_paces.main} mono highlight />
+                  )}
+                </>
               )}
             </div>
             <button className="text-slate-600 hover:text-slate-400">
@@ -106,11 +118,26 @@ export function WorkoutCard({ session, onPushToGarmin, isPushing, onMove, isMovi
           >
             <div className="px-5 pb-4 pt-1 space-y-3 border-t border-slate-700/40 ml-1.5">
 
-              {session.description && (
-                <p className="text-sm text-slate-300 leading-relaxed">{session.description}</p>
+              {session.workout_type === "strength" ? (
+                session.description && (
+                  <div className="space-y-1.5">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                      {t("exercises")}
+                    </p>
+                    <div className="text-sm text-slate-300 leading-relaxed whitespace-pre-line">
+                      {session.description}
+                    </div>
+                  </div>
+                )
+              ) : (
+                <>
+                  {session.description && (
+                    <p className="text-sm text-slate-300 leading-relaxed">{session.description}</p>
+                  )}
+                </>
               )}
 
-              {session.target_paces && (
+              {session.workout_type !== "strength" && session.target_paces && (
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   {session.target_paces.warmup && (
                     <PaceBlock label={t("warmup")} pace={session.target_paces.warmup} />

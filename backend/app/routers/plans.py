@@ -8,7 +8,7 @@ from app.database import get_db
 from app.models.user import User
 from app.models.plan import Plan, WorkoutSession
 from app.routers.deps import get_current_user
-from app.schemas.plan import PlanCreate, PlanUpdate, PlanResponse
+from app.schemas.plan import PlanCreate, PlanUpdate, PlanResponse, StrengthPreferences
 from app.services import claude_service, garmin_service
 
 router = APIRouter(prefix="/plans", tags=["plans"])
@@ -70,6 +70,13 @@ async def create_plan(
 
     plan_data = payload.model_dump()
     plan_data.pop("language", None)  # language is not a DB column
+
+    # Flatten nested strength preferences into individual DB columns
+    strength = plan_data.pop("strength", None) or {}
+    plan_data["strength_enabled"] = strength.get("enabled", False)
+    plan_data["strength_location"] = strength.get("location")
+    plan_data["strength_type"] = strength.get("type")
+    plan_data["strength_days"] = strength.get("days")
 
     # Persist plan
     plan = Plan(
@@ -150,6 +157,12 @@ async def update_plan(
         surface=plan.surface,
         start_date=plan.start_date,
         race_date=plan.race_date,
+        strength=StrengthPreferences(
+            enabled=plan.strength_enabled,
+            location=plan.strength_location,
+            type=plan.strength_type,
+            days=plan.strength_days,
+        ) if plan.strength_enabled else None,
     )
 
     # Fetch optional Garmin context

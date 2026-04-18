@@ -23,6 +23,7 @@ class WorkoutType(str, enum.Enum):
     RECOVERY = "recovery"
     RACE = "race"
     REST = "rest"
+    STRENGTH = "strength"
 
 
 class Plan(Base):
@@ -47,6 +48,11 @@ class Plan(Base):
     surface: Mapped[str | None] = mapped_column(String(50), nullable=True)
     start_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     race_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    # Strength training preferences
+    strength_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    strength_location: Mapped[str | None] = mapped_column(String(50), nullable=True)  # bodyweight/home_equipment/gym
+    strength_type: Mapped[str | None] = mapped_column(String(50), nullable=True)      # core_stability/max_strength/...
+    strength_days: Mapped[list | None] = mapped_column(JSON, nullable=True)           # [1,3,5] (day numbers)
     # Full AI-generated plan stored as JSON
     plan_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     garmin_synced: Mapped[bool] = mapped_column(Boolean, default=False)

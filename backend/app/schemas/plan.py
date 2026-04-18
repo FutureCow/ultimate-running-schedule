@@ -3,6 +3,13 @@ from datetime import datetime, date
 from typing import Optional, Any
 
 
+class StrengthPreferences(BaseModel):
+    enabled: bool = False
+    location: Optional[str] = None   # bodyweight / home_equipment / gym
+    type: Optional[str] = None       # core_stability / max_strength / plyometrics / injury_prevention / full_body
+    days: Optional[list[int]] = None # [1, 3, 5] — day numbers (1=Mon)
+
+
 class TargetPaces(BaseModel):
     warmup: Optional[str] = None
     main: str
@@ -56,6 +63,7 @@ class PlanCreate(BaseModel):
     start_date: Optional[date] = None
     race_date: Optional[date] = None
     language: str = "nl"
+    strength: Optional[StrengthPreferences] = None
 
 
 class PlanUpdate(BaseModel):
@@ -103,6 +111,10 @@ class PlanResponse(BaseModel):
     race_date: Optional[date] = None
     plan_json: Optional[Any] = None
     garmin_synced: bool
+    strength_enabled: bool = False
+    strength_location: Optional[str] = None
+    strength_type: Optional[str] = None
+    strength_days: Optional[list] = None
     created_at: datetime
     updated_at: datetime
     sessions: list[WorkoutSessionResponse] = []

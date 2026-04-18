@@ -239,6 +239,7 @@ async def fetch_activities(db: AsyncSession, user_id: int, months: int = 3) -> d
 # ── Workout builder ───────────────────────────────────────────────────────────
 
 _SPORT_RUNNING = {"sportTypeId": 1, "sportTypeKey": "running"}
+_SPORT_STRENGTH = {"sportTypeId": 13, "sportTypeKey": "strength_training"}
 
 
 def _pace_to_ms(pace_str: str) -> Optional[float]:
@@ -415,6 +416,32 @@ async def delete_workout_from_garmin(db: AsyncSession, user_id: int, garmin_work
     return success
 
 
+def _build_strength_workout_payload(session: WorkoutSession) -> dict:
+    """Build a Garmin Connect strength_training workout with exercises in the description step."""
+    duration_sec = (session.duration_minutes or 40) * 60
+    step = {
+        "type": "ExecutableStepDTO",
+        "stepId": None,
+        "stepOrder": 1,
+        "stepType": {"stepTypeId": 3, "stepTypeKey": "interval"},
+        "description": session.description or "",
+        "endCondition": {"conditionTypeKey": "time", "conditionTypeId": 2},
+        "endConditionValue": duration_sec,
+        "targetType": {"workoutTargetTypeId": 1, "workoutTargetTypeKey": "no.target"},
+    }
+    return {
+        "sportType": _SPORT_STRENGTH,
+        "workoutName": session.title,
+        "description": session.description or "",
+        "estimatedDurationInSecs": duration_sec,
+        "workoutSegments": [{
+            "segmentOrder": 1,
+            "sportType": _SPORT_STRENGTH,
+            "workoutSteps": [step],
+        }],
+    }
+
+
 # ── Workout push ──────────────────────────────────────────────────────────────
 
 async def push_sessions_to_garmin(db: AsyncSession, user_id: int, sessions: list[WorkoutSession]) -> list[dict]:
@@ -435,7 +462,10 @@ async def push_sessions_to_garmin(db: AsyncSession, user_id: int, sessions: list
                     pushed.append({"session_id": session.id, "skipped": True, "reason": "rest day"})
                     continue
                 try:
-                    payload = _build_workout_payload(session)
+                    if session.workout_type == WorkoutType.STRENGTH:
+                        payload = _build_strength_workout_payload(session)
+                    else:
+                        payload = _build_workout_payload(session)
                     logger.info("Uploading session %s: %s", session.id, session.title)
                     resp = client.upload_workout(payload)
                     workout_id = str(resp.get("workoutId", ""))

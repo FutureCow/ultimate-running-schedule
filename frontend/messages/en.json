@@ -95,7 +95,8 @@
       "1": { "title": "Goal & Plan", "subtitle": "What do you want to achieve?" },
       "2": { "title": "Your Profile", "subtitle": "Tell us about yourself" },
       "3": { "title": "Training preferences", "subtitle": "How do you like to train?" },
-      "4": { "title": "Overview", "subtitle": "Review and generate" }
+      "4": { "title": "Strength Training", "subtitle": "Strength for runners" },
+      "5": { "title": "Overview", "subtitle": "Review and generate" }
     },
     "editPrefix": "Edit:",
     "prev": "Previous",
@@ -169,6 +170,26 @@
       "extraNotesPlaceholder": "e.g. no intervals on Mondays, prefer morning runs, want more hill work…",
       "extraNotesHint": "Free text that the AI will take into account when building your schedule."
     },
+    "strength": {
+      "toggleLabel": "Add strength training to your schedule?",
+      "toggleHint": "The AI will schedule strength sessions on your chosen days, balanced with your running load.",
+      "locationLabel": "Location & Equipment",
+      "locations": {
+        "bodyweight":      { "label": "Home – Bodyweight only",      "desc": "No equipment needed" },
+        "home_equipment":  { "label": "Home – With equipment",       "desc": "Dumbbells, resistance bands or kettlebells" },
+        "gym":             { "label": "Gym / Fitness center",        "desc": "Full equipment available" }
+      },
+      "focusLabel": "Training Focus",
+      "focusTypes": {
+        "core_stability":      { "label": "Core & Stability",               "desc": "Core strength, balance and running economy" },
+        "max_strength":        { "label": "Maximum Strength",               "desc": "Heavy compound lifts, low volume" },
+        "plyometrics":         { "label": "Plyometrics & Explosiveness",    "desc": "Jump strength, speed and reactive power" },
+        "injury_prevention":   { "label": "Injury Prevention & Mobility",  "desc": "Hip, ankle, knee – reduce vulnerability" },
+        "full_body":           { "label": "General Full-Body",              "desc": "Balanced strength training for runners" }
+      },
+      "daysLabel": "Preferred days",
+      "daysHint": "The AI will schedule strength sessions on these days where possible."
+    },
     "review": {
       "checkNote": "Review your details. When everything looks good, click",
       "checkNoteButton": "Generate Plan",
@@ -221,8 +242,10 @@
       "interval":  "Intervals",
       "recovery":  "Recovery",
       "race":      "Race",
-      "rest":      "Rest"
-    }
+      "rest":      "Rest",
+      "strength":  "Strength"
+    },
+    "exercises": "Exercises"
   },
   "calendar": {
     "weekTitle": "Week {current} / {total}",
