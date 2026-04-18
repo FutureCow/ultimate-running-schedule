@@ -1,7 +1,7 @@
 {
-  "name": "RunAI – AI Running Plans",
-  "short_name": "RunAI",
-  "description": "Gepersonaliseerde hardloopschema's met Garmin en Claude AI",
+  "name": "Cadence – Ritme in je training",
+  "short_name": "Cadence",
+  "description": "AI-gegenereerde hardloopschema's op basis van je Garmin-data en Jack Daniels VDOT-methodologie",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0f172a",

@@ -4,7 +4,7 @@ import { useRef, useState, useEffect } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { Link, usePathname, useRouter } from "@/i18n/navigation";
 import { motion } from "framer-motion";
-import { Zap, LayoutDashboard, Plus, Settings, LogOut, ChevronDown } from "lucide-react";
+import { LayoutDashboard, Plus, Settings, LogOut, ChevronDown } from "lucide-react";
 import { logout } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 
@@ -52,10 +52,20 @@ export function Navbar() {
       {/* Desktop sidebar */}
       <aside className="hidden lg:flex flex-col w-60 min-h-screen bg-surface-card border-r border-slate-700/50 px-4 py-6 gap-2 fixed left-0 top-0 bottom-0 z-40">
         <Link href="/dashboard" className="flex items-center gap-3 px-2 mb-6">
-          <div className="w-9 h-9 rounded-xl bg-brand-500 flex items-center justify-center shadow-lg shadow-brand-500/30">
-            <Zap className="w-5 h-5 text-white" />
+          <div className="w-9 h-9 rounded-xl bg-brand-500 flex items-center justify-center shadow-lg shadow-brand-500/30 shrink-0">
+            {/* Cadence logo: drie ritmische balken */}
+            <svg viewBox="0 0 18 18" fill="none" className="w-5 h-5">
+              <rect x="1"  y="10" width="3.5" height="7" rx="1.5" fill="white"/>
+              <rect x="7"  y="3"  width="3.5" height="14" rx="1.5" fill="white"/>
+              <rect x="13" y="7"  width="3.5" height="10" rx="1.5" fill="white"/>
+            </svg>
           </div>
-          <span className="text-lg font-bold text-white">RunAI</span>
+          <div>
+            <span className="text-lg font-bold text-white leading-tight block">Cadence</span>
+            <span className="text-[10px] text-brand-400/80 font-medium leading-tight block">
+              {t("subtitle")}
+            </span>
+          </div>
         </Link>
 
         <nav className="flex-1 space-y-1">

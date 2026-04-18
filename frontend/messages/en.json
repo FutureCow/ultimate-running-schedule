@@ -14,19 +14,21 @@
     "none": "—"
   },
   "meta": {
-    "title": "RunAI – AI-Powered Running Plans",
-    "description": "Personalized running plans based on your Garmin data and Claude AI"
+    "title": "Cadence – Rhythm in your training",
+    "subtitle": "Bringing rhythm to your training",
+    "description": "AI-generated running schedules based on your Garmin data and Jack Daniels VDOT methodology"
   },
   "nav": {
     "dashboard": "Dashboard",
     "newPlan": "New Plan",
     "settings": "Settings",
-    "logout": "Log out"
+    "logout": "Log out",
+    "subtitle": "Bringing rhythm to your training"
   },
   "auth": {
     "login": {
       "title": "Welcome back",
-      "subtitle": "Log in to your RunAI account",
+      "subtitle": "Log in to your Cadence account",
       "email": "Email address",
       "emailPlaceholder": "you@example.com",
       "password": "Password",

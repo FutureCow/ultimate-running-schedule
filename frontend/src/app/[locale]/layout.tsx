@@ -7,8 +7,8 @@ import { routing } from "@/i18n/routing";
 import { notFound } from "next/navigation";
 
 export const metadata: Metadata = {
-  title: "RunAI – AI-Powered Running Plans",
-  description: "Generate personalized running plans with Garmin data and Claude AI",
+  title: "Cadence – Ritme in je training",
+  description: "AI-gegenereerde hardloopschema's op basis van je Garmin-data en Jack Daniels VDOT-methodologie",
   manifest: "/manifest.json",
   icons: { icon: "/favicon.svg" },
 };

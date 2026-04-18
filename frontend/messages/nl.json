@@ -14,19 +14,21 @@
     "none": "—"
   },
   "meta": {
-    "title": "RunAI – AI trainingsplannen",
-    "description": "Gepersonaliseerde hardloopplannen op basis van je Garmin-data en Claude AI"
+    "title": "Cadence – Ritme in je training",
+    "subtitle": "Ritme brengen in je training",
+    "description": "AI-gegenereerde hardloopschema's op basis van je Garmin-data en Jack Daniels VDOT-methodologie"
   },
   "nav": {
     "dashboard": "Dashboard",
     "newPlan": "Nieuw Plan",
     "settings": "Instellingen",
-    "logout": "Uitloggen"
+    "logout": "Uitloggen",
+    "subtitle": "Ritme brengen in je training"
   },
   "auth": {
     "login": {
       "title": "Welkom terug",
-      "subtitle": "Log in op je RunAI account",
+      "subtitle": "Log in op je Cadence account",
       "email": "E-mailadres",
       "emailPlaceholder": "jij@example.com",
       "password": "Wachtwoord",
