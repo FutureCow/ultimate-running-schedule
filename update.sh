@@ -1,5 +1,12 @@
 #!/bin/sh
 # update.sh — pull latest code and rebuild only what changed
+#
+# Usage:
+#   ./update.sh              — normaal: git pull, update alleen wat gewijzigd is
+#   ./update.sh --backend    — forceer backend update (ook zonder git-wijzigingen)
+#   ./update.sh --frontend   — forceer frontend update (ook zonder git-wijzigingen)
+#   ./update.sh --both       — forceer beide
+#
 # Compatible with bash, sh, and busybox ash (Alpine Linux)
 set -eu
 
@@ -9,6 +16,19 @@ BACKEND_DIR="$APP_DIR/backend"
 FRONTEND_DIR="$APP_DIR/frontend"
 BACKEND_SERVICE="runai-backend"
 FRONTEND_SERVICE="runai-frontend"
+
+# ── Argument parsing ──────────────────────────────────────────────────────────
+FORCE_BACKEND=false
+FORCE_FRONTEND=false
+
+for arg in "$@"; do
+    case "$arg" in
+        --backend)  FORCE_BACKEND=true ;;
+        --frontend) FORCE_FRONTEND=true ;;
+        --both)     FORCE_BACKEND=true; FORCE_FRONTEND=true ;;
+        *) printf 'Onbekend argument: %s\nGebruik: ./update.sh [--backend|--frontend|--both]\n' "$arg" >&2; exit 1 ;;
+    esac
+done
 
 # ── Colour helpers ────────────────────────────────────────────────────────────
 info()    { printf '\033[1m[update]\033[0m %s\n' "$*"; }
@@ -33,38 +53,50 @@ BEFORE=$(git rev-parse HEAD)
 git pull --ff-only || error "git pull mislukt. Los conflicten op en probeer opnieuw."
 AFTER=$(git rev-parse HEAD)
 
-if [ "$BEFORE" = "$AFTER" ]; then
-    success "Al up-to-date — niets te doen."
-    exit 0
+# Bepaal gewijzigde bestanden (leeg als er niets veranderd is)
+if [ "$BEFORE" != "$AFTER" ]; then
+    CHANGED=$(git diff --name-only "$BEFORE" "$AFTER")
+    info "Gewijzigde bestanden:"
+    echo "$CHANGED" | sed 's/^/  /'
+else
+    CHANGED=""
 fi
-
-# Bepaal welke bestanden zijn gewijzigd
-CHANGED=$(git diff --name-only "$BEFORE" "$AFTER")
-info "Gewijzigde bestanden:"
-echo "$CHANGED" | sed 's/^/  /'
 
 BACKEND_CHANGED=false
 FRONTEND_CHANGED=false
 
-echo "$CHANGED" | grep -q "^backend/"  && BACKEND_CHANGED=true
-echo "$CHANGED" | grep -q "^frontend/" && FRONTEND_CHANGED=true
+echo "$CHANGED" | grep -q "^backend/"  && BACKEND_CHANGED=true || true
+echo "$CHANGED" | grep -q "^frontend/" && FRONTEND_CHANGED=true || true
+
+# Forceer-vlaggen overschrijven git-detectie
+$FORCE_BACKEND  && BACKEND_CHANGED=true
+$FORCE_FRONTEND && FRONTEND_CHANGED=true
+
+if ! $BACKEND_CHANGED && ! $FRONTEND_CHANGED; then
+    success "Al up-to-date — niets te doen. Gebruik --backend, --frontend of --both om geforceerd te updaten."
+    exit 0
+fi
 
 # ── Backend update ────────────────────────────────────────────────────────────
 if $BACKEND_CHANGED; then
-    info "Backend bestanden gewijzigd — update starten…"
+    if $FORCE_BACKEND && [ -z "$CHANGED" ]; then
+        info "Backend geforceerd updaten (geen git-wijzigingen)…"
+    else
+        info "Backend bestanden gewijzigd — update starten…"
+    fi
     cd "$BACKEND_DIR"
 
     . .venv/bin/activate
 
-    # Alleen pip install als requirements.txt is veranderd
-    if echo "$CHANGED" | grep -q "^backend/requirements"; then
-        info "requirements.txt gewijzigd — dependencies installeren…"
+    # pip install: altijd bij --backend force, anders alleen als requirements veranderd is
+    if $FORCE_BACKEND || echo "$CHANGED" | grep -q "^backend/requirements"; then
+        info "Dependencies installeren…"
         pip install -q -r requirements.txt
     fi
 
-    # Alleen migraties als er nieuwe alembic versies zijn
-    if echo "$CHANGED" | grep -q "^backend/alembic/versions/"; then
-        info "Nieuwe migraties gevonden — alembic upgrade head…"
+    # Migraties: altijd bij --backend force, anders alleen als er nieuwe versies zijn
+    if $FORCE_BACKEND || echo "$CHANGED" | grep -q "^backend/alembic/versions/"; then
+        info "Alembic upgrade head…"
         alembic upgrade head
     fi
 
@@ -76,12 +108,16 @@ fi
 
 # ── Frontend update ───────────────────────────────────────────────────────────
 if $FRONTEND_CHANGED; then
-    info "Frontend bestanden gewijzigd — build starten…"
+    if $FORCE_FRONTEND && [ -z "$CHANGED" ]; then
+        info "Frontend geforceerd updaten (geen git-wijzigingen)…"
+    else
+        info "Frontend bestanden gewijzigd — build starten…"
+    fi
     cd "$FRONTEND_DIR"
 
-    # Alleen npm ci als package-lock.json is veranderd
-    if echo "$CHANGED" | grep -q "^frontend/package"; then
-        info "package-lock.json gewijzigd — dependencies installeren…"
+    # npm ci: altijd bij --frontend force, anders alleen als package-lock veranderd is
+    if $FORCE_FRONTEND || echo "$CHANGED" | grep -q "^frontend/package"; then
+        info "Dependencies installeren…"
         npm ci --frozen-lockfile --silent
     fi
 
