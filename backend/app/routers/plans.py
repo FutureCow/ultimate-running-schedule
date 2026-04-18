@@ -99,17 +99,21 @@ async def create_plan(
     plan_data["strength_equipment"] = strength.get("equipment")
 
     # Persist plan
-    plan = Plan(
-        user_id=user.id,
-        **plan_data,
-        plan_json=plan_json,
-    )
-    db.add(plan)
-    await db.flush()  # get plan.id
+    try:
+        plan = Plan(
+            user_id=user.id,
+            **plan_data,
+            plan_json=plan_json,
+        )
+        db.add(plan)
+        await db.flush()  # get plan.id
 
-    sessions = _create_sessions_from_json(plan, plan_json)
-    db.add_all(sessions)
-    await db.commit()
+        sessions = _create_sessions_from_json(plan, plan_json)
+        db.add_all(sessions)
+        await db.commit()
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Plan opslaan mislukt: {str(e)}")
 
     # Reload fully with selectin-loaded sessions
     result = await db.execute(select(Plan).where(Plan.id == plan.id))

@@ -135,7 +135,7 @@ _STRENGTH_LOCATION_LABELS = {
 _STRENGTH_DAY_NAMES = {1: "Monday", 2: "Tuesday", 3: "Wednesday", 4: "Thursday", 5: "Friday", 6: "Saturday", 7: "Sunday"}
 
 
-def _format_strength_section(plan: PlanCreate) -> str:
+def _format_strength_section(plan: PlanCreate, output_language: str = "Dutch") -> str:
     s = plan.strength
     if not s or not s.enabled:
         return ""
@@ -254,7 +254,7 @@ async def generate_plan(plan: PlanCreate, garmin_summary: Optional[dict] = None,
         long_run_day=plan.long_run_day or "Sunday",
         surface=plan.surface or "road",
         garmin_summary=_format_garmin_summary(garmin_summary),
-        strength_section=_format_strength_section(plan),
+        strength_section=_format_strength_section(plan, output_language=lang_name),
         **race_ctx,
     )
 
