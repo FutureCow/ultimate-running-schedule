@@ -9,6 +9,7 @@ class StrengthPreferences(BaseModel):
     type: Optional[str] = None            # core_stability / max_strength / plyometrics / injury_prevention / full_body
     days: Optional[list[int]] = None      # [1, 3, 5] — day numbers (1=Mon)
     equipment: Optional[list[str]] = None # ["dumbbells", "resistance_bands", ...] — only for home_equipment
+    notes: Optional[str] = None          # free-text athlete preferences for strength
 
 
 class TargetPaces(BaseModel):

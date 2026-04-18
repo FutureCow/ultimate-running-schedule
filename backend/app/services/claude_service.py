@@ -149,12 +149,14 @@ def _format_strength_section(plan: PlanCreate) -> str:
     if s.location == "home_equipment" and s.equipment:
         equipment_str = f"\n- Available equipment: {', '.join(s.equipment)}"
 
+    notes_str = f"\n- Athlete's additional preferences: {s.notes}" if s.notes else ""
+
     return f"""## Strength Training Integration
 The athlete wants to include runner-specific strength training in the schedule.
 
 - Preferred strength days: {days_str}
 - Location / equipment: {location_label}{equipment_str}
-- Training focus: {type_label}
+- Training focus: {type_label}{notes_str}
 
 ### Strength Scheduling Rules (MANDATORY)
 1. Schedule strength sessions ONLY on the specified preferred days. If a preferred day conflicts with a hard run, keep the run and skip strength that day.

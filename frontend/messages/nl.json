@@ -227,7 +227,10 @@
         "step":               "Aerobic step / Stepper"
       },
       "daysLabel": "Voorkeursdagen",
-      "daysHint": "De AI plant krachtsessies zoveel mogelijk op deze dagen in."
+      "daysHint": "De AI plant krachtsessies zoveel mogelijk op deze dagen in.",
+      "notesLabel": "Aanvullende wensen",
+      "notesPlaceholder": "bijv. wil graag oefeningen die ik buiten kan doen, geen squat-varianten vanwege kniepijn, focus op enkels en heupen…",
+      "notesHint": "Vrije tekst — de AI past de oefeningen aan op basis van jouw wensen."
     },
     "review": {
       "checkNote": "Controleer je gegevens. Als alles klopt klik je op",

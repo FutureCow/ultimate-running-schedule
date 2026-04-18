@@ -4,9 +4,10 @@ import { useRef, useState, useEffect } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { Link, usePathname, useRouter } from "@/i18n/navigation";
 import { motion } from "framer-motion";
-import { LayoutDashboard, Plus, Settings, LogOut, ChevronDown } from "lucide-react";
+import { LayoutDashboard, Plus, Settings, LogOut, ChevronDown, Sun, Moon } from "lucide-react";
 import { logout } from "@/lib/auth";
 import { cn } from "@/lib/utils";
+import { useTheme } from "@/components/ui/ThemeProvider";
 
 const LOCALES = [
   { code: "nl", flag: "🇳🇱", label: "Nederlands", short: "NL" },
@@ -21,6 +22,7 @@ export function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
 
+  const { resolved, setTheme } = useTheme();
   const [langOpen, setLangOpen] = useState(false);
   const langRef = useRef<HTMLDivElement>(null);
 
@@ -123,6 +125,19 @@ export function Navbar() {
           )}
         </div>
 
+        {/* Theme toggle */}
+        <button
+          onClick={() => setTheme(resolved === "dark" ? "light" : "dark")}
+          className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-500 hover:bg-surface-elevated hover:text-slate-300 transition-all"
+          title={resolved === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+        >
+          {resolved === "dark"
+            ? <Sun className="w-4 h-4" />
+            : <Moon className="w-4 h-4" />
+          }
+          {resolved === "dark" ? "Light mode" : "Dark mode"}
+        </button>
+
         <button
           onClick={logout}
           className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-500 hover:bg-surface-elevated hover:text-slate-300 transition-all"
@@ -161,6 +176,15 @@ export function Navbar() {
         >
           <span className="text-xl leading-none">{currentLang.flag}</span>
           <span className="text-[10px] font-medium">{currentLang.short}</span>
+        </button>
+
+        {/* Mobile: theme toggle */}
+        <button
+          onClick={() => setTheme(resolved === "dark" ? "light" : "dark")}
+          className="flex flex-col items-center gap-1 px-4 py-1.5 rounded-xl text-slate-500 hover:text-slate-300 transition-all"
+        >
+          {resolved === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+          <span className="text-[10px] font-medium">{resolved === "dark" ? "Light" : "Dark"}</span>
         </button>
 
         <button

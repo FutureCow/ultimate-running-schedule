@@ -44,6 +44,7 @@ export interface StrengthPreferences {
   type?: StrengthFocusType | null;
   days?: number[] | null;
   equipment?: string[] | null;
+  notes?: string | null;
 }
 
 export interface TargetPaces {

@@ -52,6 +52,7 @@ const EQUIPMENT_EMOJIS: Record<string, string> = {
 interface Props {
   watch: UseFormWatch<FormSchema>;
   setValue: UseFormSetValue<FormSchema>;
+  register?: any;
 }
 
 export function StepStrength({ watch, setValue }: Props) {
@@ -63,6 +64,7 @@ export function StepStrength({ watch, setValue }: Props) {
   const focusType     = watch("strength.type");
   const strengthDays  = (watch("strength.days") ?? []) as number[];
   const equipment     = (watch("strength.equipment") ?? []) as string[];
+  const notes         = watch("strength.notes") ?? "";
 
   function toggleStrengthDay(dayNum: number) {
     if (strengthDays.includes(dayNum)) {
@@ -230,6 +232,19 @@ export function StepStrength({ watch, setValue }: Props) {
               })}
             </div>
             <p className="text-[10px] text-slate-600 mt-1">{t("daysHint")}</p>
+          </div>
+
+          {/* Free-text notes */}
+          <div>
+            <label className="label">{t("notesLabel")}</label>
+            <textarea
+              rows={3}
+              className="input resize-none"
+              placeholder={t("notesPlaceholder")}
+              value={notes}
+              onChange={(e) => setValue("strength.notes", e.target.value || undefined)}
+            />
+            <p className="text-[10px] text-slate-600 mt-1">{t("notesHint")}</p>
           </div>
         </>
       )}

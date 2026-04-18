@@ -119,14 +119,18 @@ html.light {
   }
 
   /* Light theme text overrides for hardcoded classes */
-  html.light .text-white { color: rgb(var(--text-primary)) !important; }
+  html.light .text-white    { color: rgb(var(--text-primary)) !important; }
   html.light .text-slate-100 { color: rgb(var(--text-primary)) !important; }
   html.light .text-slate-200 { color: rgb(15 23 42) !important; }
   html.light .text-slate-300 { color: rgb(var(--text-secondary)) !important; }
   html.light .text-slate-400 { color: rgb(var(--text-secondary)) !important; }
   html.light .text-slate-500 { color: rgb(var(--text-muted)) !important; }
-  html.light .text-slate-600 { color: rgb(203 213 225) !important; }
-  html.light .text-slate-700 { color: rgb(203 213 225) !important; }
+  /* slate-600/700 are dark colors — keep them readable (muted) on light bg */
+  html.light .text-slate-600 { color: rgb(100 116 139) !important; }   /* slate-500 */
+  html.light .text-slate-700 { color: rgb(148 163 184) !important; }   /* slate-400, subtle */
+  /* brand-300/400 are light greens — darken for light bg contrast */
+  html.light .text-brand-300 { color: rgb(21 128 61) !important; }     /* green-700 */
+  html.light .text-brand-400 { color: rgb(22 163 74) !important; }     /* green-600 */
 
   html.light .bg-surface { background-color: rgb(var(--surface)) !important; }
   html.light .bg-surface-card { background-color: rgb(var(--surface-card)) !important; }
@@ -135,14 +139,26 @@ html.light {
   html.light .bg-slate-700\/50 { background-color: rgb(226 232 240 / 0.8) !important; }
   html.light .bg-slate-700\/60 { background-color: rgb(226 232 240 / 0.8) !important; }
   html.light .bg-slate-800 { background-color: rgb(241 245 249) !important; }
+  html.light .bg-slate-700  { background-color: rgb(226 232 240) !important; }
+  /* brand-800 used for past-week strips — soften to light green */
+  html.light .bg-brand-800  { background-color: rgb(187 247 208) !important; }
+  /* active nav item bg */
+  html.light .bg-brand-500\/15 { background-color: rgb(22 163 74 / 0.12) !important; }
 
   html.light .border-slate-700\/50 { border-color: rgb(0 0 0 / 0.1) !important; }
   html.light .border-slate-700\/40 { border-color: rgb(0 0 0 / 0.08) !important; }
+  html.light .border-slate-700\/30 { border-color: rgb(0 0 0 / 0.06) !important; }
   html.light .border-slate-700\/60 { border-color: rgb(0 0 0 / 0.12) !important; }
-  html.light .border-slate-600 { border-color: rgb(203 213 225) !important; }
-  html.light .border-slate-700 { border-color: rgb(226 232 240) !important; }
+  html.light .border-slate-600    { border-color: rgb(203 213 225) !important; }
+  html.light .border-slate-700    { border-color: rgb(226 232 240) !important; }
+  /* active nav item border */
+  html.light .border-brand-500\/20 { border-color: rgb(22 163 74 / 0.25) !important; }
 
   /* Ambient background in light mode */
   html.light .from-brand-950\/40 { --tw-gradient-from: rgb(240 253 244 / 0.6) !important; }
   html.light .via-surface { --tw-gradient-via: rgb(var(--surface)) !important; }
+
+  /* Sidebar in light mode */
+  html.light .border-r { border-right-color: rgb(0 0 0 / 0.08) !important; }
+  html.light .border-t { border-top-color: rgb(0 0 0 / 0.08) !important; }
 }

@@ -227,7 +227,10 @@
         "step":               "Aerobic step / Stepper"
       },
       "daysLabel": "Preferred days",
-      "daysHint": "The AI will schedule strength sessions on these days where possible."
+      "daysHint": "The AI will schedule strength sessions on these days where possible.",
+      "notesLabel": "Additional preferences",
+      "notesPlaceholder": "e.g. outdoor-friendly exercises only, no squats due to knee pain, focus on ankle and hip stability…",
+      "notesHint": "Free text — the AI will adapt the exercises based on your preferences."
     },
     "review": {
       "checkNote": "Review your details. When everything looks good, click",

@@ -109,7 +109,7 @@ export function WeekCalendar({ plan }: Props) {
             onClick={() => setCurrentWeek(w)}
             title={`Week ${w}`}
             className={`flex-1 h-1.5 rounded-full transition-all duration-200 ${
-              w === currentWeek ? "bg-brand-500" : w < currentWeek ? "bg-brand-800" : "bg-slate-700"
+              w === currentWeek ? "bg-brand-500" : w < currentWeek ? "bg-brand-500/30" : "bg-slate-400/30"
             }`}
           />
         ))}
