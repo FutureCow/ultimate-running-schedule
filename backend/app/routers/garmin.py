@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -46,6 +46,37 @@ async def delete_credentials(
         await db.commit()
 
 
+@router.post("/auto-sync")
+async def auto_sync_if_stale(
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Sync Garmin activities if last sync was more than 1 hour ago.
+    Also updates the user's weekly_km profile field from Garmin data."""
+    cred = await garmin_service.get_credentials(db, user.id)
+    if not cred:
+        return {"synced": False, "reason": "no_credentials"}
+
+    now = datetime.now(timezone.utc)
+    if cred.last_sync_at and (now - cred.last_sync_at) < timedelta(hours=1):
+        return {"synced": False, "reason": "recent", "last_sync_at": cred.last_sync_at.isoformat()}
+
+    try:
+        result = await garmin_service.fetch_activities(db, user.id, months=3)
+        avg_weekly_km = result["summary"].get("avg_weekly_km")
+        if avg_weekly_km is not None:
+            user.weekly_km = avg_weekly_km
+            await db.commit()
+        return {
+            "synced": True,
+            "activity_count": len(result["activities"]),
+            "avg_weekly_km": avg_weekly_km,
+            "last_sync_at": now.isoformat(),
+        }
+    except Exception as e:
+        return {"synced": False, "reason": "error", "detail": str(e)}
+
+
 @router.post("/sync", response_model=GarminSyncResponse)
 async def sync_activities(
     months: int = 3,
@@ -54,6 +85,10 @@ async def sync_activities(
 ):
     try:
         result = await garmin_service.fetch_activities(db, user.id, months)
+        avg_weekly_km = result["summary"].get("avg_weekly_km")
+        if avg_weekly_km is not None:
+            user.weekly_km = avg_weekly_km
+            await db.commit()
         return GarminSyncResponse(
             synced=True,
             activity_count=len(result["activities"]),

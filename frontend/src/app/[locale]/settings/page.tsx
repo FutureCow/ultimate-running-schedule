@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { useTranslations, useLocale } from "next-intl";
@@ -26,28 +26,52 @@ export default function SettingsPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [saveError, setSaveError] = useState("");
-  const [syncStatus, setSyncStatus] = useState<{ activities?: number; error?: string } | null>(null);
+  const [syncStatus, setSyncStatus] = useState<{ activities?: number; weeklyKm?: number; error?: string } | null>(null);
 
   // Profile state
   const [profileSaved, setProfileSaved] = useState(false);
   const [profileError, setProfileError] = useState("");
   const [profile, setProfile] = useState<UserProfile>({});
+  const [profileLoaded, setProfileLoaded] = useState(false);
 
-  const { data: garminStatus, isLoading } = useQuery<GarminStatus>({
+  const { data: garminStatus, isLoading: garminLoading } = useQuery<GarminStatus>({
     queryKey: ["garmin-status"],
     queryFn: () => garminApi.getCredentials().then((r) => r.data),
     retry: false,
   });
 
-  useQuery<UserProfile>({
+  const { data: profileData, isLoading: profileLoading } = useQuery<UserProfile>({
     queryKey: ["user-profile"],
     queryFn: () => profileApi.get().then((r) => r.data),
-    onSuccess: (data: UserProfile) => setProfile(data),
-  } as any);
+  });
+
+  // Pre-populate form once profile data arrives
+  useEffect(() => {
+    if (profileData && !profileLoaded) {
+      setProfile(profileData);
+      setProfileLoaded(true);
+    }
+  }, [profileData, profileLoaded]);
+
+  // Auto-sync Garmin if stale (>1 hour), update weekly_km in form
+  useEffect(() => {
+    if (!garminStatus) return;
+    garminApi.autoSync().then((res) => {
+      const d = res.data;
+      if (d.synced && d.avg_weekly_km != null) {
+        setProfile((p) => ({ ...p, weekly_km: d.avg_weekly_km }));
+        setSyncStatus({ activities: d.activity_count, weeklyKm: d.avg_weekly_km });
+        qc.invalidateQueries({ queryKey: ["user-profile"] });
+      }
+    }).catch(() => {/* silent — auto-sync is best-effort */});
+  }, [garminStatus]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const saveMutation = useMutation({
     mutationFn: () => garminApi.saveCredentials(email, password),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["garmin-status"] }); setEmail(""); setPassword(""); setSaveError(""); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["garmin-status"] });
+      setEmail(""); setPassword(""); setSaveError("");
+    },
     onError: (e: any) => setSaveError(e?.response?.data?.detail || tg("saveFailed")),
   });
 
@@ -58,7 +82,14 @@ export default function SettingsPage() {
 
   const syncMutation = useMutation({
     mutationFn: () => garminApi.sync(3),
-    onSuccess: (res) => setSyncStatus({ activities: res.data.activity_count }),
+    onSuccess: (res) => {
+      const weeklyKm = res.data.summary?.avg_weekly_km;
+      setSyncStatus({ activities: res.data.activity_count, weeklyKm });
+      if (weeklyKm != null) {
+        setProfile((p) => ({ ...p, weekly_km: weeklyKm }));
+        qc.invalidateQueries({ queryKey: ["user-profile"] });
+      }
+    },
     onError: (e: any) => setSyncStatus({ error: e?.response?.data?.detail || tg("syncFailed") }),
   });
 
@@ -71,9 +102,14 @@ export default function SettingsPage() {
       weekly_runs: profile.weekly_runs ?? undefined,
       injuries: profile.injuries ?? undefined,
     }),
-    onSuccess: () => { setProfileSaved(true); setProfileError(""); setTimeout(() => setProfileSaved(false), 2500); },
+    onSuccess: () => {
+      setProfileSaved(true); setProfileError("");
+      setTimeout(() => setProfileSaved(false), 2500);
+    },
     onError: (e: any) => setProfileError(e?.response?.data?.detail || tp("saveFailed")),
   });
+
+  const garminConnected = !!garminStatus && !garminLoading;
 
   return (
     <div className="min-h-screen lg:pl-60">
@@ -121,74 +157,96 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <label className="label">{tp("age")}</label>
-              <input type="number" className="input text-center" placeholder="30"
-                value={profile.age ?? ""}
-                onChange={(e) => setProfile((p) => ({ ...p, age: e.target.value ? Number(e.target.value) : null }))}
-              />
+          {profileLoading ? (
+            <div className="h-8 flex items-center">
+              <span className="w-5 h-5 rounded-full border-2 border-brand-500 border-t-transparent animate-spin" />
             </div>
-            <div>
-              <label className="label">{tp("height")}</label>
-              <input type="number" className="input text-center" placeholder="175"
-                value={profile.height_cm ?? ""}
-                onChange={(e) => setProfile((p) => ({ ...p, height_cm: e.target.value ? Number(e.target.value) : null }))}
-              />
-            </div>
-            <div>
-              <label className="label">{tp("weight")}</label>
-              <input type="number" step="0.1" className="input text-center" placeholder="70"
-                value={profile.weight_kg ?? ""}
-                onChange={(e) => setProfile((p) => ({ ...p, weight_kg: e.target.value ? Number(e.target.value) : null }))}
-              />
-            </div>
-          </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="label">{tp("age")}</label>
+                  <input type="number" className="input text-center" placeholder="30"
+                    value={profile.age ?? ""}
+                    onChange={(e) => setProfile((p) => ({ ...p, age: e.target.value ? Number(e.target.value) : null }))}
+                  />
+                </div>
+                <div>
+                  <label className="label">{tp("height")}</label>
+                  <input type="number" className="input text-center" placeholder="175"
+                    value={profile.height_cm ?? ""}
+                    onChange={(e) => setProfile((p) => ({ ...p, height_cm: e.target.value ? Number(e.target.value) : null }))}
+                  />
+                </div>
+                <div>
+                  <label className="label">{tp("weight")}</label>
+                  <input type="number" step="0.1" className="input text-center" placeholder="70"
+                    value={profile.weight_kg ?? ""}
+                    onChange={(e) => setProfile((p) => ({ ...p, weight_kg: e.target.value ? Number(e.target.value) : null }))}
+                  />
+                </div>
+              </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="label">{tp("weeklyKm")}</label>
-              <input type="number" step="0.5" className="input" placeholder="40"
-                value={profile.weekly_km ?? ""}
-                onChange={(e) => setProfile((p) => ({ ...p, weekly_km: e.target.value ? Number(e.target.value) : null }))}
-              />
-            </div>
-            <div>
-              <label className="label">{tp("weeklyRuns")}</label>
-              <input type="number" className="input" placeholder="4"
-                value={profile.weekly_runs ?? ""}
-                onChange={(e) => setProfile((p) => ({ ...p, weekly_runs: e.target.value ? Number(e.target.value) : null }))}
-              />
-            </div>
-          </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="label flex items-center gap-1.5">
+                    {tp("weeklyKm")}
+                    {garminConnected && (
+                      <span className="text-[10px] font-normal text-brand-400/80 bg-brand-500/10 px-1.5 py-0.5 rounded-full">
+                        Garmin
+                      </span>
+                    )}
+                  </label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    className={`input ${garminConnected ? "text-brand-300" : ""}`}
+                    placeholder="40"
+                    value={profile.weekly_km ?? ""}
+                    onChange={(e) => setProfile((p) => ({ ...p, weekly_km: e.target.value ? Number(e.target.value) : null }))}
+                  />
+                  {garminConnected && (
+                    <p className="text-[10px] text-slate-600 mt-1">{tp("weeklyKmGarminHint")}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="label">{tp("weeklyRuns")}</label>
+                  <input type="number" className="input" placeholder="4"
+                    value={profile.weekly_runs ?? ""}
+                    onChange={(e) => setProfile((p) => ({ ...p, weekly_runs: e.target.value ? Number(e.target.value) : null }))}
+                  />
+                </div>
+              </div>
 
-          <div>
-            <label className="label">{tp("injuries")}</label>
-            <textarea rows={2} className="input resize-none" placeholder={tp("injuriesPlaceholder")}
-              value={profile.injuries ?? ""}
-              onChange={(e) => setProfile((p) => ({ ...p, injuries: e.target.value || null }))}
-            />
-          </div>
+              <div>
+                <label className="label">{tp("injuries")}</label>
+                <textarea rows={2} className="input resize-none" placeholder={tp("injuriesPlaceholder")}
+                  value={profile.injuries ?? ""}
+                  onChange={(e) => setProfile((p) => ({ ...p, injuries: e.target.value || null }))}
+                />
+              </div>
 
-          {profileError && (
-            <div className="flex items-center gap-2 rounded-lg bg-red-500/10 border border-red-500/20 px-3 py-2.5 text-sm text-red-400">
-              <AlertCircle className="w-4 h-4 shrink-0" />{profileError}
-            </div>
+              {profileError && (
+                <div className="flex items-center gap-2 rounded-lg bg-red-500/10 border border-red-500/20 px-3 py-2.5 text-sm text-red-400">
+                  <AlertCircle className="w-4 h-4 shrink-0" />{profileError}
+                </div>
+              )}
+
+              <button
+                onClick={() => profileMutation.mutate()}
+                disabled={profileMutation.isPending}
+                className="btn-primary"
+              >
+                {profileMutation.isPending
+                  ? <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                  : profileSaved
+                  ? <CheckCircle2 className="w-4 h-4" />
+                  : <User className="w-4 h-4" />
+                }
+                {profileSaved ? tp("saved") : tp("save")}
+              </button>
+            </>
           )}
-
-          <button
-            onClick={() => profileMutation.mutate()}
-            disabled={profileMutation.isPending}
-            className="btn-primary"
-          >
-            {profileMutation.isPending
-              ? <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-              : profileSaved
-              ? <CheckCircle2 className="w-4 h-4" />
-              : <User className="w-4 h-4" />
-            }
-            {profileSaved ? tp("saved") : tp("save")}
-          </button>
         </div>
 
         {/* Garmin section */}
@@ -203,7 +261,7 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          {isLoading ? (
+          {garminLoading ? (
             <div className="h-8 flex items-center">
               <span className="w-5 h-5 rounded-full border-2 border-brand-500 border-t-transparent animate-spin" />
             </div>
@@ -227,7 +285,10 @@ export default function SettingsPage() {
                   animate={{ opacity: 1 }}
                   className={`rounded-lg px-3 py-2 text-sm ${syncStatus.error ? "bg-red-500/10 border border-red-500/20 text-red-400" : "bg-brand-500/10 border border-brand-500/20 text-brand-300"}`}
                 >
-                  {syncStatus.error || tg("syncSuccess", { count: syncStatus.activities ?? 0 })}
+                  {syncStatus.error
+                    ? syncStatus.error
+                    : `${tg("syncSuccess", { count: syncStatus.activities ?? 0 })}${syncStatus.weeklyKm != null ? ` · ${syncStatus.weeklyKm} km/week` : ""}`
+                  }
                 </motion.div>
               )}
 
