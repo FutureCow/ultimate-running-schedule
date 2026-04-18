@@ -52,19 +52,22 @@ fi
 
 # ── Versie uit GitHub tags ────────────────────────────────────────────────────
 write_version() {
-    # Lees de meest recente tag gesorteerd op versienummer (bijv. v1.0.3, v1.2, v2.0)
-    APP_TAG=$(git tag --sort=-v:refname 2>/dev/null | head -1)
+    # Gebruik alleen semantische tags (v1.2.3 formaat) voor versienummer
+    APP_TAG=$(git tag --sort=-v:refname 2>/dev/null | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -1)
     APP_VERSION="${APP_TAG:-v1.0.0}"
-    # Strip de 'v' prefix voor de weergave
     DISPLAY_VERSION=$(echo "$APP_VERSION" | sed 's/^v//')
-    # Schrijf of update NEXT_PUBLIC_APP_VERSION in frontend/.env.local
     ENV_LOCAL="$FRONTEND_DIR/.env.local"
+    # Lees huidige waarde zodat we kunnen detecteren of de versie veranderd is
+    CURRENT=""
     if [ -f "$ENV_LOCAL" ] && grep -q "^NEXT_PUBLIC_APP_VERSION=" "$ENV_LOCAL"; then
+        CURRENT=$(grep "^NEXT_PUBLIC_APP_VERSION=" "$ENV_LOCAL" | cut -d= -f2)
         sed -i "s/^NEXT_PUBLIC_APP_VERSION=.*/NEXT_PUBLIC_APP_VERSION=$DISPLAY_VERSION/" "$ENV_LOCAL"
     else
         printf 'NEXT_PUBLIC_APP_VERSION=%s\n' "$DISPLAY_VERSION" >> "$ENV_LOCAL"
     fi
     info "Versie → v$DISPLAY_VERSION"
+    # Geeft 0 (true in shell) als versie veranderd is — signaal voor frontend rebuild
+    [ "$CURRENT" != "$DISPLAY_VERSION" ]
 }
 
 # ── Git pull + tags ───────────────────────────────────────────────────────────
@@ -73,7 +76,7 @@ info "Git pull…"
 
 BEFORE=$(git rev-parse HEAD)
 git pull --ff-only || error "git pull mislukt. Los conflicten op en probeer opnieuw."
-git fetch --tags --quiet
+git fetch --tags --force --quiet
 AFTER=$(git rev-parse HEAD)
 
 # Bepaal gewijzigde bestanden (leeg als er niets veranderd is)
@@ -129,6 +132,15 @@ else
     warn "Backend ongewijzigd — overgeslagen."
 fi
 
+# ── Versie altijd bijwerken (ook als alleen backend gewijzigd is) ─────────────
+# Als de versie veranderd is terwijl frontend niet in CHANGED staat: toch rebuilden.
+if ! $FRONTEND_CHANGED; then
+    if write_version; then
+        warn "Versienummer gewijzigd maar geen frontend-bestanden in diff — toch frontend rebuilden voor juiste versie."
+        FRONTEND_CHANGED=true
+    fi
+fi
+
 # ── Frontend update ───────────────────────────────────────────────────────────
 if $FRONTEND_CHANGED; then
     if $FORCE_FRONTEND && [ -z "$CHANGED" ]; then
@@ -144,7 +156,7 @@ if $FRONTEND_CHANGED; then
         npm ci --frozen-lockfile --silent
     fi
 
-    write_version
+    write_version  # versie schrijven vóór build zodat deze ingebakken wordt
     info "Frontend bouwen…"
     npm run build
 
