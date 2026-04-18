@@ -345,7 +345,12 @@
       "securityNote": "Your Garmin credentials are stored encrypted with AES-256 (Fernet) and are never stored in plain text.",
       "emailLabel": "Garmin email address",
       "passwordLabel": "Garmin password",
-      "connectButton": "Connect Garmin"
+      "connectButton": "Connect Garmin",
+      "mfaNote": "Your Garmin account has two-factor authentication enabled. Enter the code from your authenticator app or email.",
+      "mfaLabel": "Verification code",
+      "mfaSubmit": "Verify",
+      "mfaBack": "Back",
+      "mfaFailed": "Incorrect or expired code"
     }
   },
   "landing": {

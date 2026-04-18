@@ -91,6 +91,7 @@ export const sessionsApi = {
 // Garmin
 export const garminApi = {
   saveCredentials: (email: string, password: string) => api.post("/garmin/credentials", { email, password }),
+  submitMfa: (mfaCode: string) => api.post("/garmin/submit-mfa", { mfa_code: mfaCode }),
   getCredentials: () => api.get("/garmin/credentials"),
   deleteCredentials: () => api.delete("/garmin/credentials"),
   sync: (months = 3) => api.post(`/garmin/sync?months=${months}`),

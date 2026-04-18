@@ -4,12 +4,18 @@ Garmin Connect integration service — compatible with python-garminconnect 0.3.
 Authentication uses the mobile SSO flow (DI OAuth Bearer tokens).
 Tokens are stored as garmin_tokens.json in a per-user temp directory,
 then the file contents are encrypted and persisted in the database.
+
+2FA/MFA flow:
+  save_credentials() attempts login with return_on_mfa=True.
+  If MFA is required, the Garmin client instance is held in _MFA_PENDING (in-memory, 5 min TTL).
+  complete_mfa() retrieves the client, calls resume_login(), then saves tokens to DB.
 """
 import json
 import asyncio
 import logging
 import tempfile
 import os
+import time as _time
 from datetime import datetime, date, timedelta, timezone
 from typing import Optional
 from pathlib import Path
@@ -31,6 +37,11 @@ from app.models.plan import WorkoutSession, WorkoutType
 logger = logging.getLogger(__name__)
 
 TOKEN_FILENAME = "garmin_tokens.json"
+
+# In-memory MFA state: user_id → (garmin_client, expiry_timestamp)
+# Valid for 5 minutes after initial login attempt triggers MFA.
+_MFA_PENDING: dict[int, tuple] = {}
+_MFA_TTL = 300
 
 
 # ── Encryption helpers ────────────────────────────────────────────────────────
@@ -77,7 +88,13 @@ def _cleanup_token_dir(token_dir: str) -> None:
 
 # ── Credential CRUD ───────────────────────────────────────────────────────────
 
-async def save_credentials(db: AsyncSession, user_id: int, email: str, password: str) -> GarminCredential:
+async def save_credentials(db: AsyncSession, user_id: int, email: str, password: str) -> dict:
+    """Save credentials and attempt an initial login to detect 2FA.
+
+    Returns:
+        {"needs_mfa": False, "cred": GarminCredential}  — login succeeded
+        {"needs_mfa": True,  "cred": GarminCredential}  — MFA code required; call complete_mfa()
+    """
     result = await db.execute(select(GarminCredential).where(GarminCredential.user_id == user_id))
     cred = result.scalar_one_or_none()
     enc_email = encrypt(email)
@@ -85,12 +102,92 @@ async def save_credentials(db: AsyncSession, user_id: int, email: str, password:
     if cred:
         cred.encrypted_email = enc_email
         cred.encrypted_password = enc_pass
-        cred.encrypted_tokens = None  # force re-login with new credentials
+        cred.encrypted_tokens = None
     else:
         cred = GarminCredential(user_id=user_id, encrypted_email=enc_email, encrypted_password=enc_pass)
         db.add(cred)
     await db.commit()
     await db.refresh(cred)
+
+    # Attempt login to detect 2FA and pre-cache tokens
+    token_dir = tempfile.mkdtemp(prefix=f"garmin_{user_id}_")
+    new_token_data: list[str] = []
+    mfa_client_holder: list[Garmin] = []
+
+    def _run():
+        try:
+            client = Garmin(email=email, password=password, return_on_mfa=True)
+            status, _ = client.login(token_dir)
+            if status == "needs_mfa":
+                mfa_client_holder.append(client)
+                return "needs_mfa"
+            enc = _read_token_dir(token_dir)
+            if enc:
+                new_token_data.append(enc)
+            return "ok"
+        finally:
+            if not mfa_client_holder:
+                _cleanup_token_dir(token_dir)
+
+    loop = asyncio.get_event_loop()
+    try:
+        outcome = await loop.run_in_executor(None, _run)
+    except GarminConnectTooManyRequestsError as e:
+        _cleanup_token_dir(token_dir)
+        raise RuntimeError("Garmin rate limit bereikt (429). Wacht 15 minuten.") from e
+    except GarminConnectAuthenticationError as e:
+        _cleanup_token_dir(token_dir)
+        raise RuntimeError("Garmin authenticatie mislukt. Controleer je e-mailadres en wachtwoord.") from e
+
+    if outcome == "needs_mfa":
+        _MFA_PENDING[user_id] = (mfa_client_holder[0], token_dir, _time.monotonic() + _MFA_TTL)
+        logger.info("Garmin MFA required for user %s — pending code submission", user_id)
+        return {"needs_mfa": True, "cred": cred}
+
+    if new_token_data:
+        cred.encrypted_tokens = new_token_data[0]
+    cred.last_sync_at = datetime.now(timezone.utc)
+    await db.commit()
+    return {"needs_mfa": False, "cred": cred}
+
+
+async def complete_mfa(db: AsyncSession, user_id: int, mfa_code: str) -> GarminCredential:
+    """Complete a pending 2FA login by submitting the MFA code."""
+    entry = _MFA_PENDING.pop(user_id, None)
+    if entry is None:
+        raise ValueError("Geen actieve MFA-sessie. Probeer opnieuw te koppelen.")
+
+    garmin_client, token_dir, expiry = entry
+    if _time.monotonic() > expiry:
+        _cleanup_token_dir(token_dir)
+        raise ValueError("MFA-sessie verlopen (5 minuten). Probeer opnieuw te koppelen.")
+
+    new_token_data: list[str] = []
+
+    def _run():
+        try:
+            garmin_client.resume_login(None, mfa_code)
+            # Tokens are now in memory on garmin_client.client — serialize directly
+            token_json = garmin_client.client.dumps()
+            new_token_data.append(encrypt(token_json))
+        except GarminConnectAuthenticationError as e:
+            raise RuntimeError(f"MFA-code onjuist of verlopen: {e}") from e
+        finally:
+            _cleanup_token_dir(token_dir)
+
+    loop = asyncio.get_event_loop()
+    await loop.run_in_executor(None, _run)
+
+    cred = await get_credentials(db, user_id)
+    if not cred:
+        raise ValueError("Garmin credentials niet gevonden.")
+
+    if new_token_data:
+        cred.encrypted_tokens = new_token_data[0]
+    cred.last_sync_at = datetime.now(timezone.utc)
+    await db.commit()
+    await db.refresh(cred)
+    logger.info("Garmin MFA completed successfully for user %s", user_id)
     return cred
 
 

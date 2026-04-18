@@ -1,5 +1,6 @@
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.database import get_db
@@ -15,13 +16,38 @@ from app.services import garmin_service
 router = APIRouter(prefix="/garmin", tags=["garmin"])
 
 
-@router.post("/credentials", response_model=GarminCredentialResponse)
+class MfaSubmit(BaseModel):
+    mfa_code: str
+
+
+@router.post("/credentials")
 async def save_credentials(
     payload: GarminCredentialCreate,
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    return await garmin_service.save_credentials(db, user.id, payload.email, payload.password)
+    try:
+        result = await garmin_service.save_credentials(db, user.id, payload.email, payload.password)
+    except RuntimeError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    if result["needs_mfa"]:
+        return {"needs_mfa": True}
+    return result["cred"]
+
+
+@router.post("/submit-mfa", response_model=GarminCredentialResponse)
+async def submit_mfa(
+    payload: MfaSubmit,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    try:
+        cred = await garmin_service.complete_mfa(db, user.id, payload.mfa_code)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=401, detail=str(e))
+    return cred
 
 
 @router.get("/credentials", response_model=GarminCredentialResponse)

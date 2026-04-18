@@ -345,7 +345,12 @@
       "securityNote": "Je Garmin credentials worden versleuteld opgeslagen met AES-256 (Fernet) en nooit in plain text bewaard.",
       "emailLabel": "Garmin e-mailadres",
       "passwordLabel": "Garmin wachtwoord",
-      "connectButton": "Koppel Garmin"
+      "connectButton": "Koppel Garmin",
+      "mfaNote": "Je Garmin-account heeft tweestapsverificatie ingeschakeld. Voer de code in uit je authenticator-app of e-mail.",
+      "mfaLabel": "Verificatiecode",
+      "mfaSubmit": "Bevestigen",
+      "mfaBack": "Terug",
+      "mfaFailed": "Onjuiste of verlopen code"
     }
   },
   "landing": {

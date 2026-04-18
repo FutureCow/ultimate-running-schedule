@@ -28,6 +28,8 @@ export default function SettingsPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [saveError, setSaveError] = useState("");
+  const [needsMfa, setNeedsMfa] = useState(false);
+  const [mfaCode, setMfaCode] = useState("");
   const [syncStatus, setSyncStatus] = useState<{ activities?: number; weeklyKm?: number; error?: string } | null>(null);
 
   // Profile state
@@ -70,11 +72,26 @@ export default function SettingsPage() {
 
   const saveMutation = useMutation({
     mutationFn: () => garminApi.saveCredentials(email, password),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["garmin-status"] });
-      setEmail(""); setPassword(""); setSaveError("");
+    onSuccess: (res) => {
+      if (res.data?.needs_mfa) {
+        setNeedsMfa(true);
+        setMfaCode("");
+        setSaveError("");
+      } else {
+        qc.invalidateQueries({ queryKey: ["garmin-status"] });
+        setEmail(""); setPassword(""); setSaveError(""); setNeedsMfa(false);
+      }
     },
     onError: (e: any) => setSaveError(e?.response?.data?.detail || tg("saveFailed")),
+  });
+
+  const mfaMutation = useMutation({
+    mutationFn: () => garminApi.submitMfa(mfaCode),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["garmin-status"] });
+      setNeedsMfa(false); setMfaCode(""); setEmail(""); setPassword(""); setSaveError("");
+    },
+    onError: (e: any) => setSaveError(e?.response?.data?.detail || tg("mfaFailed")),
   });
 
   const deleteMutation = useMutation({
@@ -345,6 +362,57 @@ export default function SettingsPage() {
                 </button>
               </div>
             </div>
+          ) : needsMfa ? (
+            <form
+              onSubmit={(e) => { e.preventDefault(); mfaMutation.mutate(); }}
+              className="space-y-4"
+            >
+              <div className="flex items-start gap-2 text-xs text-slate-500 rounded-xl bg-amber-500/10 border border-amber-500/20 px-3 py-2.5">
+                <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0 text-amber-400" />
+                {tg("mfaNote")}
+              </div>
+
+              {saveError && (
+                <div className="flex items-center gap-2 rounded-lg bg-red-500/10 border border-red-500/20 px-3 py-2.5 text-sm text-red-400">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  {saveError}
+                </div>
+              )}
+
+              <div>
+                <label className="label">{tg("mfaLabel")}</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={8}
+                  autoComplete="one-time-code"
+                  value={mfaCode}
+                  onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ""))}
+                  placeholder="123456"
+                  required
+                  className="input text-center font-mono tracking-widest text-lg"
+                  autoFocus
+                />
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => { setNeedsMfa(false); setSaveError(""); }}
+                  className="btn-secondary flex-1"
+                >
+                  {tg("mfaBack")}
+                </button>
+                <button type="submit" disabled={mfaMutation.isPending || mfaCode.length < 6} className="btn-primary flex-1">
+                  {mfaMutation.isPending
+                    ? <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                    : <CheckCircle2 className="w-4 h-4" />
+                  }
+                  {tg("mfaSubmit")}
+                </button>
+              </div>
+            </form>
           ) : (
             <form
               onSubmit={(e) => { e.preventDefault(); saveMutation.mutate(); }}
