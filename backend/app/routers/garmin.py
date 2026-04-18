@@ -121,7 +121,7 @@ async def push_week(
     user: User = Depends(get_current_user),
 ):
     plan_result = await db.execute(
-        select(Plan).where(Plan.id == payload.plan_id, Plan.user_id == user.id)
+        select(Plan).where(Plan.public_id == payload.plan_id, Plan.user_id == user.id)
     )
     plan = plan_result.scalar_one_or_none()
     if not plan:
@@ -129,7 +129,7 @@ async def push_week(
 
     sessions_result = await db.execute(
         select(WorkoutSession).where(
-            WorkoutSession.plan_id == payload.plan_id,
+            WorkoutSession.plan_id == plan.id,
             WorkoutSession.week_number == payload.week_number,
         )
     )

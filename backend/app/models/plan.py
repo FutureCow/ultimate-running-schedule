@@ -1,4 +1,5 @@
 from datetime import datetime, date
+import uuid
 from sqlalchemy import (
     String, Integer, Float, Boolean, DateTime, Date,
     ForeignKey, Text, JSON, func, Enum as SAEnum
@@ -30,6 +31,7 @@ class Plan(Base):
     __tablename__ = "plans"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    public_id: Mapped[str] = mapped_column(String(36), unique=True, index=True, default=lambda: str(uuid.uuid4()))
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     goal: Mapped[str] = mapped_column(String(50), nullable=False)

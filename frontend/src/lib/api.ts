@@ -62,12 +62,12 @@ export const profileApi = {
 // Plans
 export const plansApi = {
   list: () => api.get("/plans"),
-  get: (id: number) => api.get(`/plans/${id}`),
+  get: (publicId: string) => api.get(`/plans/${publicId}`),
   create: (data: any) => api.post("/plans", data),
-  update: (id: number, data: any) => api.put(`/plans/${id}`, data),
-  delete: (id: number) => api.delete(`/plans/${id}`),
-  recalculateDates: (id: number, startDate?: string) =>
-    api.patch(`/plans/${id}/recalculate-dates`, { start_date: startDate ?? null }),
+  update: (publicId: string, data: any) => api.put(`/plans/${publicId}`, data),
+  delete: (publicId: string) => api.delete(`/plans/${publicId}`),
+  recalculateDates: (publicId: string, startDate?: string) =>
+    api.patch(`/plans/${publicId}/recalculate-dates`, { start_date: startDate ?? null }),
 };
 
 // Sessions
@@ -83,7 +83,7 @@ export const garminApi = {
   deleteCredentials: () => api.delete("/garmin/credentials"),
   sync: (months = 3) => api.post(`/garmin/sync?months=${months}`),
   pushSessions: (sessionIds: number[]) => api.post("/garmin/push/sessions", { session_ids: sessionIds }),
-  pushWeek: (planId: number, weekNumber: number) =>
+  pushWeek: (planId: string, weekNumber: number) =>
     api.post("/garmin/push/week", { plan_id: planId, week_number: weekNumber }),
   removeSession: (sessionId: number) => api.delete(`/garmin/sessions/${sessionId}`),
 };

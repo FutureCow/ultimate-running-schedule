@@ -43,5 +43,5 @@ class GarminPushRequest(BaseModel):
 
 
 class GarminPushWeekRequest(BaseModel):
-    plan_id: int
+    plan_id: str  # public_id (UUID)
     week_number: int

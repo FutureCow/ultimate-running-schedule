@@ -92,6 +92,7 @@ class PlanResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    public_id: str
     user_id: int
     name: str
     goal: str

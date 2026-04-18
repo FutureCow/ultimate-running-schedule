@@ -16,7 +16,7 @@ export default function EditPlanPage() {
 
   const { data: plan, isLoading } = useQuery<Plan>({
     queryKey: ["plan", id],
-    queryFn: () => plansApi.get(Number(id)).then((r) => r.data),
+    queryFn: () => plansApi.get(id).then((r) => r.data),
   });
 
   return (

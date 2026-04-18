@@ -32,17 +32,17 @@ export function WeekCalendar({ plan }: Props) {
   const moveMutation = useMutation({
     mutationFn: ({ sessionId, dayNumber }: { sessionId: number; dayNumber: number }) =>
       sessionsApi.move(sessionId, dayNumber),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["plan", String(plan.id)] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["plan", plan.public_id] }),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (sessionId: number) => sessionsApi.delete(sessionId),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["plan", String(plan.id)] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["plan", plan.public_id] }),
   });
 
   const removeFromGarminMutation = useMutation({
     mutationFn: (sessionId: number) => garminApi.removeSession(sessionId),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["plan", String(plan.id)] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["plan", plan.public_id] }),
   });
 
   const week = weeks.find((w) => w.week_number === currentWeek);
@@ -64,7 +64,7 @@ export function WeekCalendar({ plan }: Props) {
   async function handlePushWeek() {
     setPushingWeek(true);
     try {
-      await garminApi.pushWeek(plan.id, currentWeek);
+      await garminApi.pushWeek(plan.public_id, currentWeek);
       setWeekPushed((prev) => new Set(Array.from(prev).concat(currentWeek)));
     } catch (e) { console.error(e); }
     finally { setPushingWeek(false); }

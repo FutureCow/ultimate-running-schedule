@@ -106,27 +106,27 @@ async def list_plans(
     return result.scalars().all()
 
 
-@router.get("/{plan_id}", response_model=PlanResponse)
+@router.get("/{public_id}", response_model=PlanResponse)
 async def get_plan(
-    plan_id: int,
+    public_id: str,
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    result = await db.execute(select(Plan).where(Plan.id == plan_id, Plan.user_id == user.id))
+    result = await db.execute(select(Plan).where(Plan.public_id == public_id, Plan.user_id == user.id))
     plan = result.scalar_one_or_none()
     if not plan:
         raise HTTPException(status_code=404, detail="Plan not found")
     return plan
 
 
-@router.put("/{plan_id}", response_model=PlanResponse)
+@router.put("/{public_id}", response_model=PlanResponse)
 async def update_plan(
-    plan_id: int,
+    public_id: str,
     payload: PlanUpdate,
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    result = await db.execute(select(Plan).where(Plan.id == plan_id, Plan.user_id == user.id))
+    result = await db.execute(select(Plan).where(Plan.public_id == public_id, Plan.user_id == user.id))
     plan = result.scalar_one_or_none()
     if not plan:
         raise HTTPException(status_code=404, detail="Plan not found")
@@ -184,7 +184,7 @@ async def update_plan(
 
     # Delete old sessions
     from sqlalchemy import delete as sql_delete
-    await db.execute(sql_delete(WorkoutSession).where(WorkoutSession.plan_id == plan_id))
+    await db.execute(sql_delete(WorkoutSession).where(WorkoutSession.plan_id == plan.id))
 
     await db.flush()
 
@@ -193,7 +193,7 @@ async def update_plan(
     db.add_all(sessions)
     await db.commit()
 
-    result = await db.execute(select(Plan).where(Plan.id == plan_id))
+    result = await db.execute(select(Plan).where(Plan.public_id == public_id))
     return result.scalar_one()
 
 
@@ -201,16 +201,16 @@ class RecalculateDatesPayload(BaseModel):
     start_date: Optional[date] = None
 
 
-@router.patch("/{plan_id}/recalculate-dates", response_model=PlanResponse)
+@router.patch("/{public_id}/recalculate-dates", response_model=PlanResponse)
 async def recalculate_session_dates(
-    plan_id: int,
+    public_id: str,
     payload: RecalculateDatesPayload,
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
     """Recompute scheduled_date for all sessions from plan_json. No AI call.
     Optionally pass start_date to correct the stored plan start date first."""
-    result = await db.execute(select(Plan).where(Plan.id == plan_id, Plan.user_id == user.id))
+    result = await db.execute(select(Plan).where(Plan.public_id == public_id, Plan.user_id == user.id))
     plan = result.scalar_one_or_none()
     if not plan:
         raise HTTPException(status_code=404, detail="Plan not found")
@@ -221,24 +221,24 @@ async def recalculate_session_dates(
         plan.start_date = payload.start_date
 
     from sqlalchemy import delete as sql_delete
-    await db.execute(sql_delete(WorkoutSession).where(WorkoutSession.plan_id == plan_id))
+    await db.execute(sql_delete(WorkoutSession).where(WorkoutSession.plan_id == plan.id))
     await db.flush()
 
     sessions = _create_sessions_from_json(plan, plan.plan_json)
     db.add_all(sessions)
     await db.commit()
 
-    result = await db.execute(select(Plan).where(Plan.id == plan_id))
+    result = await db.execute(select(Plan).where(Plan.public_id == public_id))
     return result.scalar_one()
 
 
-@router.delete("/{plan_id}", status_code=204)
+@router.delete("/{public_id}", status_code=204)
 async def delete_plan(
-    plan_id: int,
+    public_id: str,
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    result = await db.execute(select(Plan).where(Plan.id == plan_id, Plan.user_id == user.id))
+    result = await db.execute(select(Plan).where(Plan.public_id == public_id, Plan.user_id == user.id))
     plan = result.scalar_one_or_none()
     if not plan:
         raise HTTPException(status_code=404, detail="Plan not found")

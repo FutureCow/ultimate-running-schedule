@@ -161,7 +161,7 @@ export function PlanCreatorForm({ editPlan }: Props) {
         } : undefined,
       };
       if (isEditMode) {
-        await plansApi.update(editPlan!.id, payload);
+        await plansApi.update(editPlan!.public_id, payload);
       } else {
         const { data: plan } = await plansApi.create(payload);
         // Auto-save athlete profile so next plan is pre-filled
@@ -173,10 +173,10 @@ export function PlanCreatorForm({ editPlan }: Props) {
           weekly_runs: data.weekly_runs,
           injuries: data.injuries,
         }).catch(() => {/* non-critical, ignore errors */});
-        router.push(`/plans/${plan.id}`);
+        router.push(`/plans/${plan.public_id}`);
         return;
       }
-      router.push(`/plans/${editPlan!.id}`);
+      router.push(`/plans/${editPlan!.public_id}`);
     } catch (e: any) {
       setError(e?.response?.data?.detail || t("errors.failed"));
       setLoading(false);

@@ -110,6 +110,7 @@ export interface PlanJson {
 
 export interface Plan {
   id: number;
+  public_id: string;
   user_id: number;
   name: string;
   goal: string;

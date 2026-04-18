@@ -64,7 +64,7 @@ export default function DashboardPage() {
                     {activePlan.start_date && ` · Start ${format(parseISO(activePlan.start_date), "d MMM", { locale: dateFnsLocale })}`}
                   </p>
                 </div>
-                <Link href={`/plans/${activePlan.id}`} className="btn-secondary text-sm">
+                <Link href={`/plans/${activePlan.public_id}`} className="btn-secondary text-sm">
                   {t("viewPlan")} <ChevronRight className="w-4 h-4" />
                 </Link>
               </div>
@@ -102,13 +102,13 @@ export default function DashboardPage() {
               <div className="space-y-2">
                 {plans.slice(1).map((plan, i) => (
                   <motion.div
-                    key={plan.id}
+                    key={plan.public_id}
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.05 }}
                   >
                     <Link
-                      href={`/plans/${plan.id}`}
+                      href={`/plans/${plan.public_id}`}
                       className="flex items-center justify-between card hover:border-slate-600 transition-colors"
                     >
                       <div>
