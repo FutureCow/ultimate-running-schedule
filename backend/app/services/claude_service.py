@@ -18,7 +18,7 @@ You create highly personalized, science-backed training plans.
 ** LANGUAGE: YOU MUST WRITE EVERY TEXT VALUE IN THE JSON IN {language}. THIS IS MANDATORY. **
 
 IMPORTANT OUTPUT RULES:
-- Return ONLY valid JSON – no markdown, no explanation outside JSON.
+- Return ONLY valid JSON. Start your response with `{` and end with `}`. No preamble, no explanation, no markdown.
 - Every workout must include precise target paces in "MM:SS" format per km.
 - Paces must be realistic and consistent with the athlete's history and goal.
 - Pace calculations must use the Jack Daniels VDOT methodology.
@@ -277,9 +277,19 @@ async def generate_plan(plan: PlanCreate, garmin_summary: Optional[dict] = None,
     raw = block.text.strip()
     logger.info("Raw response length=%d, first 200 chars: %s", len(raw), raw[:200])
 
-    # Strip any accidental markdown code fences
-    raw = re.sub(r"^```(?:json)?\s*", "", raw)
-    raw = re.sub(r"\s*```$", "", raw)
+    # Extract JSON from a ```json ... ``` code block if present (model sometimes adds preamble text)
+    code_block = re.search(r"```(?:json)?\s*(\{[\s\S]*\})\s*```", raw)
+    if code_block:
+        raw = code_block.group(1)
+    else:
+        # Fall back: strip leading/trailing fences if the response starts/ends with them
+        raw = re.sub(r"^```(?:json)?\s*", "", raw)
+        raw = re.sub(r"\s*```$", "", raw)
+        # Last resort: find first { and last } to isolate JSON object
+        start = raw.find("{")
+        end = raw.rfind("}")
+        if start != -1 and end != -1 and end > start:
+            raw = raw[start:end + 1]
 
     if not raw:
         raise ValueError(
