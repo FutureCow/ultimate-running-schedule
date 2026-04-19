@@ -81,6 +81,8 @@ export const plansApi = {
   delete: (publicId: string) => api.delete(`/plans/${publicId}`),
   recalculateDates: (publicId: string, startDate?: string) =>
     api.patch(`/plans/${publicId}/recalculate-dates`, { start_date: startDate ?? null }),
+  addStrength: (publicId: string, strength: object) =>
+    api.post(`/plans/${publicId}/add-strength`, strength),
 };
 
 // Sessions

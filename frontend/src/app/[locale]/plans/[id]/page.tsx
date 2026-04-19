@@ -2,15 +2,19 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { motion } from "framer-motion";
-import { ArrowLeft, Trash2, Info, Pencil } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { ArrowLeft, Trash2, Info, Pencil, Dumbbell, X, Loader2 } from "lucide-react";
 import { useTranslations, useLocale } from "next-intl";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
 import { Link } from "@/i18n/navigation";
 import { plansApi } from "@/lib/api";
 import { Plan } from "@/types";
 import { WeekCalendar } from "@/components/Calendar/WeekCalendar";
 import { PaceZonesCard } from "@/components/Calendar/PaceZonesCard";
 import { Navbar } from "@/components/ui/Navbar";
+import { StepStrength } from "@/components/PlanCreatorForm/steps/StepStrength";
+import { FormSchema } from "@/components/PlanCreatorForm/PlanCreatorForm";
 
 export default function PlanDetailPage() {
   const { id, locale } = useParams<{ id: string; locale: string }>();
@@ -18,6 +22,9 @@ export default function PlanDetailPage() {
   const queryClient = useQueryClient();
   const t = useTranslations("plans");
   const tGoals = useTranslations("goals");
+  const tForm = useTranslations("form");
+  const [strengthModal, setStrengthModal] = useState(false);
+  const [strengthError, setStrengthError] = useState("");
 
   const { data: plan, isLoading } = useQuery<Plan>({
     queryKey: ["plan", id],
@@ -32,7 +39,41 @@ export default function PlanDetailPage() {
     },
   });
 
+  const { watch, setValue, handleSubmit } = useForm<FormSchema>({
+    defaultValues: {
+      strength: plan?.strength_enabled ? {
+        enabled: true,
+        location: (plan.strength_location as any) ?? "bodyweight",
+        type: (plan.strength_type as any) ?? "full_body",
+        days: plan.strength_days ?? [],
+        equipment: (plan as any).strength_equipment ?? [],
+      } : { enabled: false },
+    },
+  });
+
+  const addStrengthMutation = useMutation({
+    mutationFn: (data: FormSchema) => {
+      const s = data.strength;
+      if (!s?.enabled) throw new Error("Strength not enabled");
+      return plansApi.addStrength(id, {
+        enabled: true,
+        location: s.location ?? null,
+        type: s.type ?? null,
+        days: s.days ?? null,
+        equipment: s.equipment ?? null,
+        notes: s.notes ?? null,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["plan", id] });
+      setStrengthModal(false);
+      setStrengthError("");
+    },
+    onError: (e: any) => setStrengthError(e?.response?.data?.detail || "Mislukt"),
+  });
+
   return (
+    <>
     <div className="min-h-screen lg:pl-60">
       <Navbar />
       <main className="px-4 py-6 pb-24 lg:pb-6 max-w-6xl mx-auto">
@@ -57,6 +98,14 @@ export default function PlanDetailPage() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setStrengthModal(true)}
+                  className="btn-secondary text-sm px-3"
+                  title={t("addStrength")}
+                >
+                  <Dumbbell className="w-4 h-4 text-violet-400" />
+                  <span className="hidden sm:inline">{t("addStrength")}</span>
+                </button>
                 <Link href={`/plans/${id}/edit`} className="btn-ghost px-3">
                   <Pencil className="w-4 h-4" />
                 </Link>
@@ -109,5 +158,58 @@ export default function PlanDetailPage() {
         )}
       </main>
     </div>
+
+    {/* Strength modal */}
+    <AnimatePresence>
+      {strengthModal && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm px-4 pb-4 sm:pb-0"
+          onClick={(e) => { if (e.target === e.currentTarget) setStrengthModal(false); }}
+        >
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 40 }}
+            className="card w-full max-w-lg max-h-[90vh] overflow-y-auto"
+          >
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-lg font-bold text-white">{t("addStrength")}</h2>
+              <button onClick={() => setStrengthModal(false)} className="btn-ghost p-2">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <StepStrength watch={watch} setValue={setValue} />
+
+            {strengthError && (
+              <p className="mt-3 text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+                {strengthError}
+              </p>
+            )}
+
+            <div className="flex gap-3 mt-6 pt-4 border-t border-slate-700/50">
+              <button onClick={() => setStrengthModal(false)} className="btn-secondary flex-1">
+                {tForm("prev")}
+              </button>
+              <button
+                onClick={handleSubmit((data) => addStrengthMutation.mutate(data))}
+                disabled={addStrengthMutation.isPending || !watch("strength.enabled")}
+                className="btn-primary flex-1"
+              >
+                {addStrengthMutation.isPending ? (
+                  <><Loader2 className="w-4 h-4 animate-spin" /> {tForm("generating")}</>
+                ) : (
+                  <><Dumbbell className="w-4 h-4" /> {t("addStrength")}</>
+                )}
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+    </>
   );
 }

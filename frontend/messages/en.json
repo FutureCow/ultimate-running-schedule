@@ -113,6 +113,7 @@
     "notFound": "Plan not found.",
     "deleteConfirm": "Delete plan?",
     "weeklyStructure": "Weekly structure",
+    "addStrength": "Add strength training",
     "new": {
       "title": "New Training Plan",
       "subtitle": "AI generates a personalized schedule based on your profile and Garmin data."

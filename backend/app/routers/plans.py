@@ -259,6 +259,74 @@ async def recalculate_session_dates(
     return result.scalar_one()
 
 
+@router.post("/{public_id}/add-strength", response_model=PlanResponse)
+async def add_strength_to_plan(
+    public_id: str,
+    payload: StrengthPreferences,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Generate and insert strength sessions into an existing plan without touching running sessions."""
+    result = await db.execute(select(Plan).where(Plan.public_id == public_id, Plan.user_id == user.id))
+    plan = result.scalar_one_or_none()
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found")
+    if not plan.plan_json:
+        raise HTTPException(status_code=400, detail="Plan has no stored JSON")
+
+    try:
+        strength_sessions = await claude_service.generate_strength_sessions(
+            plan.plan_json, payload, plan.duration_weeks
+        )
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"AI strength generation failed: {str(e)}")
+
+    # Remove existing strength sessions
+    from sqlalchemy import delete as sql_delete
+    await db.execute(
+        sql_delete(WorkoutSession).where(
+            WorkoutSession.plan_id == plan.id,
+            WorkoutSession.workout_type == "strength",
+        )
+    )
+    await db.flush()
+
+    # Calculate scheduled_date for each new session
+    actual_start = plan.start_date or date.today()
+    week1_monday = actual_start - timedelta(days=actual_start.weekday())
+
+    new_sessions = []
+    for s in strength_sessions:
+        wnum = s.get("week_number", 1)
+        day_num = s.get("day_number", 1)
+        scheduled = week1_monday + timedelta(weeks=wnum - 1, days=day_num - 1)
+        new_sessions.append(WorkoutSession(
+            plan_id=plan.id,
+            week_number=wnum,
+            day_number=day_num,
+            scheduled_date=scheduled,
+            workout_type="strength",
+            title=s.get("title", "Strength"),
+            description=s.get("description"),
+            distance_km=None,
+            duration_minutes=s.get("duration_minutes"),
+            target_paces={"main": "N/A"},
+        ))
+
+    # Persist strength preferences on plan
+    plan.strength_enabled = True
+    plan.strength_location = payload.location
+    plan.strength_type = payload.type
+    plan.strength_days = payload.days
+    plan.strength_equipment = payload.equipment
+
+    db.add_all(new_sessions)
+    await db.commit()
+
+    result = await db.execute(select(Plan).where(Plan.public_id == public_id))
+    return result.scalar_one()
+
+
 @router.delete("/{public_id}", status_code=204)
 async def delete_plan(
     public_id: str,

@@ -113,6 +113,7 @@
     "notFound": "Plan niet gevonden.",
     "deleteConfirm": "Plan verwijderen?",
     "weeklyStructure": "Weekstructuur",
+    "addStrength": "Krachttraining toevoegen",
     "new": {
       "title": "Nieuw Trainingsplan",
       "subtitle": "AI genereert een gepersonaliseerd schema op basis van jouw profiel en Garmin-data."

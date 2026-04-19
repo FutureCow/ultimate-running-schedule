@@ -7,7 +7,7 @@ from typing import Optional
 import anthropic
 
 from app.config import settings
-from app.schemas.plan import PlanCreate
+from app.schemas.plan import PlanCreate, StrengthPreferences
 
 logger = logging.getLogger(__name__)
 
@@ -144,4 +144,82 @@ async def generate_plan(
         return json.loads(raw)
     except json.JSONDecodeError as e:
         logger.error("JSON parse failed. raw[:500]=%s", raw[:500])
+        raise ValueError(f"Invalid JSON from Claude: {e}. Got: {raw[:200]!r}") from e
+
+
+async def generate_strength_sessions(
+    plan_json: dict,
+    strength: StrengthPreferences,
+    duration_weeks: int,
+    language: str = "nl",
+) -> list[dict]:
+    """Generate only strength sessions for an existing plan. Much faster than a full plan."""
+    client_kwargs = {"api_key": settings.ANTHROPIC_API_KEY or "proxy"}
+    if settings.ANTHROPIC_BASE_URL:
+        client_kwargs["base_url"] = settings.ANTHROPIC_BASE_URL
+    client = anthropic.AsyncAnthropic(**client_kwargs)
+
+    lang = "Dutch" if language == "nl" else "English"
+
+    locs = {"bodyweight": "home/bodyweight", "home_equipment": "home/dumbbells+bands", "gym": "gym"}
+    typs = {"core_stability": "Core & Stability", "max_strength": "Max Strength",
+            "plyometrics": "Plyometrics", "injury_prevention": "Injury Prevention", "full_body": "Full Body"}
+    day_names = {1: "Mon", 2: "Tue", 3: "Wed", 4: "Thu", 5: "Fri", 6: "Sat", 7: "Sun"}
+
+    days_str = ", ".join(day_names[d] for d in (strength.days or []) if d in day_names) or "flexible"
+    equip = f" ({', '.join(strength.equipment)})" if strength.location == "home_equipment" and strength.equipment else ""
+    notes_str = f" Notes: {strength.notes}." if strength.notes else ""
+
+    # Summarise existing run days per week so Claude can avoid conflicts
+    week_summaries = []
+    taper_start = max(1, duration_weeks - 1)
+    for week in plan_json.get("weeks", []):
+        wnum = week["week_number"]
+        if wnum > duration_weeks:
+            continue  # skip post-race recovery week
+        run_days = sorted({w["day_number"] for w in week.get("workouts", [])
+                           if w.get("workout_type") not in ("rest", "strength")})
+        week_summaries.append(f"Week {wnum}: run days {run_days}")
+
+    prompt = f"""Add strength training sessions to this {duration_weeks}-week running plan. Write all text in {lang}.
+
+## Existing run days per week
+{chr(10).join(week_summaries)}
+
+## Strength preferences
+Focus: {typs.get(strength.type or '', 'Full Body')}
+Location: {locs.get(strength.location or '', 'unspecified')}{equip}
+Preferred days: {days_str}{notes_str}
+
+## Rules
+- Only add sessions on preferred strength days. If that day already has a run, skip strength that week.
+- NEVER place strength on the day before OR same day as interval/tempo/long_run.
+- Weeks {taper_start}–{duration_weeks}: max 1 light session (core/mobility only), no heavy strength.
+- No strength in week {duration_weeks + 1} (post-race recovery).
+- duration_minutes: 30–50. target_paces: {{"main": "N/A"}}. distance_km: null.
+- description: numbered list of 6–8 exercises (sets×reps, rest, cue) in {lang}.
+
+## Output schema
+{{"sessions":[{{"week_number":N,"day_number":D,"title":"...","description":"...","duration_minutes":N}}]}}
+
+Return ONLY the JSON object."""
+
+    message = await client.messages.create(
+        model=settings.CLAUDE_MODEL,
+        max_tokens=8000,
+        system=f"You are an elite running coach. Return ONLY a JSON object — no preamble, no markdown.",
+        messages=[{"role": "user", "content": prompt}],
+    )
+
+    logger.info("Strength-only Claude: stop_reason=%s usage=%s", message.stop_reason, message.usage)
+
+    if not message.content:
+        raise ValueError(f"Empty Claude response (stop_reason={message.stop_reason})")
+
+    raw = _extract_json(message.content[0].text)
+    try:
+        data = json.loads(raw)
+        return data.get("sessions", [])
+    except json.JSONDecodeError as e:
+        logger.error("Strength JSON parse failed. raw[:500]=%s", raw[:500])
         raise ValueError(f"Invalid JSON from Claude: {e}. Got: {raw[:200]!r}") from e
