@@ -3,7 +3,7 @@
 import { useParams, useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Trash2, Info, Pencil, Dumbbell, X, Loader2 } from "lucide-react";
+import { ArrowLeft, Trash2, Info, Pencil, Dumbbell, X, Loader2, RefreshCw } from "lucide-react";
 import { useTranslations, useLocale } from "next-intl";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -72,6 +72,11 @@ export default function PlanDetailPage() {
     onError: (e: any) => setStrengthError(e?.response?.data?.detail || "Mislukt"),
   });
 
+  const regenerateMutation = useMutation({
+    mutationFn: () => plansApi.regenerate(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["plan", id] }),
+  });
+
   return (
     <>
     <div className="min-h-screen lg:pl-60">
@@ -98,6 +103,17 @@ export default function PlanDetailPage() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
+                <button
+                  onClick={() => { if (confirm(t("regenerateConfirm"))) regenerateMutation.mutate(); }}
+                  disabled={regenerateMutation.isPending}
+                  className="btn-secondary text-sm px-3"
+                  title={t("regenerate")}
+                >
+                  {regenerateMutation.isPending
+                    ? <Loader2 className="w-4 h-4 animate-spin" />
+                    : <RefreshCw className="w-4 h-4" />}
+                  <span className="hidden sm:inline">{t("regenerate")}</span>
+                </button>
                 <button
                   onClick={() => setStrengthModal(true)}
                   className="btn-secondary text-sm px-3"

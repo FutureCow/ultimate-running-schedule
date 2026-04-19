@@ -114,6 +114,8 @@
     "deleteConfirm": "Delete plan?",
     "weeklyStructure": "Weekly structure",
     "addStrength": "Add strength training",
+    "regenerate": "Recalculate with Garmin",
+    "regenerateConfirm": "Regenerate plan with latest Garmin data? This will overwrite the current schedule.",
     "new": {
       "title": "New Training Plan",
       "subtitle": "AI generates a personalized schedule based on your profile and Garmin data."

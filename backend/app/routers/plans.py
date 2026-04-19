@@ -232,6 +232,70 @@ async def update_plan(
     return result.scalar_one()
 
 
+@router.post("/{public_id}/regenerate", response_model=PlanResponse)
+async def regenerate_plan(
+    public_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Regenerate the plan using current settings + fresh Garmin data. No settings are changed."""
+    result = await db.execute(select(Plan).where(Plan.public_id == public_id, Plan.user_id == user.id))
+    plan = result.scalar_one_or_none()
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found")
+
+    merged = PlanCreate(
+        name=plan.name,
+        goal=plan.goal,
+        target_time_seconds=plan.target_time_seconds,
+        target_pace_per_km=plan.target_pace_per_km,
+        age=plan.age,
+        height_cm=plan.height_cm,
+        weight_kg=plan.weight_kg,
+        weekly_km=plan.weekly_km,
+        weekly_runs=plan.weekly_runs,
+        injuries=plan.injuries,
+        extra_notes=plan.extra_notes,
+        training_days=plan.training_days,
+        long_run_day=plan.long_run_day,
+        duration_weeks=plan.duration_weeks,
+        surface=plan.surface,
+        start_date=plan.start_date,
+        race_date=plan.race_date,
+        strength=StrengthPreferences(
+            enabled=plan.strength_enabled,
+            location=plan.strength_location,
+            type=plan.strength_type,
+            days=plan.strength_days,
+            equipment=plan.strength_equipment,
+        ) if plan.strength_enabled else None,
+    )
+
+    garmin_summary = None
+    try:
+        garmin_summary = await garmin_service.fetch_activities(db, user.id, months=3)
+    except Exception:
+        pass
+
+    try:
+        plan_json = await claude_service.generate_plan(merged, garmin_summary)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"AI plan generation failed: {str(e)}")
+
+    plan.plan_json = plan_json
+
+    from sqlalchemy import delete as sql_delete
+    await db.execute(sql_delete(WorkoutSession).where(WorkoutSession.plan_id == plan.id))
+    await db.flush()
+
+    sessions = _create_sessions_from_json(plan, plan_json)
+    db.add_all(sessions)
+    await db.commit()
+
+    result = await db.execute(select(Plan).where(Plan.public_id == public_id))
+    return result.scalar_one()
+
+
 class RecalculateDatesPayload(BaseModel):
     start_date: Optional[date] = None
 
