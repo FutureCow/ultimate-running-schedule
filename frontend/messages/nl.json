@@ -243,7 +243,7 @@
       "checkNoteButton": "Genereer Plan",
       "checkNoteSuffix": "en maakt Claude AI jouw persoonlijk schema.",
       "aiNoteLabel": "AI Plan Generatie",
-      "aiNoteText": "Claude Opus analyseert je profiel en Garmin-data en maakt een wetenschappelijk onderbouwd schema. Dit kan 20-30 seconden duren.",
+      "aiNoteText": "Claude analyseert je profiel en Garmin-data en maakt een wetenschappelijk onderbouwd schema. Dit kan 2 à 3 minuten duren.",
       "rows": {
         "name": "Plannaam",
         "goal": "Doel",

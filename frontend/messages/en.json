@@ -243,7 +243,7 @@
       "checkNoteButton": "Generate Plan",
       "checkNoteSuffix": "and Claude AI will build your personal schedule.",
       "aiNoteLabel": "AI Plan Generation",
-      "aiNoteText": "Claude Opus analyses your profile and Garmin data to create a science-backed training schedule. This may take 20–30 seconds.",
+      "aiNoteText": "Claude analyses your profile and Garmin data to create a science-backed training schedule. This may take 2–3 minutes.",
       "rows": {
         "name": "Plan name",
         "goal": "Goal",
