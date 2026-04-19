@@ -12,6 +12,7 @@ export interface UserProfile {
   weekly_km?: number | null;
   weekly_runs?: number | null;
   injuries?: string | null;
+  is_admin?: boolean;
 }
 
 export interface AuthTokens {

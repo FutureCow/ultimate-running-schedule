@@ -5,9 +5,10 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { useTranslations, useLocale } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
-import { Watch, Trash2, RefreshCw, CheckCircle2, AlertCircle, Lock, Globe, User, Sun, Moon, Monitor } from "lucide-react";
+import { Watch, Trash2, RefreshCw, CheckCircle2, AlertCircle, Lock, Globe, User, Sun, Moon, Monitor, ShieldCheck } from "lucide-react";
 import { useTheme } from "@/components/ui/ThemeProvider";
 import { garminApi, profileApi } from "@/lib/api";
+import { Link } from "@/i18n/navigation";
 import { GarminStatus, UserProfile } from "@/types";
 import { Navbar } from "@/components/ui/Navbar";
 import { format, parseISO } from "date-fns";
@@ -134,9 +135,17 @@ export default function SettingsPage() {
     <div className="min-h-screen lg:pl-60">
       <Navbar />
       <main className="px-4 py-6 pb-24 lg:pb-6 max-w-2xl mx-auto space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-white">{t("title")}</h1>
-          <p className="text-sm text-slate-400 mt-1">{t("subtitle")}</p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-white">{t("title")}</h1>
+            <p className="text-sm text-slate-400 mt-1">{t("subtitle")}</p>
+          </div>
+          {profileData?.is_admin && (
+            <Link href="/admin" className="btn-secondary text-sm shrink-0">
+              <ShieldCheck className="w-4 h-4 text-brand-400" />
+              Admin
+            </Link>
+          )}
         </div>
 
         {/* Language switcher */}

@@ -40,6 +40,7 @@ class UserProfileResponse(BaseModel):
     weekly_km: Optional[float] = None
     weekly_runs: Optional[int] = None
     injuries: Optional[str] = None
+    is_admin: bool = False
 
 
 class TokenResponse(BaseModel):
