@@ -150,7 +150,7 @@ export function WeekCalendar({ plan }: Props) {
 
             return (
               <div key={idx} className="flex gap-3 items-start">
-                <div className="w-14 shrink-0 pt-3 text-right">
+                <div className="w-9 shrink-0 pt-3 text-right">
                   <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{dayLabel}</p>
                   {dateStr && <p className="text-[10px] text-slate-600 mt-0.5">{dateStr}</p>}
                 </div>

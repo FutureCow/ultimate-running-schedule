@@ -4,10 +4,13 @@ import { useRef, useState, useEffect } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { Link, usePathname, useRouter } from "@/i18n/navigation";
 import { motion } from "framer-motion";
-import { LayoutDashboard, Plus, Settings, LogOut, ChevronDown, Sun, Moon } from "lucide-react";
+import { LayoutDashboard, Plus, Settings, LogOut, ChevronDown, Sun, Moon, Calendar } from "lucide-react";
 import { logout } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/components/ui/ThemeProvider";
+import { useQuery } from "@tanstack/react-query";
+import { plansApi } from "@/lib/api";
+import { Plan } from "@/types";
 
 const LOCALES = [
   { code: "nl", flag: "🇳🇱", label: "Nederlands", short: "NL" },
@@ -24,6 +27,12 @@ export function Navbar() {
 
   const { resolved, setTheme } = useTheme();
   const [langOpen, setLangOpen] = useState(false);
+
+  const { data: plans = [] } = useQuery<Plan[]>({
+    queryKey: ["plans"],
+    queryFn: () => plansApi.list().then((r) => r.data),
+  });
+  const activePlan = plans[0] ?? null;
   const langRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -151,7 +160,13 @@ export function Navbar() {
 
       {/* Mobile bottom nav */}
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-surface-card/95 backdrop-blur border-t border-slate-700/50 flex items-center justify-around px-2 py-2 safe-pb">
-        {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
+        {[
+          { href: "/dashboard" as const, label: t("dashboard"), icon: LayoutDashboard },
+          activePlan
+            ? { href: `/plans/${activePlan.public_id}` as any, label: t("myPlan"), icon: Calendar }
+            : { href: "/plans/new" as const, label: t("newPlan"), icon: Plus },
+          { href: "/settings" as const, label: t("settings"), icon: Settings },
+        ].map(({ href, label, icon: Icon }) => {
           const active = pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
           return (
             <Link
