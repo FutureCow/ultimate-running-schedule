@@ -472,6 +472,10 @@ export default function SettingsPage() {
             </form>
           )}
         </div>
+
+        <p className="text-center text-[11px] text-slate-700 pt-2">
+          v{process.env.NEXT_PUBLIC_APP_VERSION ?? "1"}
+        </p>
       </main>
     </div>
   );
