@@ -48,6 +48,14 @@ def _create_sessions_from_json(plan: Plan, plan_json: dict) -> list[WorkoutSessi
             if workout_type == "strength" and not plan.strength_enabled:
                 continue
 
+            # Force the race session onto the exact race_date
+            if workout_type == "race" and plan.race_date:
+                scheduled = plan.race_date
+
+            # Drop everything scheduled after the race date
+            if plan.race_date and scheduled > plan.race_date:
+                continue
+
             # Guard: any session after the race in the same week must be recovery/rest
             if (race_week_num is not None and race_day_num is not None
                     and wnum == race_week_num and day_num > race_day_num
