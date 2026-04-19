@@ -1,4 +1,4 @@
-"""Claude AI service – generates a structured running plan with pace targets."""
+"""Claude AI service – generates a structured running plan."""
 import json
 import logging
 import re
@@ -14,142 +14,102 @@ logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = (
     "You are an elite running coach using Jack Daniels VDOT methodology. "
-    "Write ALL text values (titles, descriptions, themes, notes) in {language}. "
-    "Return ONLY a JSON object: start with {{ and end with }}. "
-    "No preamble, no markdown, no code fences."
+    "Write ALL text values in {language}. "
+    "Return ONLY a JSON object — no preamble, no markdown."
 )
 
-_GOAL_LABELS = {
-    "5k": "5 km",
-    "10k": "10 km",
-    "half_marathon": "Half Marathon (21.1 km)",
-    "marathon": "Marathon (42.2 km)",
-}
-
-_STRENGTH_TYPE_LABELS = {
-    "core_stability": "Core & Stability",
-    "max_strength": "Maximum Strength",
-    "plyometrics": "Plyometrics & Explosiveness",
-    "injury_prevention": "Injury Prevention & Mobility",
-    "full_body": "General Full-Body",
-}
-
-_STRENGTH_LOCATION_LABELS = {
-    "bodyweight": "home (bodyweight only)",
-    "home_equipment": "home (dumbbells/bands)",
-    "gym": "gym",
-}
-
-_DAY_NAMES = {1: "Mon", 2: "Tue", 3: "Wed", 4: "Thu", 5: "Fri", 6: "Sat", 7: "Sun"}
-
-
-# Compact schema — Claude infers structure from concise shape notation.
-_JSON_SCHEMA = """{
-  "plan_overview": {"goal","target_time","target_pace_per_km","estimated_vdot",
+_SCHEMA = """{
+  "plan_overview":{"goal","target_time","target_pace_per_km","estimated_vdot",
     "pace_zones":{"easy","marathon","threshold","interval","repetition"},
     "weekly_structure","coaching_notes"},
   "weeks":[{"week_number","theme","total_km","workouts":[{
     "day_number":1-7,
     "workout_type":"easy_run|long_run|tempo|interval|recovery|rest|strength",
-    "title",
-    "description": "1 sentence for running workouts. For strength: numbered list of 6-8 exercises (sets×reps, rest, cue).",
-    "distance_km","duration_minutes",
+    "title","description","distance_km","duration_minutes",
     "target_paces":{"warmup","main","cooldown",
       "strides":{"reps":4-8,"distance_m":80-100,"pace","rest_seconds":60-90}|null},
     "intervals":[{"reps","distance_m","duration_seconds","pace","rest_seconds"}]|null
   }]}]
 }
-All paces as "MM:SS – MM:SS" per km. For strength: distance_km=null, target_paces={"main":"N/A"}."""
+Paces: "MM:SS – MM:SS" per km. Strength: distance_km=null, target_paces={"main":"N/A"}.
+description: 1 sentence for runs; numbered 6-8 exercise list (sets×reps, rest, cue) for strength."""
 
 
-def _target_display(plan: PlanCreate) -> str:
-    if plan.target_time_seconds:
-        h, rem = divmod(plan.target_time_seconds, 3600)
-        m, s = divmod(rem, 60)
-        return f"{h}h{m:02d}m{s:02d}s" if h else f"{m}:{s:02d}"
-    if plan.target_pace_per_km:
-        return f"{plan.target_pace_per_km}/km"
-    return "Personal best"
-
-
-def _format_garmin(summary: Optional[dict]) -> str:
-    if not summary:
-        return "No Garmin data — use self-reported fitness only."
-    s = summary.get("summary", summary)
-    dr = s.get("date_range", {})
-    return (
-        f"Last 3 mo: {s.get('total_runs','?')} runs, {s.get('total_km','?')} km total, "
-        f"{s.get('avg_weekly_km','?')} km/wk, avg pace {s.get('avg_pace_per_km','?')} "
-        f"({dr.get('from','')}–{dr.get('to','')})."
-    )
-
-
-def _format_strength(plan: PlanCreate) -> str:
-    s = plan.strength
-    if not s or not s.enabled:
-        return "\nDo NOT include any strength workouts in this plan. Running workouts only.\n"
-    loc = _STRENGTH_LOCATION_LABELS.get(s.location or "", "unspecified")
-    typ = _STRENGTH_TYPE_LABELS.get(s.type or "", "full_body")
-    days = ", ".join(_DAY_NAMES[d] for d in (s.days or []) if d in _DAY_NAMES) or "flexible"
-    equip = f" ({', '.join(s.equipment)})" if s.location == "home_equipment" and s.equipment else ""
-    notes = f" Notes: {s.notes}." if s.notes else ""
-    return (
-        f"\n## Strength training\n"
-        f"Focus: {typ}. Location: {loc}{equip}. Days: {days}.{notes}\n"
-        f"Rules: workout_type='strength', distance_km=null, duration_minutes=30–50, "
-        f"target_paces={{\"main\":\"N/A\"}}. description = numbered list of 6–10 exercises "
-        f"(sets×reps, rest, brief cue). Never same/day-before interval/tempo/long runs. "
-        f"No strength in last 2 taper weeks or post-race recovery week.\n"
-    )
-
-
-def _build_prompt(plan: PlanCreate, garmin: Optional[dict], language: str) -> str:
-    duration = plan.duration_weeks
-    total = duration + 1
-    if plan.race_date:
-        race_str = plan.race_date.strftime("%a %d %b %Y")
-        race_day = plan.race_date.isoweekday()
-    else:
-        race_str = f"end of week {duration}"
-        race_day = 7
-    taper1, taper2 = max(1, duration - 1), duration
-    post_week = duration + 1
-
-    return f"""Create a {total}-week running plan ({duration} training + 1 recovery) in {language}.
-
-## Athlete
-Goal: {_GOAL_LABELS.get(plan.goal, plan.goal)} | Target: {_target_display(plan)}
-Age {plan.age or '?'}, {plan.height_cm or '?'} cm, {plan.weight_kg or '?'} kg
-Current: {plan.weekly_km or '?'} km/wk over {plan.weekly_runs or '?'} runs
-Injuries: {plan.injuries or 'none'}. Notes: {plan.extra_notes or 'none'}.
-Training days: {', '.join(plan.training_days) if plan.training_days else 'flexible'}. \
-Long run: {plan.long_run_day or 'Sunday'}. Surface: {plan.surface or 'road'}.
-
-## Race & schedule
-Race: {race_str} (week {duration}, day {race_day}, 1=Mon…7=Sun).
-Taper weeks {taper1}–{taper2}: sharply reduced volume, nothing hard within 3 days of race.
-Week {duration}: race on day {race_day}; any workout AFTER it must be 'recovery' or 'rest'.
-Week {post_week}: post-race recovery only — easy short runs. theme = "Post-race recovery".
-
-## Recent activity
-{_format_garmin(garmin)}
-{_format_strength(plan)}
-## Output schema
-{_JSON_SCHEMA}
-
-Generate the full {total}-week plan now."""
-
-
-def _extract_json(raw: str) -> str:
-    """Pull a JSON object out of the raw text, tolerant of preamble/code fences."""
-    raw = raw.strip()
-    fenced = re.search(r"```(?:json)?\s*(\{[\s\S]*\})\s*```", raw)
+def _extract_json(text: str) -> str:
+    """Return the JSON object from text, tolerant of preamble or code fences."""
+    fenced = re.search(r"```(?:json)?\s*(\{[\s\S]*\})\s*```", text)
     if fenced:
         return fenced.group(1)
-    start, end = raw.find("{"), raw.rfind("}")
-    if start != -1 and end > start:
-        return raw[start:end + 1]
-    return raw
+    s, e = text.find("{"), text.rfind("}")
+    return text[s : e + 1] if s != -1 and e > s else text
+
+
+def _build_prompt(plan: PlanCreate, garmin: Optional[dict], lang: str) -> str:
+    d = plan.duration_weeks
+    race_day = plan.race_date.isoweekday() if plan.race_date else 7
+    race_str = plan.race_date.strftime("%a %d %b %Y") if plan.race_date else f"end of week {d}"
+
+    if plan.target_time_seconds:
+        h, r = divmod(plan.target_time_seconds, 3600)
+        m, s = divmod(r, 60)
+        target = f"{h}h{m:02d}m{s:02d}s" if h else f"{m}:{s:02d}"
+    else:
+        target = f"{plan.target_pace_per_km}/km" if plan.target_pace_per_km else "Personal best"
+
+    goal_labels = {"5k": "5 km", "10k": "10 km", "half_marathon": "Half Marathon (21.1 km)", "marathon": "Marathon (42.2 km)"}
+
+    if garmin:
+        g = garmin.get("summary", garmin)
+        dr = g.get("date_range", {})
+        garmin_str = (f"Last 3 mo: {g.get('total_runs','?')} runs, {g.get('total_km','?')} km, "
+                      f"{g.get('avg_weekly_km','?')} km/wk, avg pace {g.get('avg_pace_per_km','?')} "
+                      f"({dr.get('from','')}–{dr.get('to','')}).")
+    else:
+        garmin_str = "No Garmin data — use self-reported fitness."
+
+    st = plan.strength
+    if st and st.enabled:
+        day_names = {1:"Mon",2:"Tue",3:"Wed",4:"Thu",5:"Fri",6:"Sat",7:"Sun"}
+        locs = {"bodyweight":"home/bodyweight","home_equipment":"home/dumbbells+bands","gym":"gym"}
+        typs = {"core_stability":"Core & Stability","max_strength":"Max Strength",
+                "plyometrics":"Plyometrics","injury_prevention":"Injury Prevention","full_body":"Full Body"}
+        days = ", ".join(day_names[d] for d in (st.days or []) if d in day_names) or "flexible"
+        equip = f" ({', '.join(st.equipment)})" if st.location == "home_equipment" and st.equipment else ""
+        notes = f" Notes: {st.notes}." if st.notes else ""
+        strength_str = (
+            f"\n## Strength training\n"
+            f"Focus: {typs.get(st.type or '', 'Full Body')}. "
+            f"Location: {locs.get(st.location or '', 'unspecified')}{equip}. "
+            f"Days: {days}.{notes}\n"
+            f"Never on same day or day before interval/tempo/long runs. "
+            f"No strength in taper (last 2 weeks) or post-race recovery week.\n"
+        )
+    else:
+        strength_str = "\nDo NOT include any strength workouts. Running workouts only.\n"
+
+    taper1 = max(1, d - 1)
+    return f"""Create a {d + 1}-week running plan ({d} training + 1 recovery) in {lang}.
+
+## Athlete
+Goal: {goal_labels.get(plan.goal, plan.goal)} | Target: {target}
+Age {plan.age or '?'}, {plan.height_cm or '?'} cm, {plan.weight_kg or '?'} kg
+Fitness: {plan.weekly_km or '?'} km/wk over {plan.weekly_runs or '?'} runs
+Injuries: {plan.injuries or 'none'}. Notes: {plan.extra_notes or 'none'}.
+Training days: {', '.join(plan.training_days) if plan.training_days else 'flexible'}. Long run: {plan.long_run_day or 'Sunday'}. Surface: {plan.surface or 'road'}.
+
+## Race & schedule
+Race: {race_str} (week {d}, day {race_day}, 1=Mon…7=Sun).
+Taper weeks {taper1}–{d}: reduced volume, nothing hard within 3 days of race.
+Week {d}: race on day {race_day}; workouts AFTER it must be 'recovery' or 'rest'.
+Week {d + 1}: post-race recovery only — easy short runs, theme = "Post-race recovery".
+
+## Recent activity
+{garmin_str}
+{strength_str}
+## Output schema
+{_SCHEMA}
+
+Generate the full {d + 1}-week plan now."""
 
 
 async def generate_plan(
@@ -162,20 +122,17 @@ async def generate_plan(
         client_kwargs["base_url"] = settings.ANTHROPIC_BASE_URL
     client = anthropic.AsyncAnthropic(**client_kwargs)
 
-    lang_name = "Dutch" if language == "nl" else "English"
-    prompt = _build_prompt(plan, garmin_summary, lang_name)
+    lang = "Dutch" if language == "nl" else "English"
 
     message = await client.messages.create(
         model=settings.CLAUDE_MODEL,
         max_tokens=16000,
-        system=SYSTEM_PROMPT.format(language=lang_name),
-        messages=[{"role": "user", "content": prompt}],
+        system=SYSTEM_PROMPT.format(language=lang),
+        messages=[{"role": "user", "content": _build_prompt(plan, garmin_summary, lang)}],
     )
 
-    logger.info(
-        "Claude response: stop_reason=%s, blocks=%d, usage=%s",
-        message.stop_reason, len(message.content), message.usage,
-    )
+    logger.info("Claude: stop_reason=%s usage=%s", message.stop_reason, message.usage)
+
     if not message.content:
         raise ValueError(f"Empty Claude response (stop_reason={message.stop_reason})")
 
@@ -187,4 +144,4 @@ async def generate_plan(
         return json.loads(raw)
     except json.JSONDecodeError as e:
         logger.error("JSON parse failed. raw[:500]=%s", raw[:500])
-        raise ValueError(f"Claude response is not valid JSON: {e}. First 200 chars: {raw[:200]!r}") from e
+        raise ValueError(f"Invalid JSON from Claude: {e}. Got: {raw[:200]!r}") from e
