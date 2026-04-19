@@ -1,0 +1,8 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "nl.fhettinga.run.twa",
+    "sha256_cert_fingerprints": ["11:26:2C:F3:10:88:B5:EB:BE:8F:5F:6E:2F:C5:18:9D:33:49:34:8D:7C:2C:03:41:8A:E2:79:E0:E2:E8:D4:27"]
+  }
+}]
