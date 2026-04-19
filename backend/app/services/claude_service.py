@@ -51,11 +51,12 @@ _JSON_SCHEMA = """{
   "weeks":[{"week_number","theme","total_km","workouts":[{
     "day_number":1-7,
     "workout_type":"easy_run|long_run|tempo|interval|recovery|rest|strength",
-    "title","description","distance_km","duration_minutes",
+    "title",
+    "description": "1 sentence for running workouts. For strength: numbered list of 6-8 exercises (sets×reps, rest, cue).",
+    "distance_km","duration_minutes",
     "target_paces":{"warmup","main","cooldown",
       "strides":{"reps":4-8,"distance_m":80-100,"pace","rest_seconds":60-90}|null},
-    "intervals":[{"reps","distance_m","duration_seconds","pace","rest_seconds"}]|null,
-    "garmin_description"
+    "intervals":[{"reps","distance_m","duration_seconds","pace","rest_seconds"}]|null
   }]}]
 }
 All paces as "MM:SS – MM:SS" per km. For strength: distance_km=null, target_paces={"main":"N/A"}."""
