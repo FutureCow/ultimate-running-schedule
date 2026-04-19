@@ -169,15 +169,6 @@ export function Navbar() {
           );
         })}
 
-        {/* Mobile: compact language switcher — tap cycles between nl/en */}
-        <button
-          onClick={() => switchLocale(locale === "nl" ? "en" : "nl")}
-          className="flex flex-col items-center gap-1 px-4 py-1.5 rounded-xl text-slate-500 hover:text-slate-300 transition-all"
-        >
-          <span className="text-xl leading-none">{currentLang.flag}</span>
-          <span className="text-[10px] font-medium">{currentLang.short}</span>
-        </button>
-
         {/* Mobile: theme toggle */}
         <button
           onClick={() => setTheme(resolved === "dark" ? "light" : "dark")}
