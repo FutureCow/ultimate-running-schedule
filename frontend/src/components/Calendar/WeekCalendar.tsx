@@ -26,7 +26,6 @@ export function WeekCalendar({ plan }: Props) {
   const [currentWeek, setCurrentWeek] = useState(1);
   const [pushingSession, setPushingSession] = useState<number | null>(null);
   const [pushingWeek, setPushingWeek] = useState(false);
-  const [weekPushed, setWeekPushed] = useState<Set<number>>(new Set());
   const queryClient = useQueryClient();
 
   const moveMutation = useMutation({
@@ -65,9 +64,17 @@ export function WeekCalendar({ plan }: Props) {
     setPushingWeek(true);
     try {
       await garminApi.pushWeek(plan.public_id, currentWeek);
-      setWeekPushed((prev) => new Set(Array.from(prev).concat(currentWeek)));
+      queryClient.invalidateQueries({ queryKey: ["plan", plan.public_id] });
     } catch (e) { console.error(e); }
     finally { setPushingWeek(false); }
+  }
+
+  // A week is considered pushed when every non-rest session has a garmin_workout_id
+  function isWeekPushed(weekNum: number): boolean {
+    const weekSessions = plan.sessions.filter(
+      (s) => s.week_number === weekNum && s.workout_type !== "rest"
+    );
+    return weekSessions.length > 0 && weekSessions.every((s) => !!s.garmin_workout_id);
   }
 
   const tWorkout = useTranslations("workout");
@@ -117,7 +124,7 @@ export function WeekCalendar({ plan }: Props) {
 
       {/* Push week button */}
       <div className="flex justify-end">
-        {weekPushed.has(currentWeek) ? (
+        {isWeekPushed(currentWeek) ? (
           <span className="flex items-center gap-1.5 text-xs text-brand-400 font-medium">
             <CheckCircle2 className="w-4 h-4" /> {t("weekOnGarmin", { week: currentWeek })}
           </span>
