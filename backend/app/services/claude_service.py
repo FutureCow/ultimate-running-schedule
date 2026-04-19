@@ -87,7 +87,7 @@ def _format_garmin(summary: Optional[dict]) -> str:
 def _format_strength(plan: PlanCreate) -> str:
     s = plan.strength
     if not s or not s.enabled:
-        return ""
+        return "\nDo NOT include any strength workouts in this plan. Running workouts only.\n"
     loc = _STRENGTH_LOCATION_LABELS.get(s.location or "", "unspecified")
     typ = _STRENGTH_TYPE_LABELS.get(s.type or "", "full_body")
     days = ", ".join(_DAY_NAMES[d] for d in (s.days or []) if d in _DAY_NAMES) or "flexible"

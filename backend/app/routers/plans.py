@@ -44,6 +44,10 @@ def _create_sessions_from_json(plan: Plan, plan_json: dict) -> list[WorkoutSessi
 
             workout_type = workout.get("workout_type", "easy_run")
 
+            # Drop strength workouts when strength training is not enabled
+            if workout_type == "strength" and not plan.strength_enabled:
+                continue
+
             # Guard: any session after the race in the same week must be recovery/rest
             if (race_week_num is not None and race_day_num is not None
                     and wnum == race_week_num and day_num > race_day_num
