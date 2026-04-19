@@ -5,7 +5,7 @@ export default createMiddleware(routing);
 
 export const config = {
   matcher: [
-    // Match all pathnames except static files, api, _next
-    "/((?!api|_next/static|_next/image|favicon\\.ico|favicon\\.svg|manifest\\.json|.*\\.png|.*\\.svg).*)",
+    // Match all pathnames except static files, api, _next, and .well-known
+    "/((?!api|_next/static|_next/image|favicon\\.ico|favicon\\.svg|manifest\\.json|.*\\.png|.*\\.svg|\\.well-known).*)",
   ],
 };
