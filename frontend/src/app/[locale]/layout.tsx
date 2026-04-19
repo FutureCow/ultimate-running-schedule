@@ -10,7 +10,15 @@ export const metadata: Metadata = {
   title: "Cadence – Ritme in je training",
   description: "AI-gegenereerde hardloopschema's op basis van je Garmin-data en Jack Daniels VDOT-methodologie",
   manifest: "/manifest.json",
-  icons: { icon: "/favicon.svg" },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Cadence",
+  },
+  icons: {
+    icon: "/favicon.svg",
+    apple: "/apple-touch-icon.png",
+  },
 };
 
 export const viewport: Viewport = {
