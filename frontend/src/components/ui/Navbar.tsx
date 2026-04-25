@@ -65,10 +65,12 @@ export function Navbar() {
         <Link href="/dashboard" className="flex items-center gap-3 px-2 mb-6">
           <div className="w-9 h-9 rounded-xl bg-brand-500 flex items-center justify-center shadow-lg shadow-brand-500/30 shrink-0">
             {/* Cadence logo: drie ritmische balken */}
-            <svg viewBox="0 0 18 18" fill="none" className="w-5 h-5">
-              <rect x="1"  y="10" width="3.5" height="7" rx="1.5" fill="white"/>
-              <rect x="7"  y="3"  width="3.5" height="14" rx="1.5" fill="white"/>
-              <rect x="13" y="7"  width="3.5" height="10" rx="1.5" fill="white"/>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36" fill="none">
+              <rect width="36" height="36" rx="10" fill="#22c55e"/>
+              <line x1="7"  y1="28" x2="7"  y2="21" stroke="white" stroke-width="4.5" stroke-linecap="round"/>
+              <line x1="15" y1="28" x2="15" y2="14" stroke="white" stroke-width="4.5" stroke-linecap="round"/>
+              <line x1="23" y1="28" x2="23" y2="7"  stroke="white" stroke-width="4.5" stroke-linecap="round"/>
+              <line x1="4.5" y1="30" x2="25.5" y2="30" stroke="white" stroke-width="1.5" stroke-linecap="round" opacity="0.35"/>
             </svg>
           </div>
           <div>
