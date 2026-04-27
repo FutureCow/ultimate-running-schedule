@@ -12,12 +12,13 @@ interface Props {
   session: WorkoutSession;
   onPushToGarmin?: (sessionId: number) => void;
   isPushing?: boolean;
-  onMove?: (sessionId: number, dayNumber: number) => void;
+  onMove?: (sessionId: number, dayNumber: number, weekNumber: number) => void;
   isMoving?: boolean;
   onDelete?: (sessionId: number) => void;
   isDeleting?: boolean;
   onRemoveFromGarmin?: (sessionId: number) => void;
   isRemovingFromGarmin?: boolean;
+  totalWeeks?: number;
 }
 
 const ACCENT_COLORS: Record<string, string> = {
@@ -31,12 +32,13 @@ const ACCENT_COLORS: Record<string, string> = {
   strength:  "bg-violet-500",
 };
 
-export function WorkoutCard({ session, onPushToGarmin, isPushing, onMove, isMoving, onDelete, isDeleting, onRemoveFromGarmin, isRemovingFromGarmin }: Props) {
+export function WorkoutCard({ session, onPushToGarmin, isPushing, onMove, isMoving, onDelete, isDeleting, onRemoveFromGarmin, isRemovingFromGarmin, totalWeeks = 1 }: Props) {
   const t = useTranslations("workout");
   const tDays = useTranslations("days");
 
   const [expanded, setExpanded] = useState(false);
   const [showMovePicker, setShowMovePicker] = useState(false);
+  const [moveWeek, setMoveWeek] = useState(session.week_number);
 
   const colorClass = WORKOUT_COLORS[session.workout_type];
   const accentColor = ACCENT_COLORS[session.workout_type] ?? "bg-slate-600";
@@ -260,7 +262,7 @@ export function WorkoutCard({ session, onPushToGarmin, isPushing, onMove, isMovi
                 </div>
               </div>
 
-              {/* Day picker */}
+              {/* Day + week picker */}
               <AnimatePresence>
                 {showMovePicker && onMove && (
                   <motion.div
@@ -271,21 +273,40 @@ export function WorkoutCard({ session, onPushToGarmin, isPushing, onMove, isMovi
                     transition={{ duration: 0.15 }}
                     className="overflow-hidden"
                   >
-                    <div className="pt-2">
-                      <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-2">
-                        {t("moveToDayLabel")}
-                      </p>
+                    <div className="pt-2 space-y-2">
+                      {/* Week navigator */}
+                      <div className="flex items-center justify-between">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setMoveWeek((w) => Math.max(1, w - 1)); }}
+                          disabled={moveWeek <= 1}
+                          className="text-xs text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-default px-2 py-1 rounded-lg hover:bg-surface-elevated transition-colors"
+                        >
+                          ← {t("prevWeek")}
+                        </button>
+                        <span className="text-xs font-semibold text-slate-300">
+                          {t("weekLabel", { week: moveWeek })}
+                        </span>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setMoveWeek((w) => Math.min(totalWeeks, w + 1)); }}
+                          disabled={moveWeek >= totalWeeks}
+                          className="text-xs text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-default px-2 py-1 rounded-lg hover:bg-surface-elevated transition-colors"
+                        >
+                          {t("nextWeek")} →
+                        </button>
+                      </div>
+
+                      {/* Day buttons */}
                       <div className="flex gap-1.5">
                         {dayAbbr.map((label, idx) => {
                           const dayNum = idx + 1;
-                          const isCurrent = session.day_number === dayNum;
+                          const isCurrent = session.day_number === dayNum && moveWeek === session.week_number;
                           return (
                             <button
                               key={dayNum}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 if (!isCurrent) {
-                                  onMove(session.id, dayNum);
+                                  onMove(session.id, dayNum, moveWeek);
                                   setShowMovePicker(false);
                                 }
                               }}

@@ -288,6 +288,9 @@
     "delete": "Verwijderen",
     "deleteConfirm": "Training verwijderen?",
     "moveToDayLabel": "Verplaats naar dag",
+    "prevWeek": "Vorige",
+    "nextWeek": "Volgende",
+    "weekLabel": "Week {week}",
     "restSeconds": "{seconds}s rust",
     "types": {
       "easy_run":  "Easy Run",

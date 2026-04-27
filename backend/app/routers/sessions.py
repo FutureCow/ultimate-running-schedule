@@ -17,7 +17,8 @@ router = APIRouter(prefix="/sessions", tags=["sessions"])
 
 
 class SessionMove(BaseModel):
-    day_number: int  # 1–7
+    day_number: int   # 1–7
+    week_number: int | None = None  # if omitted, keeps current week
 
 
 @router.patch("/{session_id}", response_model=WorkoutSessionResponse)
@@ -30,7 +31,6 @@ async def move_session(
     if not 1 <= payload.day_number <= 7:
         raise HTTPException(status_code=422, detail="day_number must be between 1 and 7")
 
-    # Load session and its plan together to verify ownership
     result = await db.execute(
         select(WorkoutSession, Plan)
         .join(Plan, Plan.id == WorkoutSession.plan_id)
@@ -41,6 +41,11 @@ async def move_session(
         raise HTTPException(status_code=404, detail="Session not found")
 
     session, plan = row
+
+    if payload.week_number is not None:
+        if not 1 <= payload.week_number <= plan.duration_weeks:
+            raise HTTPException(status_code=422, detail="week_number out of plan range")
+        session.week_number = payload.week_number
 
     session.day_number = payload.day_number
 

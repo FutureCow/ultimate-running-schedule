@@ -40,8 +40,8 @@ export function WeekCalendar({ plan }: Props) {
   const queryClient = useQueryClient();
 
   const moveMutation = useMutation({
-    mutationFn: ({ sessionId, dayNumber }: { sessionId: number; dayNumber: number }) =>
-      sessionsApi.move(sessionId, dayNumber),
+    mutationFn: ({ sessionId, dayNumber, weekNumber }: { sessionId: number; dayNumber: number; weekNumber: number }) =>
+      sessionsApi.move(sessionId, dayNumber, weekNumber),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["plan", plan.public_id] }),
   });
 
@@ -181,7 +181,8 @@ export function WeekCalendar({ plan }: Props) {
                         session={s}
                         onPushToGarmin={handlePushSession}
                         isPushing={pushingSession === s.id}
-                        onMove={(sessionId, dayNumber) => moveMutation.mutate({ sessionId, dayNumber })}
+                        onMove={(sessionId, dayNumber, weekNumber) => moveMutation.mutate({ sessionId, dayNumber, weekNumber })}
+                        totalWeeks={totalWeeks}
                         isMoving={moveMutation.isPending && moveMutation.variables?.sessionId === s.id}
                         onDelete={(sessionId) => {
                           if (confirm(tWorkout("deleteConfirm"))) deleteMutation.mutate(sessionId);

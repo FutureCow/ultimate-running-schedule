@@ -288,6 +288,9 @@
     "delete": "Delete",
     "deleteConfirm": "Delete workout?",
     "moveToDayLabel": "Move to day",
+    "prevWeek": "Prev",
+    "nextWeek": "Next",
+    "weekLabel": "Week {week}",
     "restSeconds": "{seconds}s rest",
     "types": {
       "easy_run":  "Easy Run",

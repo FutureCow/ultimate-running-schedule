@@ -89,7 +89,8 @@ export const plansApi = {
 
 // Sessions
 export const sessionsApi = {
-  move: (id: number, dayNumber: number) => api.patch(`/sessions/${id}`, { day_number: dayNumber }),
+  move: (id: number, dayNumber: number, weekNumber?: number) =>
+    api.patch(`/sessions/${id}`, { day_number: dayNumber, week_number: weekNumber ?? null }),
   delete: (id: number) => api.delete(`/sessions/${id}`),
 };
 
