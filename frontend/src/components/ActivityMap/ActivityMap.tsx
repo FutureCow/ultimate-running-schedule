@@ -40,10 +40,10 @@ export function ActivityMap({ track, className = "h-64 lg:h-96" }: Props) {
       zoom={13}
       scrollWheelZoom={false}
       className={`${className} w-full rounded-2xl z-0`}
-      style={{ background: "#1e293b" }}
+      style={{ background: "#e5e3df" }}
     >
       <TileLayer
-        url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+        url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
         attribution='&copy; <a href="https://carto.com/">CARTO</a>'
       />
       <Polyline positions={positions} color="#22c55e" weight={3} opacity={0.9} />
