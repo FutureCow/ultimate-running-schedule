@@ -55,7 +55,7 @@ export default function RegisterPage() {
               <rect x="13" y="7"  width="3.5" height="10" rx="1.5" fill="white"/>
             </svg>
           </div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Cadence</h1>
+          <h1 className="text-2xl font-bold text-white tracking-tight">Metriq</h1>
           <p className="text-sm text-slate-400 mt-1">{t("subtitle")}</p>
         </div>
 

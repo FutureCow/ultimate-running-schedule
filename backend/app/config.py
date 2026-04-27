@@ -36,7 +36,7 @@ class Settings(BaseSettings):
     SMTP_PORT: int = 587
     SMTP_USER: str = ""
     SMTP_PASSWORD: str = ""
-    SMTP_FROM: str = ""          # e.g. "Cadence <noreply@cadence.app>"
+    SMTP_FROM: str = ""          # e.g. "Metriq <noreply@metriq.run>"
     SMTP_TLS: bool = True        # STARTTLS; set False for SSL-only port 465
     APP_URL: str = "http://localhost:3000"  # Base URL for reset links
 

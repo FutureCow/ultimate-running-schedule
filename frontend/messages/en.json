@@ -20,7 +20,7 @@
     "none": "—"
   },
   "meta": {
-    "title": "Cadence – Rhythm in your training",
+    "title": "Metriq – Rhythm in your training",
     "subtitle": "Bringing rhythm to your training",
     "description": "AI-generated running schedules based on your Garmin data and Jack Daniels VDOT methodology"
   },
@@ -35,7 +35,7 @@
   "auth": {
     "login": {
       "title": "Welcome back",
-      "subtitle": "Log in to your Cadence account",
+      "subtitle": "Log in to your Metriq account",
       "email": "Email address",
       "emailPlaceholder": "you@example.com",
       "password": "Password",
@@ -377,7 +377,7 @@
       "title1": "Your personal",
       "title2": "running coach,",
       "title3": "powered by AI.",
-      "subtitle": "Cadence generates science-backed training plans tailored to your fitness level and Garmin data — and pushes them directly to your watch.",
+      "subtitle": "Metriq generates science-backed training plans tailored to your fitness level and Garmin data — and pushes them directly to your watch.",
       "cta": "Start for free",
       "login": "Already have an account",
       "trust": {
@@ -394,7 +394,7 @@
     },
     "features": {
       "title": "Everything you need to train smarter",
-      "subtitle": "Cadence combines AI, sports science and your own data to build plans that actually work.",
+      "subtitle": "Metriq combines AI, sports science and your own data to build plans that actually work.",
       "ai": {
         "title": "AI-generated training plans",
         "desc": "Claude AI analyzes your profile and goals to build a periodized plan based on Jack Daniels VDOT methodology — the gold standard in running science."
@@ -425,7 +425,7 @@
       "subtitle": "From profile to personalized plan in under a minute.",
       "step1": {
         "title": "Enter your profile",
-        "desc": "Tell Cadence your age, current fitness, target race and preferences. Connect Garmin to automatically pull in your training history."
+        "desc": "Tell Metriq your age, current fitness, target race and preferences. Connect Garmin to automatically pull in your training history."
       },
       "step2": {
         "title": "Claude AI builds your plan",
@@ -442,7 +442,7 @@
     },
     "cta": {
       "title": "Ready to find your rhythm?",
-      "subtitle": "Join Cadence and start training with a plan built just for you.",
+      "subtitle": "Join Metriq and start training with a plan built just for you.",
       "button": "Create free account",
       "note": "No credit card required · Cancel anytime"
     },

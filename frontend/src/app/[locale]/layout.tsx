@@ -7,13 +7,13 @@ import { routing } from "@/i18n/routing";
 import { notFound } from "next/navigation";
 
 export const metadata: Metadata = {
-  title: "Cadence – Ritme in je training",
+  title: "Metriq – Ritme in je training",
   description: "AI-gegenereerde hardloopschema's op basis van je Garmin-data en Jack Daniels VDOT-methodologie",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Cadence",
+    title: "Metriq",
   },
   icons: {
     icon: "/favicon.svg",

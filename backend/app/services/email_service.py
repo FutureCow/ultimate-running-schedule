@@ -17,13 +17,13 @@ def send_password_reset_email(to_email: str, reset_token: str) -> bool:
     reset_url = f"{settings.APP_URL}/reset-password?token={reset_token}"
 
     msg = MIMEMultipart("alternative")
-    msg["Subject"] = "Cadence – Wachtwoord resetten / Reset your password"
+    msg["Subject"] = "Metriq – Wachtwoord resetten / Reset your password"
     msg["From"] = settings.SMTP_FROM or settings.SMTP_USER
     msg["To"] = to_email
 
     text = f"""Hallo,
 
-Je hebt een wachtwoord-reset aangevraagd voor je Cadence account.
+Je hebt een wachtwoord-reset aangevraagd voor je Metriq account.
 Klik op de link hieronder om je wachtwoord te resetten (geldig 1 uur):
 
 {reset_url}
@@ -33,7 +33,7 @@ Als je dit niet hebt aangevraagd, kun je deze e-mail negeren.
 ---
 Hello,
 
-You requested a password reset for your Cadence account.
+You requested a password reset for your Metriq account.
 Click the link below to reset your password (valid for 1 hour):
 
 {reset_url}
@@ -53,7 +53,7 @@ If you did not request this, you can safely ignore this email.
           <rect x="13" y="7" width="3.5" height="10" rx="1.5" fill="white"/>
         </svg>
       </div>
-      <span style="font-size: 18px; font-weight: 700; color: white;">Cadence</span>
+      <span style="font-size: 18px; font-weight: 700; color: white;">Metriq</span>
     </div>
     <h2 style="color: white; font-size: 20px; margin: 0 0 8px;">Wachtwoord resetten</h2>
     <p style="color: #94a3b8; font-size: 14px; margin: 0 0 24px;">

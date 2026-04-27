@@ -54,6 +54,9 @@ export function Navbar() {
 
   const NAV_ITEMS = [
     { href: "/dashboard" as const, label: t("dashboard"), icon: LayoutDashboard },
+    ...(activePlan
+      ? [{ href: `/plans/${activePlan.public_id}` as any, label: t("myPlan"), icon: Calendar }]
+      : []),
     { href: "/plans/new" as const, label: t("newPlan"), icon: Plus },
     { href: "/settings" as const, label: t("settings"), icon: Settings },
   ];
@@ -64,17 +67,17 @@ export function Navbar() {
       <aside className="hidden lg:flex flex-col w-60 min-h-screen bg-surface-card border-r border-slate-700/50 px-4 py-6 gap-2 fixed left-0 top-0 bottom-0 z-40">
         <Link href="/dashboard" className="flex items-center gap-3 px-2 mb-6">
           <div className="w-9 h-9 rounded-xl bg-brand-500 flex items-center justify-center shadow-lg shadow-brand-500/30 shrink-0">
-            {/* Cadence logo: drie ritmische balken */}
+            {/* Metriq logo: drie ritmische balken */}
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36" fill="none">
               <rect width="36" height="36" rx="10" fill="#22c55e"/>
-              <line x1="7"  y1="28" x2="7"  y2="21" stroke="white" stroke-width="4.5" stroke-linecap="round"/>
-              <line x1="15" y1="28" x2="15" y2="14" stroke="white" stroke-width="4.5" stroke-linecap="round"/>
-              <line x1="23" y1="28" x2="23" y2="7"  stroke="white" stroke-width="4.5" stroke-linecap="round"/>
-              <line x1="4.5" y1="30" x2="25.5" y2="30" stroke="white" stroke-width="1.5" stroke-linecap="round" opacity="0.35"/>
+              <line x1="7"  y1="28" x2="7"  y2="21" stroke="white" strokeWidth="4.5" strokeLinecap="round"/>
+              <line x1="15" y1="28" x2="15" y2="14" stroke="white" strokeWidth="4.5" strokeLinecap="round"/>
+              <line x1="23" y1="28" x2="23" y2="7"  stroke="white" strokeWidth="4.5" strokeLinecap="round"/>
+              <line x1="4.5" y1="30" x2="25.5" y2="30" stroke="white" strokeWidth="1.5" strokeLinecap="round" opacity="0.35"/>
             </svg>
           </div>
           <div>
-            <span className="text-lg font-bold text-white leading-tight block">Cadence</span>
+            <span className="text-lg font-bold text-white leading-tight block">Metriq</span>
             <span className="text-[10px] text-brand-400/80 font-medium leading-tight block">
               {t("subtitle")}
             </span>
