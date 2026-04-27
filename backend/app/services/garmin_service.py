@@ -386,6 +386,161 @@ async def _match_activities_to_sessions(db: AsyncSession, user_id: int, activiti
     return matched
 
 
+# ── Activity detail ──────────────────────────────────────────────────────────
+
+async def fetch_activity_detail(db: AsyncSession, user_id: int, activity_id: str) -> dict:
+    """Fetch detailed activity data: GPS track, HR, cadence, pace, altitude streams."""
+    cred = await get_credentials(db, user_id)
+    if not cred:
+        raise ValueError("Geen Garmin credentials gevonden.")
+
+    token_dir = _write_token_dir(cred)
+    new_token_data: list[str] = []
+    result_holder: list[dict] = []
+
+    def _run():
+        try:
+            client = _login(cred, token_dir)
+            summary = client.get_activity(activity_id)
+            details = client.get_activity_details(activity_id, maxchart=2000, maxpoly=4000)
+            enc = _read_token_dir(token_dir)
+            if enc:
+                new_token_data.append(enc)
+            result_holder.append({"summary": summary, "details": details})
+        finally:
+            _cleanup_token_dir(token_dir)
+
+    loop = asyncio.get_event_loop()
+    try:
+        await loop.run_in_executor(None, _run)
+    except GarminConnectTooManyRequestsError as e:
+        raise RuntimeError("Garmin rate limit (429). Wacht 15 minuten.") from e
+    except GarminConnectAuthenticationError as e:
+        cred.encrypted_tokens = None
+        await db.commit()
+        raise RuntimeError("Garmin authenticatie mislukt.") from e
+
+    if new_token_data:
+        cred.encrypted_tokens = new_token_data[0]
+        await db.commit()
+
+    if not result_holder:
+        raise RuntimeError("Geen data ontvangen van Garmin.")
+
+    summary_raw = result_holder[0]["summary"]
+    details = result_holder[0]["details"]
+
+    # --- GPS track ---
+    gps_track = []
+    geo = details.get("geoPolylineDTO") or {}
+    for pt in (geo.get("polyline") or []):
+        lat, lon = pt.get("lat"), pt.get("lon")
+        if lat is not None and lon is not None:
+            gps_track.append({"lat": lat, "lon": lon, "altitude": pt.get("altitude")})
+
+    # --- Metric streams ---
+    descriptors = details.get("metricDescriptors") or []
+    metrics_data = details.get("activityDetailMetrics") or []
+
+    key_to_idx: dict[str, int] = {}
+    for d in descriptors:
+        k = d.get("key", "")
+        if k in ("directTimestamp", "directSpeed", "directHeartRate",
+                 "directCadence", "directRunCadence",
+                 "directAltitude", "directElevation"):
+            idx = d.get("metricsIndex")
+            if idx is not None:
+                key_to_idx[k] = int(idx)
+
+    def _val(m: list, key: str):
+        i = key_to_idx.get(key)
+        if i is None or i >= len(m):
+            return None
+        v = m[i]
+        if v is None:
+            return None
+        if isinstance(v, float) and v != v:  # NaN
+            return None
+        return v
+
+    time_s: list = []
+    pace_vals: list = []
+    hr_vals: list = []
+    cadence_vals: list = []
+    altitude_vals: list = []
+
+    start_ts_ms: Optional[float] = None
+    if metrics_data and "directTimestamp" in key_to_idx:
+        first_m = (metrics_data[0].get("metrics") or []) if isinstance(metrics_data[0], dict) else []
+        t0 = _val(first_m, "directTimestamp")
+        if t0 is not None:
+            start_ts_ms = float(t0)
+
+    for point in metrics_data:
+        m = point.get("metrics", []) if isinstance(point, dict) else []
+
+        ts = _val(m, "directTimestamp")
+        if ts is not None and start_ts_ms is not None:
+            time_s.append(round((float(ts) - start_ts_ms) / 1000))
+        else:
+            time_s.append(len(time_s))
+
+        speed = _val(m, "directSpeed")
+        if speed and float(speed) > 0.5:
+            pace_vals.append(round(1000 / float(speed), 1))
+        else:
+            pace_vals.append(None)
+
+        hr = _val(m, "directHeartRate")
+        hr_vals.append(int(hr) if hr is not None else None)
+
+        cad = _val(m, "directRunCadence") or _val(m, "directCadence")
+        cadence_vals.append(int(cad) if cad is not None else None)
+
+        alt = _val(m, "directElevation") or _val(m, "directAltitude")
+        altitude_vals.append(round(float(alt), 1) if alt is not None else None)
+
+    if not any(t > 0 for t in time_s):
+        dur = float(summary_raw.get("duration") or 0)
+        n = len(metrics_data)
+        time_s = [round(i * dur / n) for i in range(n)] if n > 0 else []
+
+    # --- Summary ---
+    dist_m = float(summary_raw.get("distance") or 0)
+    dist_km = round(dist_m / 1000, 2)
+    duration_sec = int(float(summary_raw.get("duration") or 0))
+    avg_speed = float(summary_raw.get("averageSpeed") or 0)
+    pace_str = None
+    if avg_speed > 0:
+        ps = 1000 / avg_speed
+        pace_str = f"{int(ps // 60)}:{int(ps % 60):02d}"
+
+    def _nonempty(lst: list) -> list:
+        return lst if any(v is not None for v in lst) else []
+
+    return {
+        "summary": {
+            "name": summary_raw.get("activityName") or "",
+            "start_time": summary_raw.get("startTimeLocal") or "",
+            "distance_km": dist_km,
+            "duration_seconds": duration_sec,
+            "avg_pace_per_km": pace_str,
+            "avg_heart_rate": summary_raw.get("averageHR"),
+            "max_heart_rate": summary_raw.get("maxHR"),
+            "avg_cadence": summary_raw.get("averageRunningCadenceInStepsPerMinute"),
+            "elevation_gain_m": summary_raw.get("elevationGain"),
+        },
+        "gps_track": gps_track,
+        "streams": {
+            "time": time_s,
+            "pace": _nonempty(pace_vals),
+            "heart_rate": _nonempty(hr_vals),
+            "cadence": _nonempty(cadence_vals),
+            "altitude": _nonempty(altitude_vals),
+        },
+    }
+
+
 # ── Workout builder ───────────────────────────────────────────────────────────
 
 _SPORT_RUNNING = {"sportTypeId": 1, "sportTypeKey": "running"}

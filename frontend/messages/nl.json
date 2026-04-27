@@ -30,7 +30,8 @@
     "myPlan": "Mijn Plan",
     "settings": "Instellingen",
     "logout": "Uitloggen",
-    "subtitle": "Ritme brengen in je training"
+    "subtitle": "Ritme brengen in je training",
+    "analyse": "Analyse"
   },
   "auth": {
     "login": {
@@ -298,7 +299,23 @@
       "rest":      "Rust",
       "strength":  "Kracht"
     },
-    "exercises": "Oefeningen"
+    "exercises": "Oefeningen",
+    "analyse": "Analyseer"
+  },
+  "analyse": {
+    "title": "Activiteiten analyseren",
+    "subtitle": "Selecteer een afgeronde training om de details te bekijken.",
+    "empty": "Nog geen afgeronde trainingen gevonden. Zorg dat je Garmin gesynchroniseerd is.",
+    "loading": "Laden…",
+    "error": "Kon de activiteit niet laden. Probeer het opnieuw.",
+    "stats": {
+      "distance": "Afstand",
+      "duration": "Duur",
+      "pace": "Gem. Tempo",
+      "heartRate": "Gem. Hartslag",
+      "cadence": "Cadans",
+      "elevation": "Hoogteverschil"
+    }
   },
   "calendar": {
     "weekTitle": "Week {current} / {total}",

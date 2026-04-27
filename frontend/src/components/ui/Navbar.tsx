@@ -4,7 +4,7 @@ import { useRef, useState, useEffect } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { Link, usePathname, useRouter } from "@/i18n/navigation";
 import { motion } from "framer-motion";
-import { LayoutDashboard, Plus, Settings, LogOut, ChevronDown, Sun, Moon, Calendar } from "lucide-react";
+import { LayoutDashboard, Plus, Settings, LogOut, ChevronDown, Sun, Moon, Calendar, BarChart2 } from "lucide-react";
 import { logout } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/components/ui/ThemeProvider";
@@ -64,6 +64,7 @@ export function Navbar() {
       ? [{ href: `/plans/${activePlan.public_id}` as any, label: t("myPlan"), icon: Calendar }]
       : []),
     { href: "/plans/new" as const, label: t("newPlan"), icon: Plus },
+    { href: "/analyse" as const, label: t("analyse"), icon: BarChart2 },
     { href: "/settings" as const, label: t("settings"), icon: Settings },
   ];
 

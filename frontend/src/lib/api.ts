@@ -105,4 +105,5 @@ export const garminApi = {
     api.post("/garmin/push/week", { plan_id: planId, week_number: weekNumber }),
   removeSession: (sessionId: number) => api.delete(`/garmin/sessions/${sessionId}`),
   autoSync: () => api.post("/garmin/auto-sync"),
+  getActivity: (activityId: string) => api.get(`/garmin/activity/${activityId}`),
 };

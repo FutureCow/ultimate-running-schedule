@@ -150,6 +150,38 @@ export interface GarminStatus {
   created_at: string;
 }
 
+export interface ActivityGpsPoint {
+  lat: number;
+  lon: number;
+  altitude?: number | null;
+}
+
+export interface ActivityStreams {
+  time: number[];
+  pace: number[];
+  heart_rate: (number | null)[];
+  cadence: (number | null)[];
+  altitude: (number | null)[];
+}
+
+export interface ActivitySummary {
+  name: string;
+  start_time: string;
+  distance_km: number;
+  duration_seconds: number;
+  avg_pace_per_km?: string | null;
+  avg_heart_rate?: number | null;
+  max_heart_rate?: number | null;
+  avg_cadence?: number | null;
+  elevation_gain_m?: number | null;
+}
+
+export interface ActivityDetail {
+  summary: ActivitySummary;
+  gps_track: ActivityGpsPoint[];
+  streams: ActivityStreams;
+}
+
 export type GoalType = "5k" | "10k" | "half_marathon" | "marathon";
 
 export interface PlanFormData {

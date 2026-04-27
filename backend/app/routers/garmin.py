@@ -127,6 +127,22 @@ async def sync_activities(
         raise HTTPException(status_code=502, detail=f"Garmin sync failed: {str(e)}")
 
 
+@router.get("/activity/{activity_id}")
+async def get_activity_detail(
+    activity_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Fetch detailed activity data (GPS track + metric streams) from Garmin."""
+    try:
+        data = await garmin_service.fetch_activity_detail(db, user.id, activity_id)
+        return data
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Garmin activity detail failed: {str(e)}")
+
+
 @router.post("/push/sessions")
 async def push_sessions(
     payload: GarminPushRequest,

@@ -30,7 +30,8 @@
     "myPlan": "My Plan",
     "settings": "Settings",
     "logout": "Log out",
-    "subtitle": "Bringing rhythm to your training"
+    "subtitle": "Bringing rhythm to your training",
+    "analyse": "Analyse"
   },
   "auth": {
     "login": {
@@ -298,7 +299,23 @@
       "rest":      "Rest",
       "strength":  "Strength"
     },
-    "exercises": "Exercises"
+    "exercises": "Exercises",
+    "analyse": "Analyse"
+  },
+  "analyse": {
+    "title": "Analyse workouts",
+    "subtitle": "Select a completed workout to view the details.",
+    "empty": "No completed workouts found yet. Make sure your Garmin is synced.",
+    "loading": "Loading…",
+    "error": "Could not load activity. Please try again.",
+    "stats": {
+      "distance": "Distance",
+      "duration": "Duration",
+      "pace": "Avg Pace",
+      "heartRate": "Avg HR",
+      "cadence": "Cadence",
+      "elevation": "Elevation"
+    }
   },
   "calendar": {
     "weekTitle": "Week {current} / {total}",

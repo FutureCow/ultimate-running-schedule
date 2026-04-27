@@ -2,8 +2,9 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations } from "next-intl";
-import { Clock, Ruler, Watch, ChevronDown, ChevronUp, Zap, CheckCircle2, ArrowLeftRight, Trash2, X, Dumbbell } from "lucide-react";
+import { Clock, Ruler, Watch, ChevronDown, ChevronUp, Zap, CheckCircle2, ArrowLeftRight, Trash2, X, Dumbbell, BarChart2 } from "lucide-react";
 import { useState } from "react";
+import { Link } from "@/i18n/navigation";
 import { WorkoutSession } from "@/types";
 import { cn, WORKOUT_COLORS } from "@/lib/utils";
 
@@ -220,6 +221,16 @@ export function WorkoutCard({ session, onPushToGarmin, isPushing, onMove, isMovi
                 </div>
 
                 <div className="flex items-center gap-2">
+                  {session.garmin_activity_id && (
+                    <Link
+                      href={`/analyse/${session.garmin_activity_id}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="btn-secondary text-xs px-3 py-1.5 gap-1.5"
+                    >
+                      <BarChart2 className="w-3.5 h-3.5 text-emerald-400" />
+                      {t("analyse")}
+                    </Link>
+                  )}
                   {onMove && (
                     <button
                       onClick={(e) => { e.stopPropagation(); setShowMovePicker((v) => !v); }}
