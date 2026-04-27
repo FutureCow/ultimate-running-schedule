@@ -139,7 +139,7 @@ function ChartInner({
 }: {
   config: ChartConfig;
   data: ReturnType<typeof buildChartData>;
-  height: number;
+  height: number | `${number}%`;
 }) {
   const filtered = data.filter((d) => d[config.dataKey as keyof typeof d] !== null);
 
@@ -264,7 +264,7 @@ function FullscreenChart({
           </button>
         </div>
         <div className="flex-1 min-h-0">
-          <ChartInner config={config} data={data} height={9999} />
+          <ChartInner config={config} data={data} height={"100%" as `${number}%`} />
         </div>
       </motion.div>
     </motion.div>
