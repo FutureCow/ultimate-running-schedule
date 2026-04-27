@@ -495,7 +495,8 @@ async def fetch_activity_detail(db: AsyncSession, user_id: int, activity_id: str
         hr_vals.append(int(hr) if hr is not None else None)
 
         cad = _val(m, "directRunCadence") or _val(m, "directCadence")
-        cadence_vals.append(int(cad) if cad is not None else None)
+        # Garmin stores cadence as strides/min (one foot); multiply by 2 for steps/min (both feet)
+        cadence_vals.append(int(cad) * 2 if cad is not None else None)
 
         alt = _val(m, "directElevation") or _val(m, "directAltitude")
         altitude_vals.append(round(float(alt), 1) if alt is not None else None)
@@ -548,7 +549,7 @@ async def fetch_activity_detail(db: AsyncSession, user_id: int, activity_id: str
             "avg_pace_per_km": pace_str,
             "avg_heart_rate": int(avg_hr) if avg_hr is not None else None,
             "max_heart_rate": int(max_hr) if max_hr is not None else None,
-            "avg_cadence": int(cadence) if cadence is not None else None,
+            "avg_cadence": int(cadence) * 2 if cadence is not None else None,
             "elevation_gain_m": round(float(elev), 1) if elev is not None else None,
         },
         "gps_track": gps_track,
