@@ -23,7 +23,18 @@ export function WeekCalendar({ plan }: Props) {
   const tDays = useTranslations("days");
 
   const weeks = plan.plan_json?.weeks || [];
-  const [currentWeek, setCurrentWeek] = useState(1);
+
+  function getActiveWeek(): number {
+    const dated = plan.sessions.filter((s) => s.scheduled_date);
+    if (dated.length === 0) return 1;
+    const startMs = Math.min(...dated.map((s) => parseISO(s.scheduled_date!).getTime()));
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const weeksPassed = Math.floor((today.getTime() - startMs) / (7 * 24 * 60 * 60 * 1000));
+    return Math.max(1, Math.min(plan.duration_weeks, weeksPassed + 1));
+  }
+
+  const [currentWeek, setCurrentWeek] = useState(getActiveWeek);
   const [pushingSession, setPushingSession] = useState<number | null>(null);
   const [pushingWeek, setPushingWeek] = useState(false);
   const queryClient = useQueryClient();
