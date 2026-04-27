@@ -506,29 +506,50 @@ async def fetch_activity_detail(db: AsyncSession, user_id: int, activity_id: str
         time_s = [round(i * dur / n) for i in range(n)] if n > 0 else []
 
     # --- Summary ---
-    dist_m = float(summary_raw.get("distance") or 0)
+    # get_activity() can return fields at the top level OR nested in summaryDTO,
+    # depending on the Garmin Connect API version. Try both locations.
+    dto = summary_raw.get("summaryDTO") or {}
+
+    def _pick(*keys):
+        """Return the first non-None, non-zero value found across top-level and summaryDTO."""
+        for k in keys:
+            v = summary_raw.get(k)
+            if v is not None and v != 0:
+                return v
+        for k in keys:
+            v = dto.get(k)
+            if v is not None and v != 0:
+                return v
+        return None
+
+    dist_m  = float(_pick("distance", "totalDistance") or 0)
     dist_km = round(dist_m / 1000, 2)
-    duration_sec = int(float(summary_raw.get("duration") or 0))
-    avg_speed = float(summary_raw.get("averageSpeed") or 0)
+    duration_sec = int(float(_pick("duration", "movingDuration", "elapsedDuration") or 0))
+    avg_speed = float(_pick("averageSpeed", "avgSpeed") or 0)
     pace_str = None
     if avg_speed > 0:
         ps = 1000 / avg_speed
         pace_str = f"{int(ps // 60)}:{int(ps % 60):02d}"
+
+    avg_hr  = _pick("averageHR", "averageHeartRate", "avgHr")
+    max_hr  = _pick("maxHR", "maxHeartRate", "maxHr")
+    cadence = _pick("averageRunningCadenceInStepsPerMinute", "averageCadence", "avgRunCadence")
+    elev    = _pick("elevationGain", "totalElevationGain", "totalAscent")
 
     def _nonempty(lst: list) -> list:
         return lst if any(v is not None for v in lst) else []
 
     return {
         "summary": {
-            "name": summary_raw.get("activityName") or "",
-            "start_time": summary_raw.get("startTimeLocal") or "",
+            "name": summary_raw.get("activityName") or dto.get("activityName") or "",
+            "start_time": summary_raw.get("startTimeLocal") or dto.get("startTimeLocal") or "",
             "distance_km": dist_km,
             "duration_seconds": duration_sec,
             "avg_pace_per_km": pace_str,
-            "avg_heart_rate": summary_raw.get("averageHR"),
-            "max_heart_rate": summary_raw.get("maxHR"),
-            "avg_cadence": summary_raw.get("averageRunningCadenceInStepsPerMinute"),
-            "elevation_gain_m": summary_raw.get("elevationGain"),
+            "avg_heart_rate": int(avg_hr) if avg_hr is not None else None,
+            "max_heart_rate": int(max_hr) if max_hr is not None else None,
+            "avg_cadence": int(cadence) if cadence is not None else None,
+            "elevation_gain_m": round(float(elev), 1) if elev is not None else None,
         },
         "gps_track": gps_track,
         "streams": {
