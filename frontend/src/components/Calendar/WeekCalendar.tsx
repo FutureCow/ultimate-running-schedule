@@ -27,7 +27,12 @@ export function WeekCalendar({ plan }: Props) {
   function getActiveWeek(): number {
     const dated = plan.sessions.filter((s) => s.scheduled_date);
     if (dated.length === 0) return 1;
-    const startMs = Math.min(...dated.map((s) => parseISO(s.scheduled_date!).getTime()));
+    // Parse as local midnight (not UTC) to avoid timezone offset issues
+    const toLocalMs = (dateStr: string) => {
+      const [y, m, d] = dateStr.split("-").map(Number);
+      return new Date(y, m - 1, d).getTime();
+    };
+    const startMs = Math.min(...dated.map((s) => toLocalMs(s.scheduled_date!)));
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const weeksPassed = Math.floor((today.getTime() - startMs) / (7 * 24 * 60 * 60 * 1000));
