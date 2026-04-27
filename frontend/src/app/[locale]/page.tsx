@@ -29,7 +29,7 @@ const fadeUp = {
   }),
 };
 
-function CadenceLogo({ size = 48 }: { size?: number }) {
+function MetriqLogo({ size = 48 }: { size?: number }) {
   return (
     <div
       className="rounded-2xl bg-brand-500 flex items-center justify-center shadow-lg shadow-brand-500/30 shrink-0"
@@ -121,7 +121,7 @@ function DemoSchedule({ locale }: { locale: string }) {
           <div className="w-3 h-3 rounded-full bg-emerald-500/70" />
         </div>
         <div className="flex items-center gap-2 text-xs text-slate-500">
-          <CadenceLogo size={18} />
+          <MetriqLogo size={18} />
           <span className="font-medium text-slate-400">
             {locale === "nl" ? "Sub-45 10K Rotterdam 2026 · Week 7 / 14" : "Sub-45 10K Amsterdam 2026 · Week 7 / 14"}
           </span>
@@ -284,9 +284,9 @@ export default function LocaleRootPage() {
       {/* Navbar */}
       <header className="relative z-10 flex items-center justify-between px-6 py-5 max-w-6xl mx-auto">
         <div className="flex items-center gap-3">
-          <CadenceLogo size={40} />
+          <MetriqLogo size={40} />
           <div>
-            <span className="text-lg font-bold text-white leading-tight block">Cadence</span>
+            <span className="text-lg font-bold text-white leading-tight block">Metriq</span>
             <span className="text-[10px] text-brand-400/80 font-medium leading-tight block hidden sm:block">
               {t("tagline")}
             </span>
@@ -461,7 +461,7 @@ export default function LocaleRootPage() {
           viewport={{ once: true }} transition={{ duration: 0.6 }}
           className="rounded-2xl bg-gradient-to-br from-brand-500/20 to-brand-600/10 border border-brand-500/25 p-10 text-center"
         >
-          <CadenceLogo size={56} />
+          <MetriqLogo size={56} />
           <h2 className="text-3xl font-bold mt-6 mb-3">{t("cta.title")}</h2>
           <p className="text-slate-400 mb-8 max-w-lg mx-auto">{t("cta.subtitle")}</p>
           <Link href="/register" className="btn-primary text-base px-10 py-3 inline-flex items-center gap-2">
@@ -474,7 +474,7 @@ export default function LocaleRootPage() {
 
       {/* Footer */}
       <footer className="relative z-10 border-t border-slate-800 py-8 px-6 text-center text-xs text-slate-600">
-        <p>© 2026 Cadence · {t("footer.tagline")}</p>
+        <p>© 2026 Metriq · {t("footer.tagline")}</p>
       </footer>
     </div>
   );

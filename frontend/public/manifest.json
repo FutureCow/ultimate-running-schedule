@@ -1,7 +1,7 @@
 {
   "id": "/",
-  "name": "Cadence – Ritme in je training",
-  "short_name": "Cadence",
+  "name": "Metriq – Ritme in je training",
+  "short_name": "Metriq",
   "description": "AI-gegenereerde hardloopschema's op basis van je Garmin-data en Jack Daniels VDOT-methodologie",
   "start_url": "/",
   "scope": "/",
@@ -36,7 +36,7 @@
       "sizes": "390x844",
       "type": "image/png",
       "form_factor": "narrow",
-      "label": "Cadence – Trainingsplan dashboard"
+      "label": "Metriq – Trainingsplan dashboard"
     }
   ]
 }

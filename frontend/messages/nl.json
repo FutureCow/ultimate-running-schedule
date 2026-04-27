@@ -20,7 +20,7 @@
     "none": "—"
   },
   "meta": {
-    "title": "Cadence – Ritme in je training",
+    "title": "Metriq – Ritme in je training",
     "subtitle": "Ritme brengen in je training",
     "description": "AI-gegenereerde hardloopschema's op basis van je Garmin-data en Jack Daniels VDOT-methodologie"
   },
@@ -35,7 +35,7 @@
   "auth": {
     "login": {
       "title": "Welkom terug",
-      "subtitle": "Log in op je Cadence account",
+      "subtitle": "Log in op je Metriq account",
       "email": "E-mailadres",
       "emailPlaceholder": "jij@example.com",
       "password": "Wachtwoord",
@@ -377,7 +377,7 @@
       "title1": "Jouw persoonlijke",
       "title2": "hardloopcoach,",
       "title3": "aangedreven door AI.",
-      "subtitle": "Cadence genereert wetenschappelijk onderbouwde trainingsplannen op maat van jouw niveau en Garmin-data — en stuurt ze rechtstreeks naar je horloge.",
+      "subtitle": "Metriq genereert wetenschappelijk onderbouwde trainingsplannen op maat van jouw niveau en Garmin-data — en stuurt ze rechtstreeks naar je horloge.",
       "cta": "Gratis starten",
       "login": "Al een account",
       "trust": {
@@ -394,7 +394,7 @@
     },
     "features": {
       "title": "Alles om slimmer te trainen",
-      "subtitle": "Cadence combineert AI, sportwetenschap en jouw eigen data om plannen te bouwen die écht werken.",
+      "subtitle": "Metriq combineert AI, sportwetenschap en jouw eigen data om plannen te bouwen die écht werken.",
       "ai": {
         "title": "AI-gegenereerde trainingsplannen",
         "desc": "Claude AI analyseert je profiel en doelen en bouwt een geperiodiseerd plan op basis van de Jack Daniels VDOT-methode — de gouden standaard in de loopsport."
@@ -425,7 +425,7 @@
       "subtitle": "Van profiel naar persoonlijk plan in minder dan een minuut.",
       "step1": {
         "title": "Vul je profiel in",
-        "desc": "Vertel Cadence je leeftijd, huidige conditie, doelwedstrijd en voorkeuren. Koppel Garmin om je trainingshistorie automatisch mee te nemen."
+        "desc": "Vertel Metriq je leeftijd, huidige conditie, doelwedstrijd en voorkeuren. Koppel Garmin om je trainingshistorie automatisch mee te nemen."
       },
       "step2": {
         "title": "Claude AI bouwt je plan",
@@ -442,7 +442,7 @@
     },
     "cta": {
       "title": "Klaar om je ritme te vinden?",
-      "subtitle": "Word lid van Cadence en train met een plan dat speciaal voor jou is gemaakt.",
+      "subtitle": "Word lid van Metriq en train met een plan dat speciaal voor jou is gemaakt.",
       "button": "Gratis account aanmaken",
       "note": "Geen creditcard nodig · Altijd opzegbaar"
     },
