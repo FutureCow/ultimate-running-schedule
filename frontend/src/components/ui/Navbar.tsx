@@ -54,6 +54,9 @@ export function Navbar() {
 
   const NAV_ITEMS = [
     { href: "/dashboard" as const, label: t("dashboard"), icon: LayoutDashboard },
+    ...(activePlan
+      ? [{ href: `/plans/${activePlan.public_id}` as any, label: t("myPlan"), icon: Calendar }]
+      : []),
     { href: "/plans/new" as const, label: t("newPlan"), icon: Plus },
     { href: "/settings" as const, label: t("settings"), icon: Settings },
   ];
