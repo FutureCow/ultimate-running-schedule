@@ -9,7 +9,7 @@ import { logout } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/components/ui/ThemeProvider";
 import { useQuery } from "@tanstack/react-query";
-import { plansApi } from "@/lib/api";
+import { plansApi, garminApi } from "@/lib/api";
 import { Plan } from "@/types";
 
 const LOCALES = [
@@ -43,6 +43,12 @@ export function Navbar() {
     }
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  useEffect(() => {
+    garminApi.autoSync().catch(() => {});
+    const interval = setInterval(() => garminApi.autoSync().catch(() => {}), 60 * 60 * 1000);
+    return () => clearInterval(interval);
   }, []);
 
   function switchLocale(code: string) {

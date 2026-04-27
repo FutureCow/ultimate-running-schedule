@@ -5,10 +5,10 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Trash2, Info, Pencil, Dumbbell, X, Loader2, RefreshCw } from "lucide-react";
 import { useTranslations, useLocale } from "next-intl";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { Link } from "@/i18n/navigation";
-import { plansApi } from "@/lib/api";
+import { plansApi, garminApi } from "@/lib/api";
 import { Plan } from "@/types";
 import { WeekCalendar } from "@/components/Calendar/WeekCalendar";
 import { PaceZonesCard } from "@/components/Calendar/PaceZonesCard";
@@ -30,6 +30,12 @@ export default function PlanDetailPage() {
     queryKey: ["plan", id],
     queryFn: () => plansApi.get(id).then((r) => r.data),
   });
+
+  useEffect(() => {
+    garminApi.autoSync()
+      .then((r) => { if (r.data?.synced) queryClient.invalidateQueries({ queryKey: ["plan", id] }); })
+      .catch(() => {});
+  }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const deleteMutation = useMutation({
     mutationFn: () => plansApi.delete(id),
