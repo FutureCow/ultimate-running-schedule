@@ -51,14 +51,19 @@ export function WorkoutCard({ session, onPushToGarmin, isPushing, onMove, isMovi
     );
   }
 
+  const isCompleted = !!session.completed_at;
+
   return (
-    <motion.div layout className="rounded-2xl border border-slate-700/40 bg-surface-card overflow-hidden">
+    <motion.div layout className={cn(
+      "rounded-2xl border bg-surface-card overflow-hidden",
+      isCompleted ? "border-emerald-500/40 bg-emerald-500/5" : "border-slate-700/40"
+    )}>
       {/* Main row */}
       <div
         className="flex items-stretch gap-0 cursor-pointer hover:bg-surface-elevated transition-colors duration-150"
         onClick={() => setExpanded(!expanded)}
       >
-        <div className={cn("w-1.5 shrink-0", accentColor)} />
+        <div className={cn("w-1.5 shrink-0", isCompleted ? "bg-emerald-500" : accentColor)} />
 
         <div className="flex flex-1 items-center gap-4 px-4 py-3 min-w-0">
           <span className={cn(
@@ -76,11 +81,7 @@ export function WorkoutCard({ session, onPushToGarmin, isPushing, onMove, isMovi
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            {session.completed_at && (
-              <span title="Afgerond" className="shrink-0">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-              </span>
-            )}
+            {/* completed indicator moved to card border/bg — no inline icon */}
             <div className="flex flex-col sm:flex-row items-end sm:items-center gap-1 sm:gap-3">
               {session.workout_type === "strength" ? (
                 <>
@@ -122,6 +123,13 @@ export function WorkoutCard({ session, onPushToGarmin, isPushing, onMove, isMovi
             className="overflow-hidden"
           >
             <div className="px-5 pb-4 pt-1 space-y-3 border-t border-slate-700/40 ml-1.5">
+
+              {isCompleted && (
+                <div className="flex items-center gap-1.5 text-xs text-emerald-400 font-medium">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  {t("completed")}
+                </div>
+              )}
 
               {session.workout_type === "strength" ? (
                 session.description && (
