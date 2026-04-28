@@ -84,7 +84,12 @@ export function WorkoutCard({ session, onPushToGarmin, isPushing, onMove, isMovi
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            {/* completed indicator moved to card border/bg — no inline icon */}
+            {isCompleted && (
+              <span className="flex items-center gap-1 shrink-0 text-[11px] font-semibold text-emerald-400 bg-emerald-500/15 border border-emerald-500/25 rounded-lg px-2 py-0.5">
+                <CheckCircle2 className="w-3 h-3" />
+                <span className="hidden sm:inline">{t("completed")}</span>
+              </span>
+            )}
             <div className="flex flex-col sm:flex-row items-end sm:items-center gap-1 sm:gap-3">
               {session.workout_type === "strength" ? (
                 <>
