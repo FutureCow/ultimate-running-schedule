@@ -156,7 +156,7 @@ if $FRONTEND_CHANGED; then
         npm ci --frozen-lockfile --silent
     fi
 
-    write_version  # versie schrijven vóór build zodat deze ingebakken wordt
+    write_version || true  # versie schrijven vóór build zodat deze ingebakken wordt
     info "Frontend bouwen…"
     npm run build
 
