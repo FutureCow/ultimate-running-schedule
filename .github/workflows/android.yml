@@ -1,0 +1,110 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'mobile/**'
+      - '.github/workflows/android.yml'
+  workflow_dispatch:
+    inputs:
+      version_name:
+        description: 'Version name (e.g. 1.2.0) — leave empty to use pubspec version'
+        required: false
+
+jobs:
+  build:
+    name: Build APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.27.4'
+          channel: stable
+          cache: true
+
+      - name: Get dependencies
+        working-directory: mobile
+        run: flutter pub get
+
+      - name: Determine version
+        id: version
+        working-directory: mobile
+        run: |
+          # Read version from pubspec.yaml (format: 1.0.0+1)
+          PUBSPEC_VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //')
+          VERSION_NAME=$(echo "$PUBSPEC_VERSION" | cut -d'+' -f1)
+          VERSION_CODE=$(echo "$PUBSPEC_VERSION" | cut -d'+' -f2)
+
+          # Override version name if provided via workflow_dispatch
+          if [ -n "${{ github.event.inputs.version_name }}" ]; then
+            VERSION_NAME="${{ github.event.inputs.version_name }}"
+          fi
+
+          # Use run number as build number so each CI build is unique
+          BUILD_NUMBER=${{ github.run_number }}
+
+          echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT
+          echo "version_code=$BUILD_NUMBER" >> $GITHUB_OUTPUT
+          echo "full_version=${VERSION_NAME}+${BUILD_NUMBER}" >> $GITHUB_OUTPUT
+          echo "Building version: $VERSION_NAME (build $BUILD_NUMBER)"
+
+      - name: Analyze
+        working-directory: mobile
+        run: flutter analyze --no-fatal-infos
+
+      - name: Build APK
+        working-directory: mobile
+        run: |
+          flutter build apk --release \
+            --build-name=${{ steps.version.outputs.version_name }} \
+            --build-number=${{ steps.version.outputs.version_code }}
+
+      - name: Rename APK
+        run: |
+          mkdir -p artifacts
+          cp mobile/build/app/outputs/flutter-apk/app-release.apk \
+             artifacts/ultimate-running-${{ steps.version.outputs.full_version }}.apk
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ultimate-running-${{ steps.version.outputs.full_version }}
+          path: artifacts/ultimate-running-${{ steps.version.outputs.full_version }}.apk
+          retention-days: 30
+
+      - name: Create GitHub Release
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-v${{ steps.version.outputs.version_name }}-${{ steps.version.outputs.version_code }}
+          name: Android ${{ steps.version.outputs.version_name }} (build ${{ steps.version.outputs.version_code }})
+          body: |
+            ## Ultimate Running Android App
+
+            **Versie:** ${{ steps.version.outputs.version_name }}
+            **Build:** ${{ steps.version.outputs.version_code }}
+            **Commit:** ${{ github.sha }}
+
+            ### Installeren
+            1. Download `ultimate-running-*.apk`
+            2. Zet _Onbekende bronnen_ aan op je Android telefoon
+               (Instellingen → Apps → Speciale app-toegang → Onbekende apps installeren)
+            3. Open het APK-bestand op je telefoon
+
+            ### Backend
+            Verbindt met: https://run.fhettinga.nl
+          files: artifacts/ultimate-running-${{ steps.version.outputs.full_version }}.apk
+          draft: false
+          prerelease: false
