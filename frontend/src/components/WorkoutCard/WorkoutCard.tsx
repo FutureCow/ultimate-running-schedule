@@ -78,18 +78,17 @@ export function WorkoutCard({ session, onPushToGarmin, isPushing, onMove, isMovi
 
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-white leading-tight">{session.title}</p>
-            {session.description && (
+            {isCompleted ? (
+              <span className="flex items-center gap-1 mt-0.5 text-xs font-semibold text-emerald-400">
+                <CheckCircle2 className="w-3 h-3 shrink-0" />
+                {t("completed")}
+              </span>
+            ) : session.description ? (
               <p className="text-xs text-slate-400 mt-0.5 line-clamp-1">{session.description}</p>
-            )}
+            ) : null}
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            {isCompleted && (
-              <span className="flex items-center gap-1 shrink-0 text-[11px] font-semibold text-emerald-400 bg-emerald-500/15 border border-emerald-500/25 rounded-lg px-2 py-0.5">
-                <CheckCircle2 className="w-3 h-3" />
-                <span className="hidden sm:inline">{t("completed")}</span>
-              </span>
-            )}
             <div className="flex flex-col sm:flex-row items-end sm:items-center gap-1 sm:gap-3">
               {session.workout_type === "strength" ? (
                 <>
