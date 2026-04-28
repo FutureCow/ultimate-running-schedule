@@ -1,15 +1,15 @@
 """add user tier and session ai_feedback
 
-Revision ID: f6a7b8c9d0e1
-Revises: e5f6a7b8c9d0
+Revision ID: b1c2d3e4f5a6
+Revises: a7b8c9d0e1f2
 Create Date: 2026-04-28
 
 """
 from alembic import op
 import sqlalchemy as sa
 
-revision = 'f6a7b8c9d0e1'
-down_revision = 'e5f6a7b8c9d0'
+revision = 'b1c2d3e4f5a6'
+down_revision = 'a7b8c9d0e1f2'
 branch_labels = None
 depends_on = None
 
