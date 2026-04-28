@@ -250,64 +250,108 @@ async def update_plan(
     return result.scalar_one()
 
 
+_ZONE_FOR_TYPE: dict[str, str] = {
+    "easy_run": "easy",
+    "long_run":  "marathon",
+    "recovery":  "easy",
+    "tempo":     "threshold",
+    "interval":  "interval",
+}
+
+
 @router.post("/{public_id}/regenerate", response_model=PlanResponse)
 async def regenerate_plan(
     public_id: str,
     db: AsyncSession = Depends(get_db),
     user: User = Depends(require_tier("tempo")),
 ):
-    """Regenerate the plan using current settings + fresh Garmin data. No settings are changed."""
+    """Recalibrate pace zones from the last 6 Garmin activities.
+    Does NOT create a new plan — only updates target_paces on future sessions."""
     result = await db.execute(select(Plan).where(Plan.public_id == public_id, Plan.user_id == user.id))
     plan = result.scalar_one_or_none()
     if not plan:
         raise HTTPException(status_code=404, detail="Plan not found")
 
-    merged = PlanCreate(
-        name=plan.name,
-        goal=plan.goal,
-        target_time_seconds=plan.target_time_seconds,
-        target_pace_per_km=plan.target_pace_per_km,
-        age=plan.age,
-        height_cm=plan.height_cm,
-        weight_kg=plan.weight_kg,
-        weekly_km=plan.weekly_km,
-        weekly_runs=plan.weekly_runs,
-        injuries=plan.injuries,
-        extra_notes=plan.extra_notes,
-        training_days=plan.training_days,
-        long_run_day=plan.long_run_day,
-        duration_weeks=plan.duration_weeks,
-        surface=plan.surface,
-        start_date=plan.start_date,
-        race_date=plan.race_date,
-        strength=StrengthPreferences(
-            enabled=plan.strength_enabled,
-            location=plan.strength_location,
-            type=plan.strength_type,
-            days=plan.strength_days,
-            equipment=plan.strength_equipment,
-        ) if plan.strength_enabled else None,
-    )
-
-    garmin_summary = None
+    # Fetch fresh Garmin activities to get actual paces
+    activity_by_id: dict[str, dict] = {}
     try:
-        garmin_summary = await garmin_service.fetch_activities(db, user.id, months=3)
+        sync_result = await garmin_service.fetch_activities(db, user.id, months=3, user_tier=user.tier)
+        for act in sync_result.get("activities", []):
+            activity_by_id[act["activity_id"]] = act
     except Exception:
-        pass
+        pass  # proceed with whatever data we have
 
+    # Find the 6 most recent completed non-rest sessions from this plan
+    completed = sorted(
+        [s for s in plan.sessions if s.completed_at and s.workout_type not in ("rest", "strength")],
+        key=lambda s: s.completed_at,
+        reverse=True,
+    )[:6]
+
+    recent_runs = []
+    for s in completed:
+        act = activity_by_id.get(s.garmin_activity_id or "", {})
+        recent_runs.append({
+            "workout_type": s.workout_type,
+            "planned_paces": s.target_paces or {},
+            "actual_pace": act.get("average_pace_per_km"),
+            "actual_hr":   act.get("average_heart_rate"),
+            "distance_km": act.get("distance_km") or s.distance_km,
+        })
+
+    if not recent_runs:
+        raise HTTPException(
+            status_code=400,
+            detail="Geen voltooide sessies gevonden — voltooi eerst een paar runs via Garmin sync.",
+        )
+
+    # Get current pace zones from plan
+    current_zones = {}
+    if plan.plan_json:
+        current_zones = (plan.plan_json.get("plan_overview") or {}).get("pace_zones") or {}
+
+    # Ask Claude to recalibrate
     try:
-        plan_json = await claude_service.generate_plan(merged, garmin_summary)
+        new_data = await claude_service.recalibrate_paces(recent_runs, current_zones)
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"AI plan generation failed: {str(e)}")
+        raise HTTPException(status_code=502, detail=f"Pace recalibratie mislukt: {str(e)}")
 
-    plan.plan_json = plan_json
+    new_zones = {k: v for k, v in new_data.items() if k != "notes"}
+    if not new_zones:
+        raise HTTPException(status_code=502, detail="Claude kon geen nieuwe pacezones berekenen.")
 
-    from sqlalchemy import delete as sql_delete
-    await db.execute(sql_delete(WorkoutSession).where(WorkoutSession.plan_id == plan.id))
-    await db.flush()
+    # Apply updated zones to all future (uncompleted) running sessions
+    future_sessions = [
+        s for s in plan.sessions
+        if not s.completed_at and s.workout_type in _ZONE_FOR_TYPE
+    ]
+    for session in future_sessions:
+        zone = _ZONE_FOR_TYPE[session.workout_type]
+        new_main = new_zones.get(zone)
+        if not new_main:
+            continue
+        paces = dict(session.target_paces or {})
+        paces["main"] = new_main
+        if "warmup" in paces and new_zones.get("easy"):
+            paces["warmup"] = new_zones["easy"]
+        if "cooldown" in paces and new_zones.get("easy"):
+            paces["cooldown"] = new_zones["easy"]
+        session.target_paces = paces
 
-    sessions = _create_sessions_from_json(plan, plan_json)
-    db.add_all(sessions)
+        # Update interval paces too
+        if session.workout_type == "interval" and session.intervals and new_zones.get("interval"):
+            session.intervals = [{**iv, "pace": new_zones["interval"]} for iv in session.intervals]
+
+    # Update pace zones + notes in stored plan_json
+    if plan.plan_json:
+        import copy
+        pj = copy.deepcopy(plan.plan_json)
+        overview = pj.setdefault("plan_overview", {})
+        overview["pace_zones"] = {**current_zones, **new_zones}
+        if new_data.get("notes"):
+            overview["coaching_notes"] = new_data["notes"]
+        plan.plan_json = pj
+
     await db.commit()
 
     result = await db.execute(select(Plan).where(Plan.public_id == public_id))

@@ -269,3 +269,60 @@ Write in plain text — no markdown, no bullet points, no headers."""
     )
 
     return message.content[0].text.strip() if message.content else ""
+
+
+async def recalibrate_paces(
+    recent_runs: list[dict],
+    current_zones: dict,
+    language: str = "nl",
+) -> dict:
+    """Given 6 recent completed runs (planned vs actual), return updated pace zones.
+
+    Returns: {"easy": "X:XX-X:XX", "marathon": ..., "threshold": ..., "interval": ..., "repetition": ..., "notes": "..."}
+    """
+    client = anthropic.AsyncAnthropic(
+        api_key=settings.ANTHROPIC_API_KEY,
+        base_url=settings.ANTHROPIC_BASE_URL or None,
+    )
+
+    lang_instruction = "Dutch (Nederlands)" if language == "nl" else "English"
+
+    runs_text = ""
+    for i, r in enumerate(recent_runs, 1):
+        planned = r.get("planned_paces", {}) or {}
+        actual_pace = r.get("actual_pace") or "onbekend"
+        actual_hr   = r.get("actual_hr")
+        dist        = r.get("distance_km")
+        line = f"{i}. {r['workout_type']} — gepland: {planned.get('main', '?')}/km"
+        if dist:       line += f", afstand: {dist} km"
+        if actual_pace != "onbekend": line += f", werkelijk tempo: {actual_pace}/km"
+        if actual_hr:  line += f", gem. HR: {actual_hr} bpm"
+        runs_text += line + "\n"
+
+    zones_text = "\n".join(f"- {k}: {v}" for k, v in (current_zones or {}).items())
+
+    prompt = f"""You are an elite running coach using Jack Daniels VDOT methodology.
+
+A runner has completed these recent workouts (planned vs actual):
+{runs_text}
+Current pace zones:
+{zones_text or "(not set)"}
+
+Based on this data, recalibrate the runner's training pace zones. If actual paces are consistently faster/slower than planned, adjust zones accordingly. Keep changes conservative (max ~5 sec/km per zone per recalibration).
+
+Return ONLY a JSON object in this exact format (use "min:ss-min:ss/km" notation):
+{{"easy":"X:XX-X:XX","marathon":"X:XX-X:XX","threshold":"X:XX-X:XX","interval":"X:XX-X:XX","repetition":"X:XX-X:XX","notes":"1-2 sentence explanation in {lang_instruction}"}}"""
+
+    message = await client.messages.create(
+        model=settings.CLAUDE_MODEL,
+        max_tokens=300,
+        system="You are an elite running coach. Return ONLY a JSON object — no preamble, no markdown.",
+        messages=[{"role": "user", "content": prompt}],
+    )
+
+    raw = _extract_json(message.content[0].text) if message.content else "{}"
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        logger.error("recalibrate_paces JSON parse failed: %s", raw[:200])
+        return {}

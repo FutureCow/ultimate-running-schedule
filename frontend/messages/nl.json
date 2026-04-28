@@ -115,8 +115,8 @@
     "deleteConfirm": "Plan verwijderen?",
     "weeklyStructure": "Weekstructuur",
     "addStrength": "Krachttraining toevoegen",
-    "regenerate": "Herberekenen met Garmin",
-    "regenerateConfirm": "Plan opnieuw genereren met actuele Garmin-data? Dit overschrijft het huidige schema.",
+    "regenerate": "Pacezones bijstellen",
+    "regenerateConfirm": "Pacezones bijstellen op basis van je laatste 6 Garmin-activiteiten? Alleen toekomstige sessies worden bijgewerkt — het schema blijft intact.",
     "new": {
       "title": "Nieuw Trainingsplan",
       "subtitle": "AI genereert een gepersonaliseerd schema op basis van jouw profiel en Garmin-data."
