@@ -28,10 +28,11 @@ class AuthProvider extends ChangeNotifier {
   Future<void> _loadUser() async {
     try {
       final res = await _api.getMe();
-      _user = User.fromJson(res.data);
+      _user = User.fromJson(res.data as Map<String, dynamic>);
       _state = AuthState.authenticated;
-    } catch (_) {
+    } catch (e) {
       _state = AuthState.unauthenticated;
+      _error = 'Kon gebruikersgegevens niet ophalen: ${e.toString().split('\n').first}';
     }
     notifyListeners();
   }

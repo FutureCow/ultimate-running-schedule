@@ -14,10 +14,10 @@ class User {
   });
 
   factory User.fromJson(Map<String, dynamic> j) => User(
-        id: j['id'],
-        email: j['email'],
-        name: j['name'] ?? '',
-        tier: j['tier'] ?? 'free',
+        id: (j['id'] as num?)?.toInt() ?? 0,
+        email: j['email'] as String? ?? '',
+        name: j['name'] as String? ?? (j['email'] as String? ?? '').split('@').first,
+        tier: j['tier'] as String? ?? 'free',
         weeklyKm: (j['weekly_km'] as num?)?.toDouble(),
       );
 }

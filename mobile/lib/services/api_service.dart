@@ -81,7 +81,7 @@ class ApiService {
   Future<Response> register(String email, String password, String name) =>
       _dio.post('/auth/register', data: {'email': email, 'password': password, 'name': name});
 
-  Future<Response> getMe() => _dio.get('/auth/me');
+  Future<Response> getMe() => _dio.get('/auth/profile');
 
   // Plans
   Future<Response> getPlans() => _dio.get('/plans');

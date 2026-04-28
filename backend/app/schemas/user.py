@@ -34,14 +34,16 @@ class UserProfileUpdate(BaseModel):
 class UserProfileResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
+    id: int
+    email: str
+    tier: str = "elite"
+    is_admin: bool = False
     age: Optional[int] = None
     height_cm: Optional[float] = None
     weight_kg: Optional[float] = None
     weekly_km: Optional[float] = None
     weekly_runs: Optional[int] = None
     injuries: Optional[str] = None
-    is_admin: bool = False
-    tier: str = "elite"
 
 
 class TokenResponse(BaseModel):
