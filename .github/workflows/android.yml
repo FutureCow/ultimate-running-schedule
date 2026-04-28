@@ -41,21 +41,21 @@ jobs:
         working-directory: mobile
         run: flutter pub get
 
+      - name: Decode keystore
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > mobile/android/app/ultimate-running.jks
+
       - name: Determine version
         id: version
         working-directory: mobile
         run: |
-          # Read version from pubspec.yaml (format: 1.0.0+1)
           PUBSPEC_VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //')
           VERSION_NAME=$(echo "$PUBSPEC_VERSION" | cut -d'+' -f1)
-          VERSION_CODE=$(echo "$PUBSPEC_VERSION" | cut -d'+' -f2)
 
-          # Override version name if provided via workflow_dispatch
           if [ -n "${{ github.event.inputs.version_name }}" ]; then
             VERSION_NAME="${{ github.event.inputs.version_name }}"
           fi
 
-          # Use run number as build number so each CI build is unique
           BUILD_NUMBER=${{ github.run_number }}
 
           echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT
@@ -69,6 +69,11 @@ jobs:
 
       - name: Build APK
         working-directory: mobile
+        env:
+          KEYSTORE_PATH: ${{ github.workspace }}/mobile/android/app/ultimate-running.jks
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
         run: |
           flutter build apk --release \
             --build-name=${{ steps.version.outputs.version_name }} \
@@ -100,11 +105,10 @@ jobs:
             **Build:** ${{ steps.version.outputs.version_code }}
             **Commit:** ${{ github.sha }}
 
-            ### Installeren
+            ### Installeren / Updaten
             1. Download `ultimate-running-*.apk`
-            2. Zet _Onbekende bronnen_ aan op je Android telefoon
-               (Instellingen → Apps → Speciale app-toegang → Onbekende apps installeren)
-            3. Open het APK-bestand op je telefoon
+            2. Open het APK-bestand op je telefoon
+            3. Tik op _Installeren_ — updates worden automatisch herkend
 
             ### Backend
             Verbindt met: https://run.fhettinga.nl
