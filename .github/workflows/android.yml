@@ -12,6 +12,9 @@ on:
         description: 'Version name (e.g. 1.2.0) — leave empty to use pubspec version'
         required: false
 
+permissions:
+  contents: write
+
 jobs:
   build:
     name: Build APK
