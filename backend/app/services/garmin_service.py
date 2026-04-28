@@ -550,7 +550,15 @@ async def fetch_activity_detail(db: AsyncSession, user_id: int, activity_id: str
 
     avg_hr  = _pick("averageHR", "averageHeartRate", "avgHr")
     max_hr  = _pick("maxHR", "maxHeartRate", "maxHr")
-    cadence = _pick("averageRunningCadenceInStepsPerMinute", "averageCadence", "avgRunCadence")
+    cadence = _pick(
+        "averageRunningCadenceInStepsPerMinute", "averageRunCadence",
+        "averageCadence", "avgRunCadence", "avgCadence",
+    )
+    # Fallback: derive from stream data if summary field is missing
+    if cadence is None:
+        raw_cad_vals = [v / 2 for v in cadence_vals if v is not None]  # undo the ×2 already applied
+        if raw_cad_vals:
+            cadence = sum(raw_cad_vals) / len(raw_cad_vals)
     elev    = _pick("elevationGain", "totalElevationGain", "totalAscent")
 
     def _nonempty(lst: list) -> list:
