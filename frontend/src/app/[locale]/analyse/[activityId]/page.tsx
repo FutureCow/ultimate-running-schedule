@@ -13,8 +13,8 @@ import { ActivityDetail } from "@/types";
 import { Navbar } from "@/components/ui/Navbar";
 import { Brain } from "lucide-react";
 import {
-  ResponsiveContainer, LineChart, Line, AreaChart, Area,
-  XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine,
+  ResponsiveContainer, ComposedChart, Line, Area,
+  XAxis, YAxis, CartesianGrid, Tooltip,
 } from "recharts";
 
 const ActivityMap = dynamic(
@@ -65,7 +65,7 @@ function StatCard({ icon, label, value, sub }: { icon: React.ReactNode; label: s
   );
 }
 
-// ── Chart card ─────────────────────────────────────────────────────────────────
+// ── Chart config ───────────────────────────────────────────────────────────────
 
 type ChartKey = "pace" | "altitude" | "heart_rate" | "cadence";
 
@@ -108,137 +108,190 @@ const CHART_CONFIGS: ChartConfig[] = [
   },
 ];
 
+// ── Combined chart ─────────────────────────────────────────────────────────────
+
+function CombinedChartInner({
+  primary, secondary, data, height,
+}: {
+  primary: ChartConfig;
+  secondary?: ChartConfig;
+  data: ReturnType<typeof buildChartData>;
+  height: number | `${number}%`;
+}) {
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (!active || !payload?.length) return null;
+    return (
+      <div className="bg-slate-800 border border-slate-700/60 rounded-xl px-3 py-2 text-xs shadow-xl space-y-0.5">
+        <p className="text-slate-400 text-[10px]">{fmtTime(label)}</p>
+        {payload.map((entry: any, i: number) => {
+          const cfg = CHART_CONFIGS.find((c) => c.dataKey === entry.dataKey);
+          const val = entry.value;
+          if (val == null) return null;
+          return (
+            <p key={i} className="font-semibold" style={{ color: cfg?.color || entry.color }}>
+              {cfg?.tooltipFormatter ? cfg.tooltipFormatter(val) : `${val} ${cfg?.unit ?? ""}`}
+            </p>
+          );
+        })}
+      </div>
+    );
+  };
+
+  return (
+    <ResponsiveContainer width="100%" height={height}>
+      <ComposedChart data={data} margin={{ top: 4, right: secondary ? 42 : 8, left: 0, bottom: 0 }}>
+        <defs>
+          <linearGradient id={`grad-${primary.key}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor={primary.color} stopOpacity={0.3} />
+            <stop offset="95%" stopColor={primary.color} stopOpacity={0} />
+          </linearGradient>
+        </defs>
+        <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+        <XAxis
+          dataKey="t"
+          tickFormatter={fmtTime}
+          tick={{ fill: "#64748b", fontSize: 10 }}
+          tickLine={false}
+          axisLine={false}
+          minTickGap={60}
+        />
+        <YAxis
+          yAxisId="left"
+          domain={["auto", "auto"]}
+          reversed={primary.reversed}
+          tickFormatter={primary.tickFormatter}
+          tick={{ fill: "#64748b", fontSize: 10 }}
+          tickLine={false}
+          axisLine={false}
+          width={38}
+        />
+        {secondary && (
+          <YAxis
+            yAxisId="right"
+            orientation="right"
+            domain={["auto", "auto"]}
+            reversed={secondary.reversed}
+            tickFormatter={secondary.tickFormatter}
+            tick={{ fill: secondary.color + "cc", fontSize: 10 }}
+            tickLine={false}
+            axisLine={false}
+            width={38}
+          />
+        )}
+        <Tooltip content={<CustomTooltip />} position={{ y: 0 }} />
+
+        {/* Primary series */}
+        {primary.type === "area" ? (
+          <Area
+            yAxisId="left"
+            type="monotone"
+            dataKey={primary.dataKey}
+            stroke={primary.color}
+            fill={`url(#grad-${primary.key})`}
+            strokeWidth={2}
+            dot={false}
+            connectNulls
+          />
+        ) : (
+          <Line
+            yAxisId="left"
+            type="monotone"
+            dataKey={primary.dataKey}
+            stroke={primary.color}
+            strokeWidth={2}
+            dot={false}
+            connectNulls
+          />
+        )}
+
+        {/* Secondary overlay — dashed line, own Y-axis */}
+        {secondary && (
+          <Line
+            yAxisId="right"
+            type="monotone"
+            dataKey={secondary.dataKey}
+            stroke={secondary.color}
+            strokeWidth={1.5}
+            strokeDasharray="5 3"
+            strokeOpacity={0.85}
+            dot={false}
+            connectNulls
+          />
+        )}
+      </ComposedChart>
+    </ResponsiveContainer>
+  );
+}
+
+// ── Chart card ─────────────────────────────────────────────────────────────────
+
 function ChartCard({
   config, data, onFullscreen,
 }: {
   config: ChartConfig;
   data: ReturnType<typeof buildChartData>;
-  onFullscreen: () => void;
+  onFullscreen: (overlay: ChartKey | null) => void;
 }) {
+  const [overlay, setOverlay] = useState<ChartKey | null>(null);
+
   const hasData = data.some((d) => d[config.dataKey as keyof typeof d] !== null);
   if (!hasData) return null;
 
+  const others = CHART_CONFIGS.filter(
+    (c) => c.key !== config.key && data.some((d) => d[c.dataKey as keyof typeof d] !== null)
+  );
+  const secondaryConfig = overlay ? CHART_CONFIGS.find((c) => c.key === overlay) : undefined;
+
   return (
     <div className="card space-y-3">
-      <div className="flex items-center justify-between">
-        <p className="text-sm font-semibold text-white">{config.label}</p>
-        <button
-          onClick={onFullscreen}
-          className="text-slate-500 hover:text-slate-300 transition-colors p-1 rounded-lg hover:bg-surface-elevated"
-          title="Volledig scherm"
-        >
-          <Maximize2 className="w-3.5 h-3.5" />
-        </button>
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <p className="text-sm font-semibold text-white shrink-0">{config.label}</p>
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {others.map((oc) => (
+            <button
+              key={oc.key}
+              onClick={() => setOverlay(overlay === oc.key ? null : oc.key)}
+              className="text-[10px] px-2 py-0.5 rounded-full border transition-all"
+              style={
+                overlay === oc.key
+                  ? { backgroundColor: oc.color + "22", borderColor: oc.color, color: oc.color }
+                  : { borderColor: "#334155", color: "#64748b" }
+              }
+            >
+              {oc.label}
+            </button>
+          ))}
+          <button
+            onClick={() => onFullscreen(overlay)}
+            className="text-slate-500 hover:text-slate-300 transition-colors p-1 rounded-lg hover:bg-surface-elevated"
+            title="Volledig scherm"
+          >
+            <Maximize2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
       </div>
-      <ChartInner config={config} data={data} height={160} />
+      <CombinedChartInner primary={config} secondary={secondaryConfig} data={data} height={160} />
     </div>
-  );
-}
-
-function ChartInner({
-  config, data, height,
-}: {
-  config: ChartConfig;
-  data: ReturnType<typeof buildChartData>;
-  height: number | `${number}%`;
-}) {
-  const filtered = data.filter((d) => d[config.dataKey as keyof typeof d] !== null);
-
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (!active || !payload?.length) return null;
-    const val = payload[0]?.value;
-    return (
-      <div className="bg-slate-800 border border-slate-700/60 rounded-xl px-3 py-2 text-xs shadow-xl">
-        <p className="text-slate-400">{fmtTime(label)}</p>
-        <p className="text-white font-semibold">
-          {val != null ? (config.tooltipFormatter ? config.tooltipFormatter(val) : `${val} ${config.unit}`) : "–"}
-        </p>
-      </div>
-    );
-  };
-
-  const commonProps = {
-    data,
-    margin: { top: 4, right: 8, left: 0, bottom: 0 },
-  };
-
-  const axisProps = {
-    xAxis: (
-      <XAxis
-        dataKey="t"
-        tickFormatter={fmtTime}
-        tick={{ fill: "#64748b", fontSize: 10 }}
-        tickLine={false}
-        axisLine={false}
-        minTickGap={60}
-      />
-    ),
-    yAxis: (
-      <YAxis
-        domain={["auto", "auto"]}
-        reversed={config.reversed}
-        tickFormatter={config.tickFormatter}
-        tick={{ fill: "#64748b", fontSize: 10 }}
-        tickLine={false}
-        axisLine={false}
-        width={38}
-      />
-    ),
-  };
-
-  return (
-    <ResponsiveContainer width="100%" height={height}>
-      {config.type === "area" ? (
-        <AreaChart {...commonProps}>
-          <defs>
-            <linearGradient id={`grad-${config.key}`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor={config.color} stopOpacity={0.3} />
-              <stop offset="95%" stopColor={config.color} stopOpacity={0} />
-            </linearGradient>
-          </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-          {axisProps.xAxis}
-          {axisProps.yAxis}
-          <Tooltip content={<CustomTooltip />} position={{ y: 0 }} />
-          <Area
-            type="monotone"
-            dataKey={config.dataKey}
-            stroke={config.color}
-            fill={`url(#grad-${config.key})`}
-            strokeWidth={2}
-            dot={false}
-            connectNulls
-          />
-        </AreaChart>
-      ) : (
-        <LineChart {...commonProps}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-          {axisProps.xAxis}
-          {axisProps.yAxis}
-          <Tooltip content={<CustomTooltip />} position={{ y: 0 }} />
-          <Line
-            type="monotone"
-            dataKey={config.dataKey}
-            stroke={config.color}
-            strokeWidth={2}
-            dot={false}
-            connectNulls
-          />
-        </LineChart>
-      )}
-    </ResponsiveContainer>
   );
 }
 
 // ── Fullscreen modal ───────────────────────────────────────────────────────────
 
 function FullscreenChart({
-  config, data, onClose,
+  config, initialOverlay, data, onClose,
 }: {
   config: ChartConfig;
+  initialOverlay: ChartKey | null;
   data: ReturnType<typeof buildChartData>;
   onClose: () => void;
 }) {
+  const [overlay, setOverlay] = useState<ChartKey | null>(initialOverlay);
+
+  const others = CHART_CONFIGS.filter(
+    (c) => c.key !== config.key && data.some((d) => d[c.dataKey as keyof typeof d] !== null)
+  );
+  const secondaryConfig = overlay ? CHART_CONFIGS.find((c) => c.key === overlay) : undefined;
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -255,8 +308,26 @@ function FullscreenChart({
         className="flex-1 flex flex-col p-4 lg:p-8"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between mb-4">
-          <p className="text-lg font-bold text-white">{config.label}</p>
+        <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
+          <div className="flex items-center gap-3 flex-wrap">
+            <p className="text-lg font-bold text-white">{config.label}</p>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {others.map((oc) => (
+                <button
+                  key={oc.key}
+                  onClick={() => setOverlay(overlay === oc.key ? null : oc.key)}
+                  className="text-[11px] px-2.5 py-1 rounded-full border transition-all"
+                  style={
+                    overlay === oc.key
+                      ? { backgroundColor: oc.color + "22", borderColor: oc.color, color: oc.color }
+                      : { borderColor: "#334155", color: "#64748b" }
+                  }
+                >
+                  {oc.label}
+                </button>
+              ))}
+            </div>
+          </div>
           <button
             onClick={onClose}
             className="text-slate-400 hover:text-white transition-colors p-2 rounded-xl hover:bg-slate-800"
@@ -265,7 +336,7 @@ function FullscreenChart({
           </button>
         </div>
         <div className="flex-1 min-h-0">
-          <ChartInner config={config} data={data} height={"100%" as `${number}%`} />
+          <CombinedChartInner primary={config} secondary={secondaryConfig} data={data} height={"100%" as `${number}%`} />
         </div>
       </motion.div>
     </motion.div>
@@ -277,7 +348,7 @@ function FullscreenChart({
 export default function ActivityDetailPage() {
   const { activityId } = useParams<{ activityId: string }>();
   const t = useTranslations("analyse");
-  const [fullscreen, setFullscreen] = useState<ChartKey | null>(null);
+  const [fullscreen, setFullscreen] = useState<{ key: ChartKey; overlay: ChartKey | null } | null>(null);
 
   const { data, isLoading, error } = useQuery<ActivityDetail>({
     queryKey: ["activity", activityId],
@@ -366,7 +437,7 @@ export default function ActivityDetailPage() {
                     key={cfg.key}
                     config={cfg}
                     data={chartData}
-                    onFullscreen={() => setFullscreen(cfg.key)}
+                    onFullscreen={(overlay) => setFullscreen({ key: cfg.key, overlay })}
                   />
                 ))}
               </div>
@@ -391,11 +462,12 @@ export default function ActivityDetailPage() {
       {/* Fullscreen modal */}
       <AnimatePresence>
         {fullscreen && data && (() => {
-          const cfg = CHART_CONFIGS.find((c) => c.key === fullscreen)!;
+          const cfg = CHART_CONFIGS.find((c) => c.key === fullscreen.key)!;
           return (
             <FullscreenChart
-              key={fullscreen}
+              key={fullscreen.key}
               config={cfg}
+              initialOverlay={fullscreen.overlay}
               data={chartData}
               onClose={() => setFullscreen(null)}
             />
