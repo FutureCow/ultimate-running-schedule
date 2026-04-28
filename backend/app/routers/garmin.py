@@ -134,6 +134,7 @@ async def get_activity_detail(
     user: User = Depends(get_current_user),
 ):
     """Fetch detailed activity data (GPS track + metric streams) from Garmin."""
+    from app.services import claude_service
     try:
         data = await garmin_service.fetch_activity_detail(db, user.id, activity_id)
         # Attach AI feedback from the matched WorkoutSession (if any)
@@ -143,6 +144,24 @@ async def get_activity_detail(
             .where(WorkoutSession.garmin_activity_id == activity_id, Plan.user_id == user.id)
         )
         session = session_result.scalar_one_or_none()
+
+        # Generate feedback lazily using full stream data if not yet stored or if
+        # previously stored feedback is too short (likely generated without proper data)
+        needs_feedback = session and user.tier == "elite" and (
+            not session.ai_feedback or len(session.ai_feedback) < 200
+        )
+        if needs_feedback:
+            try:
+                session.ai_feedback = await claude_service.generate_run_feedback(
+                    data, session.title, language="nl"
+                )
+                await db.commit()
+            except Exception as exc:
+                import logging
+                logging.getLogger(__name__).warning(
+                    "AI feedback generation failed for activity %s: %s", activity_id, exc
+                )
+
         data["ai_feedback"] = session.ai_feedback if session else None
         data["session_title"] = session.title if session else None
         return data

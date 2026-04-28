@@ -225,36 +225,126 @@ Return ONLY the JSON object."""
         raise ValueError(f"Invalid JSON from Claude: {e}. Got: {raw[:200]!r}") from e
 
 
-async def generate_run_feedback(activity: dict, session_title: str, language: str = "nl") -> str:
-    """Generate a concise scientific run analysis for an Elite user after a completed workout."""
+def _stream_stats(values: list) -> dict | None:
+    """Compute min/max/avg and optional HR-zone distribution from a numeric stream."""
+    clean = [v for v in values if v is not None]
+    if not clean:
+        return None
+    return {
+        "min": min(clean),
+        "max": max(clean),
+        "avg": round(sum(clean) / len(clean), 1),
+        "count": len(clean),
+    }
+
+
+def _hr_zone_distribution(hr_values: list, max_hr: int | None) -> str | None:
+    """Return a human-readable HR zone breakdown (% time per zone) if max_hr is known."""
+    clean = [v for v in hr_values if v is not None]
+    if not clean or not max_hr:
+        return None
+    thresholds = [0.60, 0.70, 0.80, 0.90, 1.01]
+    zone_counts = [0, 0, 0, 0, 0]
+    for bpm in clean:
+        pct = bpm / max_hr
+        for i, t in enumerate(thresholds):
+            if pct < t:
+                zone_counts[i] += 1
+                break
+    total = len(clean)
+    parts = []
+    for i, count in enumerate(zone_counts):
+        if count > 0:
+            parts.append(f"Z{i+1}: {round(count / total * 100)}%")
+    return "  ".join(parts) if parts else None
+
+
+async def generate_run_feedback(
+    activity: dict,
+    session_title: str,
+    language: str = "nl",
+    streams: dict | None = None,
+) -> str:
+    """Generate a concise scientific run analysis for an Elite user after a completed workout.
+
+    `activity` may be a flat dict (from _parse_activity) or a nested detail dict with
+    a 'summary' key (from fetch_activity_detail). `streams` may contain time-series
+    lists for heart_rate, cadence, pace, and altitude.
+    """
     client = anthropic.AsyncAnthropic(
         api_key=settings.ANTHROPIC_API_KEY,
         base_url=settings.ANTHROPIC_BASE_URL or None,
     )
 
-    dist = activity.get("distance_km", 0)
-    dur  = activity.get("duration_seconds", 0)
-    pace = activity.get("avg_pace_per_km", "–")
-    hr   = activity.get("avg_heart_rate")
-    max_hr = activity.get("max_heart_rate")
-    cad  = activity.get("avg_cadence")
-    elev = activity.get("elevation_gain_m")
+    # Support both flat (_parse_activity) and nested (fetch_activity_detail) formats
+    if "summary" in activity:
+        summary = activity["summary"]
+        streams = streams or activity.get("streams") or {}
+    else:
+        summary = activity
+        streams = streams or {}
+
+    dist    = summary.get("distance_km", 0)
+    dur     = int(summary.get("duration_seconds", 0))
+    # support both avg_pace_per_km (flat) and avg_pace_per_km (detail summary)
+    pace    = summary.get("avg_pace_per_km") or summary.get("average_pace_per_km") or "–"
+    hr      = summary.get("avg_heart_rate") or summary.get("average_heart_rate")
+    max_hr  = summary.get("max_heart_rate") or summary.get("max_heart_rate")
+    cad     = summary.get("avg_cadence") or summary.get("average_cadence")
+    elev    = summary.get("elevation_gain_m") or summary.get("elevationGain")
 
     stats_lines = [
-        f"- Sessie: {session_title}",
-        f"- Afstand: {dist} km",
-        f"- Duur: {dur // 60}:{dur % 60:02d}",
-        f"- Gemiddeld tempo: {pace} /km",
+        f"- Session: {session_title}",
+        f"- Distance: {dist} km",
+        f"- Duration: {dur // 60}:{dur % 60:02d} min:sec",
+        f"- Average pace: {pace} /km",
     ]
-    if hr:    stats_lines.append(f"- Gemiddelde hartslag: {hr} bpm (max {max_hr})")
-    if cad:   stats_lines.append(f"- Cadans: {cad} spm")
-    if elev:  stats_lines.append(f"- Hoogteverschil: {round(elev)} m")
+    if hr:
+        stats_lines.append(f"- Average heart rate: {hr} bpm  |  Max HR: {max_hr} bpm")
+    if cad:
+        stats_lines.append(f"- Average cadence: {cad} steps/min")
+    if elev:
+        stats_lines.append(f"- Elevation gain: {round(float(elev))} m")
+
+    # Enrich with stream-derived statistics
+    hr_stream   = streams.get("heart_rate") or []
+    cad_stream  = streams.get("cadence") or []
+    pace_stream = streams.get("pace") or []
+    alt_stream  = streams.get("altitude") or []
+
+    hr_stats   = _stream_stats(hr_stream)
+    cad_stats  = _stream_stats(cad_stream)
+    pace_stats = _stream_stats(pace_stream)
+    alt_stats  = _stream_stats(alt_stream)
+
+    if hr_stats and hr_stats["count"] > 10:
+        zone_str = _hr_zone_distribution(hr_stream, max_hr)
+        stats_lines.append(
+            f"- HR stream — min: {hr_stats['min']} bpm, max: {hr_stats['max']} bpm, avg: {hr_stats['avg']} bpm"
+            + (f"  |  Zone distribution: {zone_str}" if zone_str else "")
+        )
+    if cad_stats and cad_stats["count"] > 10:
+        stats_lines.append(
+            f"- Cadence stream — min: {cad_stats['min']} spm, max: {cad_stats['max']} spm, avg: {cad_stats['avg']} spm"
+        )
+    if pace_stats and pace_stats["count"] > 10:
+        def _fmt_pace(spm: float) -> str:
+            s = int(round(spm))
+            return f"{s // 60}:{s % 60:02d}"
+        stats_lines.append(
+            f"- Pace stream — fastest: {_fmt_pace(pace_stats['min'])} /km, "
+            f"slowest: {_fmt_pace(pace_stats['max'])} /km, avg: {_fmt_pace(pace_stats['avg'])} /km"
+        )
+    if alt_stats and alt_stats["count"] > 10:
+        stats_lines.append(
+            f"- Altitude stream — min: {alt_stats['min']} m, max: {alt_stats['max']} m"
+        )
 
     lang_instruction = "Dutch (Nederlands)" if language == "nl" else "English"
 
     prompt = f"""You are a sports scientist analyzing a running workout. Based on the data below, write a brief but scientifically grounded analysis (3–4 short paragraphs) in {lang_instruction}.
 
-Cover: training load interpretation, heart rate zone assessment (if available), cadence efficiency (if available), recovery recommendations. Be specific and actionable. No generic advice.
+Cover: training load interpretation, heart rate zone assessment (reference Jack Daniels zones where possible), cadence efficiency, pace variability, elevation impact if relevant, and recovery recommendations. Be specific and actionable. Reference the actual numbers in your analysis.
 
 Data:
 {chr(10).join(stats_lines)}
@@ -263,8 +353,8 @@ Write in plain text — no markdown, no bullet points, no headers."""
 
     message = await client.messages.create(
         model=settings.CLAUDE_MODEL,
-        max_tokens=600,
-        system=f"You are a sports scientist. Respond in {lang_instruction}. Be concise and evidence-based.",
+        max_tokens=800,
+        system=f"You are a sports scientist. Respond in {lang_instruction}. Be concise and evidence-based. Always reference the specific data values provided.",
         messages=[{"role": "user", "content": prompt}],
     )
 

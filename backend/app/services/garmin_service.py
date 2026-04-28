@@ -386,18 +386,8 @@ async def _match_activities_to_sessions(db: AsyncSession, user_id: int, activiti
     if matched:
         await db.commit()
 
-    # Elite users get AI feedback generated once per matched session
-    if user_tier == "elite" and newly_matched:
-        from app.services import claude_service
-        for session, act in newly_matched:
-            if session.ai_feedback:
-                continue  # already generated
-            try:
-                feedback = await claude_service.generate_run_feedback(act, session.title)
-                session.ai_feedback = feedback
-            except Exception as exc:
-                logger.warning("AI feedback generation failed for session %s: %s", session.id, exc)
-        await db.commit()
+    # AI feedback is generated lazily in the activity detail endpoint
+    # using full stream data (HR, cadence, pace, altitude) for better quality.
 
     return matched
 
