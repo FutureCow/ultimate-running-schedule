@@ -1,7 +1,11 @@
 from datetime import datetime, timezone, timedelta
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from sqlalchemy.ext.asyncio import AsyncSession
+
+limiter = Limiter(key_func=get_remote_address)
 from sqlalchemy import select
 from app.database import get_db
 from app.models.user import User
@@ -104,7 +108,9 @@ async def auto_sync_if_stale(
 
 
 @router.post("/sync", response_model=GarminSyncResponse)
+@limiter.limit("6/hour")
 async def sync_activities(
+    request: Request,
     months: int = 3,
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),

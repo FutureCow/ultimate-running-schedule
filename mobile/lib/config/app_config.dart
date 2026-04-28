@@ -1,6 +1,6 @@
 class AppConfig {
   static const String apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'https://run.fhettinga.nl',
+    defaultValue: 'https://run.fhettinga.nl/api/v1',
   );
 }

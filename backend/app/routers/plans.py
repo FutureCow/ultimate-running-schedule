@@ -1,8 +1,12 @@
 from datetime import date, timedelta
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Request
 from pydantic import BaseModel
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from sqlalchemy.ext.asyncio import AsyncSession
+
+limiter = Limiter(key_func=get_remote_address)
 from sqlalchemy import select
 from app.database import get_db
 from app.models.user import User
@@ -80,7 +84,9 @@ def _create_sessions_from_json(plan: Plan, plan_json: dict) -> list[WorkoutSessi
 
 
 @router.post("", response_model=PlanResponse, status_code=201)
+@limiter.limit("5/hour")
 async def create_plan(
+    request: Request,
     payload: PlanCreate,
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
@@ -260,7 +266,9 @@ _ZONE_FOR_TYPE: dict[str, str] = {
 
 
 @router.post("/{public_id}/regenerate", response_model=PlanResponse)
+@limiter.limit("5/hour")
 async def regenerate_plan(
+    request: Request,
     public_id: str,
     db: AsyncSession = Depends(get_db),
     user: User = Depends(require_tier("tempo")),

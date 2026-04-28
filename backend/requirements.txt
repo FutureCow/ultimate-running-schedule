@@ -17,3 +17,4 @@ curl_cffi>=0.7.0
 python-dotenv==1.0.1
 cryptography==44.0.0
 tenacity==9.0.0
+slowapi==0.1.9
