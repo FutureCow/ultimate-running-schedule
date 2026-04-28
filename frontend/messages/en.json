@@ -281,7 +281,7 @@
     "intervals": "Interval structure",
     "pushToGarmin": "Push to Garmin",
     "onGarmin": "On Garmin",
-    "completed": "Completed via Garmin",
+    "completed": "Completed",
     "removeFromGarmin": "Remove from Garmin",
     "removeFromGarminConfirm": "Remove workout from Garmin Connect?",
     "move": "Move",
