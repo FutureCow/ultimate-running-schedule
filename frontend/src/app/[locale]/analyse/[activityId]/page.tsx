@@ -199,7 +199,7 @@ function ChartInner({
           <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
           {axisProps.xAxis}
           {axisProps.yAxis}
-          <Tooltip content={<CustomTooltip />} />
+          <Tooltip content={<CustomTooltip />} position={{ y: 0 }} />
           <Area
             type="monotone"
             dataKey={config.dataKey}
@@ -215,7 +215,7 @@ function ChartInner({
           <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
           {axisProps.xAxis}
           {axisProps.yAxis}
-          <Tooltip content={<CustomTooltip />} />
+          <Tooltip content={<CustomTooltip />} position={{ y: 0 }} />
           <Line
             type="monotone"
             dataKey={config.dataKey}
