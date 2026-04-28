@@ -43,7 +43,7 @@ jobs:
 
       - name: Decode keystore
         run: |
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > mobile/android/app/ultimate-running.jks
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > mobile/android/app/ultimate-running.p12
 
       - name: Determine version
         id: version
@@ -70,7 +70,7 @@ jobs:
       - name: Build APK
         working-directory: mobile
         env:
-          KEYSTORE_PATH: ${{ github.workspace }}/mobile/android/app/ultimate-running.jks
+          KEYSTORE_PATH: ${{ github.workspace }}/mobile/android/app/ultimate-running.p12
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
           KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
