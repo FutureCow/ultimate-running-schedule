@@ -24,23 +24,47 @@ export function WeekCalendar({ plan }: Props) {
 
   const weeks = plan.plan_json?.weeks || [];
 
-  // Compute the current week from the plan's start date — recalculates on every render
-  // so a page refresh always lands on the right week.
+  // Compute the current week by finding the latest week whose first session has
+  // already started. Falls back to start_date / created_at calculation when no
+  // session dates are available.
   const activeWeek = useMemo(() => {
-    const toLocalMs = (dateStr: string) => {
+    const toMs = (dateStr: string) => {
       const [y, m, d] = dateStr.split("-").map(Number);
       return new Date(y, m - 1, d).getTime();
     };
-    const startStr =
-      plan.start_date ||
-      plan.sessions.map((s) => s.scheduled_date).filter(Boolean).sort()[0];
-    if (!startStr) return 1;
-    const startMs = toLocalMs(startStr as string);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const weeksPassed = Math.floor((today.getTime() - startMs) / (7 * 24 * 60 * 60 * 1000));
+    const todayMs = today.getTime();
+
+    // Build the earliest scheduled_date per week number from DB sessions
+    const weekFirstMs: Record<number, number> = {};
+    for (const s of plan.sessions) {
+      if (s.scheduled_date) {
+        const ms = toMs(s.scheduled_date as string);
+        if (weekFirstMs[s.week_number] === undefined || ms < weekFirstMs[s.week_number]) {
+          weekFirstMs[s.week_number] = ms;
+        }
+      }
+    }
+
+    const sortedWeeks = Object.keys(weekFirstMs).map(Number).sort((a, b) => a - b);
+
+    if (sortedWeeks.length > 0) {
+      // Return the latest week that has already started (its first session date ≤ today)
+      let result = sortedWeeks[0];
+      for (const w of sortedWeeks) {
+        if (weekFirstMs[w] <= todayMs) result = w;
+        else break;
+      }
+      return result;
+    }
+
+    // No session dates in DB — fall back to date arithmetic
+    const fallback = plan.start_date || plan.created_at?.split("T")[0];
+    if (!fallback) return 1;
+    const weeksPassed = Math.floor((todayMs - toMs(fallback)) / (7 * 24 * 60 * 60 * 1000));
     return Math.max(1, Math.min(plan.duration_weeks, weeksPassed + 1));
-  }, [plan.start_date, plan.sessions, plan.duration_weeks]);
+  }, [plan.start_date, plan.created_at, plan.sessions, plan.duration_weeks]);
 
   // manualWeek is set when the user explicitly navigates; null = follow activeWeek
   const [manualWeek, setManualWeek] = useState<number | null>(null);
