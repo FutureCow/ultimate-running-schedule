@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { ChevronLeft, ChevronRight, Zap, Loader2, CheckCircle2 } from "lucide-react";
 import { Plan, WorkoutSession } from "@/types";
@@ -25,14 +25,23 @@ export function WeekCalendar({ plan }: Props) {
   const weeks = plan.plan_json?.weeks || [];
 
   function getActiveWeek(): number {
-    const dated = plan.sessions.filter((s) => s.scheduled_date);
-    if (dated.length === 0) return 1;
-    // Parse as local midnight (not UTC) to avoid timezone offset issues
+    // Parse a YYYY-MM-DD string as local midnight to avoid UTC offset issues
     const toLocalMs = (dateStr: string) => {
       const [y, m, d] = dateStr.split("-").map(Number);
       return new Date(y, m - 1, d).getTime();
     };
-    const startMs = Math.min(...dated.map((s) => toLocalMs(s.scheduled_date!)));
+
+    // Prefer plan.start_date; fall back to the earliest scheduled_date on sessions
+    const startStr =
+      plan.start_date ||
+      plan.sessions
+        .map((s) => s.scheduled_date)
+        .filter(Boolean)
+        .sort()[0];
+
+    if (!startStr) return 1;
+
+    const startMs = toLocalMs(startStr);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const weeksPassed = Math.floor((today.getTime() - startMs) / (7 * 24 * 60 * 60 * 1000));
@@ -40,6 +49,14 @@ export function WeekCalendar({ plan }: Props) {
   }
 
   const [currentWeek, setCurrentWeek] = useState(getActiveWeek);
+  const [weekSetByUser, setWeekSetByUser] = useState(false);
+
+  // Re-sync to active week whenever plan data arrives (e.g. after async fetch)
+  useEffect(() => {
+    if (!weekSetByUser) setCurrentWeek(getActiveWeek());
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plan.start_date, plan.sessions.length]);
+
   const [pushingSession, setPushingSession] = useState<number | null>(null);
   const [pushingWeek, setPushingWeek] = useState(false);
   const queryClient = useQueryClient();
@@ -100,7 +117,7 @@ export function WeekCalendar({ plan }: Props) {
       {/* Week navigator */}
       <div className="flex items-center justify-between gap-4">
         <button
-          onClick={() => setCurrentWeek((w) => Math.max(1, w - 1))}
+          onClick={() => { setWeekSetByUser(true); setCurrentWeek((w) => Math.max(1, w - 1)); }}
           disabled={currentWeek === 1}
           className="btn-ghost px-3 py-2 disabled:opacity-30"
         >
@@ -116,7 +133,7 @@ export function WeekCalendar({ plan }: Props) {
         </div>
 
         <button
-          onClick={() => setCurrentWeek((w) => Math.min(totalWeeks, w + 1))}
+          onClick={() => { setWeekSetByUser(true); setCurrentWeek((w) => Math.min(totalWeeks, w + 1)); }}
           disabled={currentWeek === totalWeeks}
           className="btn-ghost px-3 py-2 disabled:opacity-30"
         >
@@ -129,7 +146,7 @@ export function WeekCalendar({ plan }: Props) {
         {Array.from({ length: totalWeeks }, (_, i) => i + 1).map((w) => (
           <button
             key={w}
-            onClick={() => setCurrentWeek(w)}
+            onClick={() => { setWeekSetByUser(true); setCurrentWeek(w); }}
             title={`Week ${w}`}
             className={`flex-1 h-1.5 rounded-full transition-all duration-200 ${
               w === currentWeek ? "bg-brand-500" : w < currentWeek ? "bg-brand-500/30" : "bg-slate-400/30"
