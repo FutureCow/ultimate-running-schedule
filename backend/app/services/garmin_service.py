@@ -554,11 +554,13 @@ async def fetch_activity_detail(db: AsyncSession, user_id: int, activity_id: str
         "averageRunningCadenceInStepsPerMinute", "averageRunCadence",
         "averageCadence", "avgRunCadence", "avgCadence",
     )
-    # Fallback: derive from stream data if summary field is missing
+    # Fallback: derive from stream data (already ×2 = steps/min) if summary field is missing
     if cadence is None:
-        raw_cad_vals = [v / 2 for v in cadence_vals if v is not None]  # undo the ×2 already applied
-        if raw_cad_vals:
-            cadence = sum(raw_cad_vals) / len(raw_cad_vals)
+        cad_stream_vals = [v for v in cadence_vals if v is not None]
+        if cad_stream_vals:
+            cadence = sum(cad_stream_vals) / len(cad_stream_vals)
+            # stream values are already in steps/min — store as-is, skip the ×2 below
+            cadence = int(round(cadence))
     elev    = _pick("elevationGain", "totalElevationGain", "totalAscent")
 
     def _nonempty(lst: list) -> list:
@@ -573,7 +575,7 @@ async def fetch_activity_detail(db: AsyncSession, user_id: int, activity_id: str
             "avg_pace_per_km": pace_str,
             "avg_heart_rate": int(avg_hr) if avg_hr is not None else None,
             "max_heart_rate": int(max_hr) if max_hr is not None else None,
-            "avg_cadence": int(cadence) * 2 if cadence is not None else None,
+            "avg_cadence": int(round(float(cadence))) if cadence is not None else None,
             "elevation_gain_m": round(float(elev), 1) if elev is not None else None,
         },
         "gps_track": gps_track,
