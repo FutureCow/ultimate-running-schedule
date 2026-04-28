@@ -5,6 +5,8 @@ export interface User {
   created_at: string;
 }
 
+export type UserTier = "base" | "tempo" | "elite";
+
 export interface UserProfile {
   age?: number | null;
   height_cm?: number | null;
@@ -13,6 +15,7 @@ export interface UserProfile {
   weekly_runs?: number | null;
   injuries?: string | null;
   is_admin?: boolean;
+  tier?: UserTier;
 }
 
 export interface AuthTokens {
@@ -80,6 +83,7 @@ export interface WorkoutSession {
   garmin_pushed_at?: string | null;
   completed_at?: string | null;
   garmin_activity_id?: string | null;
+  ai_feedback?: string | null;
 }
 
 export interface PaceZones {
@@ -180,6 +184,8 @@ export interface ActivityDetail {
   summary: ActivitySummary;
   gps_track: ActivityGpsPoint[];
   streams: ActivityStreams;
+  ai_feedback?: string | null;
+  session_title?: string | null;
 }
 
 export type GoalType = "5k" | "10k" | "half_marathon" | "marathon";

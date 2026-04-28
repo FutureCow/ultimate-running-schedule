@@ -276,7 +276,7 @@ def _parse_activity(act: dict) -> dict:
     }
 
 
-async def fetch_activities(db: AsyncSession, user_id: int, months: int = 3) -> dict:
+async def fetch_activities(db: AsyncSession, user_id: int, months: int = 3, user_tier: str = "elite") -> dict:
     cred = await get_credentials(db, user_id)
     if not cred:
         raise ValueError("Geen Garmin credentials gevonden. Sla ze eerst op.")
@@ -322,7 +322,7 @@ async def fetch_activities(db: AsyncSession, user_id: int, months: int = 3) -> d
     weekly_km = total_km / (months * 4.3) if activities else 0
 
     # Match activities to planned WorkoutSessions by date
-    matched = await _match_activities_to_sessions(db, user_id, activities)
+    matched = await _match_activities_to_sessions(db, user_id, activities, user_tier=user_tier)
 
     return {
         "activities": activities,
@@ -337,7 +337,7 @@ async def fetch_activities(db: AsyncSession, user_id: int, months: int = 3) -> d
     }
 
 
-async def _match_activities_to_sessions(db: AsyncSession, user_id: int, activities: list[dict]) -> int:
+async def _match_activities_to_sessions(db: AsyncSession, user_id: int, activities: list[dict], user_tier: str = "elite") -> int:
     """Mark WorkoutSessions as completed when a Garmin activity falls on the same date."""
     from app.models.plan import Plan, WorkoutSession
 
@@ -374,15 +374,31 @@ async def _match_activities_to_sessions(db: AsyncSession, user_id: int, activiti
 
     matched = 0
     now = datetime.now(timezone.utc)
+    newly_matched: list[tuple] = []  # (session, activity_dict)
     for session in sessions:
         act = date_to_activity.get(session.scheduled_date)
         if act:
             session.completed_at = now
             session.garmin_activity_id = act["activity_id"]
             matched += 1
+            newly_matched.append((session, act))
 
     if matched:
         await db.commit()
+
+    # Elite users get AI feedback generated once per matched session
+    if user_tier == "elite" and newly_matched:
+        from app.services import claude_service
+        for session, act in newly_matched:
+            if session.ai_feedback:
+                continue  # already generated
+            try:
+                feedback = await claude_service.generate_run_feedback(act, session.title)
+                session.ai_feedback = feedback
+            except Exception as exc:
+                logger.warning("AI feedback generation failed for session %s: %s", session.id, exc)
+        await db.commit()
+
     return matched
 
 

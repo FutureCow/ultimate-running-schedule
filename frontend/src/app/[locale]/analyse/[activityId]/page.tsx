@@ -11,6 +11,7 @@ import { Link } from "@/i18n/navigation";
 import { garminApi } from "@/lib/api";
 import { ActivityDetail } from "@/types";
 import { Navbar } from "@/components/ui/Navbar";
+import { Brain } from "lucide-react";
 import {
   ResponsiveContainer, LineChart, Line, AreaChart, Area,
   XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine,
@@ -369,6 +370,19 @@ export default function ActivityDetailPage() {
                   />
                 ))}
               </div>
+
+              {/* AI feedback (Elite tier) */}
+              {data.ai_feedback && (
+                <div className="card space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Brain className="w-4 h-4 text-brand-400" />
+                    <p className="text-sm font-semibold text-white">Wetenschappelijke analyse</p>
+                  </div>
+                  <p className="text-sm text-slate-300 leading-relaxed whitespace-pre-line">
+                    {data.ai_feedback}
+                  </p>
+                </div>
+              )}
             </motion.div>
           )}
         </main>

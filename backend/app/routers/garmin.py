@@ -88,7 +88,7 @@ async def auto_sync_if_stale(
         return {"synced": False, "reason": "recent", "last_sync_at": cred.last_sync_at.isoformat()}
 
     try:
-        result = await garmin_service.fetch_activities(db, user.id, months=3)
+        result = await garmin_service.fetch_activities(db, user.id, months=3, user_tier=user.tier)
         avg_weekly_km = result["summary"].get("avg_weekly_km")
         if avg_weekly_km is not None:
             user.weekly_km = avg_weekly_km
@@ -110,7 +110,7 @@ async def sync_activities(
     user: User = Depends(get_current_user),
 ):
     try:
-        result = await garmin_service.fetch_activities(db, user.id, months)
+        result = await garmin_service.fetch_activities(db, user.id, months, user_tier=user.tier)
         avg_weekly_km = result["summary"].get("avg_weekly_km")
         if avg_weekly_km is not None:
             user.weekly_km = avg_weekly_km
@@ -136,6 +136,15 @@ async def get_activity_detail(
     """Fetch detailed activity data (GPS track + metric streams) from Garmin."""
     try:
         data = await garmin_service.fetch_activity_detail(db, user.id, activity_id)
+        # Attach AI feedback from the matched WorkoutSession (if any)
+        session_result = await db.execute(
+            select(WorkoutSession)
+            .join(WorkoutSession.plan)
+            .where(WorkoutSession.garmin_activity_id == activity_id, Plan.user_id == user.id)
+        )
+        session = session_result.scalar_one_or_none()
+        data["ai_feedback"] = session.ai_feedback if session else None
+        data["session_title"] = session.title if session else None
         return data
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))

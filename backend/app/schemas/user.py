@@ -41,6 +41,7 @@ class UserProfileResponse(BaseModel):
     weekly_runs: Optional[int] = None
     injuries: Optional[str] = None
     is_admin: bool = False
+    tier: str = "elite"
 
 
 class TokenResponse(BaseModel):

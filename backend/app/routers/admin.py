@@ -24,6 +24,7 @@ class AdminUserResponse(BaseModel):
     email: str
     is_active: bool
     is_admin: bool
+    tier: str
     plan_count: int
     created_at: str
 
@@ -34,6 +35,7 @@ class AdminUserResponse(BaseModel):
 class AdminUserUpdate(BaseModel):
     is_active: Optional[bool] = None
     is_admin: Optional[bool] = None
+    tier: Optional[str] = None
 
 
 class AdminResetPassword(BaseModel):
@@ -61,6 +63,7 @@ async def list_users(
             "email": u.email,
             "is_active": u.is_active,
             "is_admin": u.is_admin,
+            "tier": u.tier,
             "plan_count": plan_count,
             "created_at": u.created_at.isoformat(),
         })
@@ -82,8 +85,12 @@ async def update_user(
         user.is_active = payload.is_active
     if payload.is_admin is not None:
         user.is_admin = payload.is_admin
+    if payload.tier is not None:
+        if payload.tier not in ("base", "tempo", "elite"):
+            raise HTTPException(status_code=400, detail="Ongeldige tier")
+        user.tier = payload.tier
     await db.commit()
-    return {"id": user.id, "email": user.email, "is_active": user.is_active, "is_admin": user.is_admin}
+    return {"id": user.id, "email": user.email, "is_active": user.is_active, "is_admin": user.is_admin, "tier": user.tier}
 
 
 @router.post("/users/{user_id}/reset-password")

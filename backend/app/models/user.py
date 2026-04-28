@@ -1,7 +1,14 @@
 from datetime import datetime
-from sqlalchemy import String, Boolean, DateTime, Integer, Float, Text, func
+import enum
+from sqlalchemy import String, Boolean, DateTime, Integer, Float, Text, func, Enum as SAEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
+
+
+class UserTier(str, enum.Enum):
+    BASE  = "base"
+    TEMPO = "tempo"
+    ELITE = "elite"
 
 
 class User(Base):
@@ -12,6 +19,7 @@ class User(Base):
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
+    tier: Mapped[str] = mapped_column(String(20), default="elite", server_default="elite", nullable=False)
     password_reset_token: Mapped[str | None] = mapped_column(String(255), nullable=True)
     password_reset_expires: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # Athlete profile — persisted so new plans are pre-filled

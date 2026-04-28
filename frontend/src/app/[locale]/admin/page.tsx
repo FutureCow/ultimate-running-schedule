@@ -20,9 +20,16 @@ interface AdminUser {
   email: string;
   is_active: boolean;
   is_admin: boolean;
+  tier: string;
   plan_count: number;
   created_at: string;
 }
+
+const TIER_LABELS: Record<string, { label: string; color: string }> = {
+  base:  { label: "Base",  color: "text-slate-400 border-slate-600/40 bg-slate-500/10" },
+  tempo: { label: "Tempo", color: "text-blue-400  border-blue-500/30  bg-blue-500/10"  },
+  elite: { label: "Elite", color: "text-brand-400 border-brand-500/30 bg-brand-500/10" },
+};
 
 export default function AdminPage() {
   const qc = useQueryClient();
@@ -57,6 +64,12 @@ export default function AdminPage() {
   const toggleAdminMutation = useMutation({
     mutationFn: ({ id, is_admin }: { id: number; is_admin: boolean }) =>
       adminApi.updateUser(id, { is_admin }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-users"] }),
+  });
+
+  const setTierMutation = useMutation({
+    mutationFn: ({ id, tier }: { id: number; tier: string }) =>
+      adminApi.updateUser(id, { tier }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-users"] }),
   });
 
@@ -173,6 +186,18 @@ export default function AdminPage() {
                       {format(parseISO(user.created_at), "d MMM yyyy")}
                     </p>
                   </div>
+
+                  {/* Tier selector */}
+                  <select
+                    value={user.tier || "elite"}
+                    onChange={(e) => setTierMutation.mutate({ id: user.id, tier: e.target.value })}
+                    disabled={setTierMutation.isPending}
+                    className={`text-[11px] font-bold px-2 py-1 rounded-lg border bg-transparent cursor-pointer focus:outline-none ${TIER_LABELS[user.tier]?.color ?? ""}`}
+                  >
+                    <option value="base">Base</option>
+                    <option value="tempo">Tempo</option>
+                    <option value="elite">Elite</option>
+                  </select>
 
                   <div className="flex items-center gap-1.5 flex-wrap">
                     {/* Toggle active */}

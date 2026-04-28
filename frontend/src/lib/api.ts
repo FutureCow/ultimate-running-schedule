@@ -56,7 +56,7 @@ export const authApi = {
 // Admin
 export const adminApi = {
   getUsers: () => api.get("/admin/users"),
-  updateUser: (id: number, data: { is_active?: boolean; is_admin?: boolean }) => api.patch(`/admin/users/${id}`, data),
+  updateUser: (id: number, data: { is_active?: boolean; is_admin?: boolean; tier?: string }) => api.patch(`/admin/users/${id}`, data),
   deleteUser: (id: number) => api.delete(`/admin/users/${id}`),
   resetPassword: (id: number, newPassword: string) => api.post(`/admin/users/${id}/reset-password`, { new_password: newPassword }),
   getSettings: () => api.get("/admin/settings"),

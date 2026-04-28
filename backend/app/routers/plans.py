@@ -7,7 +7,7 @@ from sqlalchemy import select
 from app.database import get_db
 from app.models.user import User
 from app.models.plan import Plan, WorkoutSession
-from app.routers.deps import get_current_user
+from app.routers.deps import get_current_user, require_tier
 from app.schemas.plan import PlanCreate, PlanUpdate, PlanResponse, StrengthPreferences
 from app.services import claude_service, garmin_service
 
@@ -85,6 +85,24 @@ async def create_plan(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
+    # Tier gate: base and tempo may only have 1 plan; elite is unlimited
+    if user.tier in ("base", "tempo"):
+        existing = await db.execute(select(Plan).where(Plan.user_id == user.id))
+        if existing.scalars().first():
+            needed = "elite" if user.tier == "tempo" else "tempo"
+            raise HTTPException(
+                status_code=403,
+                detail=f"UPGRADE_REQUIRED:{needed}:Je kunt met je huidige abonnement maar 1 plan aanmaken",
+            )
+
+    # Tier gate: strength training is Elite only
+    has_strength = payload.strength and payload.strength.enabled
+    if has_strength and user.tier != "elite":
+        raise HTTPException(
+            status_code=403,
+            detail="UPGRADE_REQUIRED:elite:Krachttraining vereist een Elite-abonnement",
+        )
+
     # Optionally fetch Garmin summary for AI context
     garmin_summary = None
     try:
@@ -159,7 +177,7 @@ async def update_plan(
     public_id: str,
     payload: PlanUpdate,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_tier("tempo")),
 ):
     result = await db.execute(select(Plan).where(Plan.public_id == public_id, Plan.user_id == user.id))
     plan = result.scalar_one_or_none()
@@ -236,7 +254,7 @@ async def update_plan(
 async def regenerate_plan(
     public_id: str,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_tier("tempo")),
 ):
     """Regenerate the plan using current settings + fresh Garmin data. No settings are changed."""
     result = await db.execute(select(Plan).where(Plan.public_id == public_id, Plan.user_id == user.id))
@@ -336,7 +354,7 @@ async def add_strength_to_plan(
     public_id: str,
     payload: StrengthPreferences,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_tier("elite")),
 ):
     """Generate and insert strength sessions into an existing plan without touching running sessions."""
     result = await db.execute(select(Plan).where(Plan.public_id == public_id, Plan.user_id == user.id))

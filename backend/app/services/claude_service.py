@@ -223,3 +223,49 @@ Return ONLY the JSON object."""
     except json.JSONDecodeError as e:
         logger.error("Strength JSON parse failed. raw[:500]=%s", raw[:500])
         raise ValueError(f"Invalid JSON from Claude: {e}. Got: {raw[:200]!r}") from e
+
+
+async def generate_run_feedback(activity: dict, session_title: str, language: str = "nl") -> str:
+    """Generate a concise scientific run analysis for an Elite user after a completed workout."""
+    client = anthropic.AsyncAnthropic(
+        api_key=settings.ANTHROPIC_API_KEY,
+        base_url=settings.ANTHROPIC_BASE_URL or None,
+    )
+
+    dist = activity.get("distance_km", 0)
+    dur  = activity.get("duration_seconds", 0)
+    pace = activity.get("avg_pace_per_km", "–")
+    hr   = activity.get("avg_heart_rate")
+    max_hr = activity.get("max_heart_rate")
+    cad  = activity.get("avg_cadence")
+    elev = activity.get("elevation_gain_m")
+
+    stats_lines = [
+        f"- Sessie: {session_title}",
+        f"- Afstand: {dist} km",
+        f"- Duur: {dur // 60}:{dur % 60:02d}",
+        f"- Gemiddeld tempo: {pace} /km",
+    ]
+    if hr:    stats_lines.append(f"- Gemiddelde hartslag: {hr} bpm (max {max_hr})")
+    if cad:   stats_lines.append(f"- Cadans: {cad} spm")
+    if elev:  stats_lines.append(f"- Hoogteverschil: {round(elev)} m")
+
+    lang_instruction = "Dutch (Nederlands)" if language == "nl" else "English"
+
+    prompt = f"""You are a sports scientist analyzing a running workout. Based on the data below, write a brief but scientifically grounded analysis (3–4 short paragraphs) in {lang_instruction}.
+
+Cover: training load interpretation, heart rate zone assessment (if available), cadence efficiency (if available), recovery recommendations. Be specific and actionable. No generic advice.
+
+Data:
+{chr(10).join(stats_lines)}
+
+Write in plain text — no markdown, no bullet points, no headers."""
+
+    message = await client.messages.create(
+        model=settings.CLAUDE_MODEL,
+        max_tokens=600,
+        system=f"You are a sports scientist. Respond in {lang_instruction}. Be concise and evidence-based.",
+        messages=[{"role": "user", "content": prompt}],
+    )
+
+    return message.content[0].text.strip() if message.content else ""
