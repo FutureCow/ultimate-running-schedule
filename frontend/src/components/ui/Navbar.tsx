@@ -194,14 +194,22 @@ export function Navbar() {
           );
         })}
 
-        {/* Mobile: theme toggle */}
-        <button
-          onClick={() => setTheme(resolved === "dark" ? "light" : "dark")}
-          className="flex flex-col items-center gap-1 px-4 py-1.5 rounded-xl text-slate-500 hover:text-slate-300 transition-all"
-        >
-          {resolved === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-          <span className="text-[10px] font-medium">{resolved === "dark" ? "Light" : "Dark"}</span>
-        </button>
+        {(() => {
+          const active = pathname.startsWith("/analyse");
+          return (
+            <Link
+              href="/analyse"
+              className={cn(
+                "flex flex-col items-center gap-1 px-4 py-1.5 rounded-xl transition-all duration-200",
+                active ? "text-brand-400" : "text-slate-500 hover:text-slate-300"
+              )}
+            >
+              <BarChart2 className="w-5 h-5" />
+              <span className="text-[10px] font-medium">{t("analyse")}</span>
+              {active && <motion.div layoutId="mob-active" className="w-1 h-1 bg-brand-400 rounded-full" />}
+            </Link>
+          );
+        })()}
 
         <button
           onClick={logout}
