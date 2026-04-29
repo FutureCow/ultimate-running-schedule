@@ -139,10 +139,23 @@ async def list_activities(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    """Return list of recent Garmin running activities."""
+    """Return Garmin activities that are linked to a planned session."""
     try:
-        result = await garmin_service.fetch_activities(db, user.id, months=months, user_tier=user.tier)
-        return result["activities"]
+        # Get all garmin_activity_ids linked to this user's sessions
+        result = await db.execute(
+            select(WorkoutSession.garmin_activity_id, WorkoutSession.scheduled_date)
+            .join(WorkoutSession.plan)
+            .where(
+                Plan.user_id == user.id,
+                WorkoutSession.garmin_activity_id.isnot(None),
+            )
+        )
+        linked = {row[0] for row in result.all()}
+        if not linked:
+            return []
+
+        data = await garmin_service.fetch_activities(db, user.id, months=months, user_tier=user.tier)
+        return [a for a in data["activities"] if a["activity_id"] in linked]
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
