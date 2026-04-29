@@ -264,6 +264,7 @@ async def generate_run_feedback(
     session_title: str,
     language: str = "nl",
     streams: dict | None = None,
+    user_age: int | None = None,
 ) -> str:
     """Generate a concise scientific run analysis for an Elite user after a completed workout.
 
@@ -289,7 +290,15 @@ async def generate_run_feedback(
     # support both avg_pace_per_km (flat) and avg_pace_per_km (detail summary)
     pace    = summary.get("avg_pace_per_km") or summary.get("average_pace_per_km") or "–"
     hr      = summary.get("avg_heart_rate") or summary.get("average_heart_rate")
-    max_hr  = summary.get("max_heart_rate") or summary.get("max_heart_rate")
+    # Use athlete's true max HR for zone calculation:
+    # 1. Age-based estimate (220 - age) if age known
+    # 2. Highest HR ever seen in the stream (better than activity max for easy runs)
+    # 3. Activity max HR as last resort
+    activity_max_hr = summary.get("max_heart_rate")
+    hr_stream_pre   = (streams or activity.get("streams") or {}).get("heart_rate") or []
+    stream_max_hr   = max((v for v in hr_stream_pre if v), default=None)
+    estimated_max_hr = (220 - user_age) if user_age else None
+    max_hr = estimated_max_hr or stream_max_hr or activity_max_hr
     cad     = summary.get("avg_cadence") or summary.get("average_cadence")
     elev    = summary.get("elevation_gain_m") or summary.get("elevationGain")
 
@@ -300,7 +309,12 @@ async def generate_run_feedback(
         f"- Average pace: {pace} /km",
     ]
     if hr:
-        stats_lines.append(f"- Average heart rate: {hr} bpm  |  Max HR: {max_hr} bpm")
+        max_hr_note = ""
+        if user_age:
+            max_hr_note = f"  |  Max HR (220-{user_age}): {max_hr} bpm"
+        elif max_hr:
+            max_hr_note = f"  |  Max HR recorded this activity: {max_hr} bpm"
+        stats_lines.append(f"- Average heart rate: {hr} bpm{max_hr_note}")
     if cad:
         stats_lines.append(f"- Average cadence: {cad} steps/min")
     if elev:
