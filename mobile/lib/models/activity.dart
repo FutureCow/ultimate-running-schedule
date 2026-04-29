@@ -25,14 +25,17 @@ class ActivitySummary {
 
   factory ActivitySummary.fromJson(Map<String, dynamic> j) => ActivitySummary(
         activityId: j['activity_id']?.toString() ?? '',
-        name: j['name'] ?? j['activity_name'] ?? '',
-        startTime: j['start_time'] ?? '',
+        name: j['name'] as String? ?? j['activity_name'] as String? ?? '',
+        startTime: j['start_time'] as String? ?? '',
         distanceKm: (j['distance_km'] as num?)?.toDouble() ?? 0,
         durationSeconds: (j['duration_seconds'] as num?)?.toInt() ?? 0,
-        avgPacePerKm: j['avg_pace_per_km'],
-        avgHeartRate: j['avg_heart_rate'],
-        maxHeartRate: j['max_heart_rate'],
-        avgCadence: j['avg_cadence'],
+        avgPacePerKm: j['avg_pace_per_km'] as String? ??
+            j['average_pace_per_km'] as String?,
+        avgHeartRate: (j['avg_heart_rate'] as num?)?.toInt() ??
+            (j['average_heart_rate'] as num?)?.toInt(),
+        maxHeartRate: (j['max_heart_rate'] as num?)?.toInt(),
+        avgCadence: (j['avg_cadence'] as num?)?.toInt() ??
+            (j['average_cadence'] as num?)?.toInt(),
         elevationGainM: (j['elevation_gain_m'] as num?)?.toDouble(),
       );
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../../models/plan.dart';
 import '../../services/api_service.dart';
 import '../../widgets/session_card.dart';
@@ -66,6 +67,18 @@ class _PlanScreenState extends State<PlanScreen> {
       ..sort((a, b) => a.dayNumber.compareTo(b.dayNumber));
   }
 
+  void _showSessionDetail(WorkoutSession session) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF1e293b),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => _SessionDetailSheet(session: session, onMarkComplete: _load),
+    );
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(
@@ -101,7 +114,10 @@ class _PlanScreenState extends State<PlanScreen> {
                               const SizedBox(height: 12),
                               ..._weekSessions.map((s) => Padding(
                                     padding: const EdgeInsets.only(bottom: 8),
-                                    child: SessionCard(session: s),
+                                    child: SessionCard(
+                                      session: s,
+                                      onTap: () => _showSessionDetail(s),
+                                    ),
                                   )),
                             ],
                           ),
@@ -183,5 +199,139 @@ class _WeekStat extends StatelessWidget {
               style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
           Text(label, style: const TextStyle(color: Color(0xFF64748b), fontSize: 11)),
         ],
+      );
+}
+
+class _SessionDetailSheet extends StatefulWidget {
+  final WorkoutSession session;
+  final VoidCallback onMarkComplete;
+  const _SessionDetailSheet({required this.session, required this.onMarkComplete});
+
+  @override
+  State<_SessionDetailSheet> createState() => _SessionDetailSheetState();
+}
+
+class _SessionDetailSheetState extends State<_SessionDetailSheet> {
+  final _api = ApiService();
+  bool _marking = false;
+
+  static const _typeColors = {
+    'easy': Color(0xFF22c55e), 'easy_run': Color(0xFF22c55e), 'recovery': Color(0xFF22c55e),
+    'tempo': Color(0xFFf59e0b),
+    'interval': Color(0xFFef4444),
+    'long': Color(0xFF6366f1), 'long_run': Color(0xFF6366f1),
+    'rest': Color(0xFF64748b),
+    'race': Color(0xFFec4899),
+    'strength': Color(0xFF8b5cf6),
+  };
+
+  Future<void> _markComplete() async {
+    setState(() => _marking = true);
+    try {
+      await _api.markComplete(widget.session.id);
+      if (mounted) {
+        Navigator.pop(context);
+        widget.onMarkComplete();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Mislukt: ${e.toString().split('\n').first}')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _marking = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = widget.session;
+    final color = _typeColors[s.workoutType.toLowerCase()] ?? const Color(0xFF64748b);
+    return DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.6,
+      maxChildSize: 0.92,
+      builder: (_, controller) => ListView(
+        controller: controller,
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+        children: [
+          Center(
+            child: Container(
+              width: 40, height: 4,
+              decoration: BoxDecoration(color: const Color(0xFF334155), borderRadius: BorderRadius.circular(2)),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(children: [
+            Container(width: 4, height: 40, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2))),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(s.title,
+                  style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+            ),
+            if (s.isCompleted)
+              const Icon(Icons.check_circle, color: Color(0xFF22c55e), size: 24),
+          ]),
+          if (s.scheduledDate != null) ...[
+            const SizedBox(height: 4),
+            Text(DateFormat('EEEE d MMMM yyyy', 'nl').format(s.scheduledDate!),
+                style: const TextStyle(color: Color(0xFF64748b), fontSize: 13)),
+          ],
+          const SizedBox(height: 20),
+          Row(children: [
+            if (s.distanceKm != null) _InfoChip(Icons.route, '${s.distanceKm} km'),
+            if (s.durationMinutes != null) ...[
+              const SizedBox(width: 10),
+              _InfoChip(Icons.timer, '${s.durationMinutes} min'),
+            ],
+          ]),
+          if (s.notes != null && s.notes!.isNotEmpty) ...[
+            const SizedBox(height: 20),
+            const Text('Beschrijving', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+            const SizedBox(height: 8),
+            Text(s.notes!, style: const TextStyle(color: Color(0xFFcbd5e1), fontSize: 13, height: 1.6)),
+          ],
+          if (!s.isCompleted) ...[
+            const SizedBox(height: 28),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _marking ? null : _markComplete,
+                icon: _marking
+                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Icon(Icons.check),
+                label: Text(_marking ? 'Bezig...' : 'Markeer als voltooid'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF6366f1),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _InfoChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  const _InfoChip(this.icon, this.label);
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0f172a),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(icon, size: 15, color: const Color(0xFF6366f1)),
+          const SizedBox(width: 6),
+          Text(label, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
+        ]),
       );
 }

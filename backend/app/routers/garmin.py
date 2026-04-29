@@ -133,6 +133,22 @@ async def sync_activities(
         raise HTTPException(status_code=502, detail=f"Garmin sync failed: {str(e)}")
 
 
+@router.get("/activities")
+async def list_activities(
+    months: int = 3,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Return list of recent Garmin running activities."""
+    try:
+        result = await garmin_service.fetch_activities(db, user.id, months=months, user_tier=user.tier)
+        return result["activities"]
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Garmin activiteiten ophalen mislukt: {str(e)}")
+
+
 @router.get("/activity/{activity_id}")
 async def get_activity_detail(
     activity_id: str,
