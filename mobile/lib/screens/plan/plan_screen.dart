@@ -13,6 +13,7 @@ class _PlanScreenState extends State<PlanScreen> {
   final _api = ApiService();
   Plan? _plan;
   bool _loading = true;
+  String? _error;
   int _selectedWeek = 0;
 
   @override
@@ -22,19 +23,19 @@ class _PlanScreenState extends State<PlanScreen> {
   }
 
   Future<void> _load() async {
-    setState(() { _loading = true; });
+    setState(() { _loading = true; _error = null; });
     try {
       final res = await _api.getPlans();
       final plans = (res.data as List).map((p) => Plan.fromJson(p)).toList();
-      final active = plans.where((p) => p.status == 'active').toList();
-      final plan = active.isNotEmpty ? active.first : (plans.isNotEmpty ? plans.first : null);
+      final plan = plans.isNotEmpty ? plans.first : null;
       if (plan != null) {
-        final detail = await _api.getPlan(plan.id);
+        final detail = await _api.getPlan(plan.publicId);
         final fullPlan = Plan.fromJson(detail.data);
         final currentWeek = _detectCurrentWeek(fullPlan);
         setState(() { _plan = fullPlan; _selectedWeek = currentWeek; });
       }
-    } catch (_) {
+    } catch (e) {
+      setState(() => _error = 'Kon plan niet laden: ${e.toString().split('\n').first}');
     } finally {
       setState(() => _loading = false);
     }
@@ -75,6 +76,15 @@ class _PlanScreenState extends State<PlanScreen> {
         ),
         body: _loading
             ? const Center(child: CircularProgressIndicator())
+            : _error != null
+                ? Center(child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(_error!, style: const TextStyle(color: Colors.red)),
+                      const SizedBox(height: 12),
+                      ElevatedButton(onPressed: _load, child: const Text('Opnieuw')),
+                    ],
+                  ))
             : _plan == null
                 ? const Center(child: Text('Geen trainingsplan gevonden',
                     style: TextStyle(color: Colors.white)))

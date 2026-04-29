@@ -4,9 +4,12 @@ import '../models/plan.dart';
 
 const _typeColors = {
   'easy': Color(0xFF22c55e),
+  'easy_run': Color(0xFF22c55e),
+  'recovery': Color(0xFF22c55e),
   'tempo': Color(0xFFf59e0b),
   'interval': Color(0xFFef4444),
   'long': Color(0xFF6366f1),
+  'long_run': Color(0xFF6366f1),
   'rest': Color(0xFF64748b),
   'race': Color(0xFFec4899),
   'strength': Color(0xFF8b5cf6),
@@ -14,9 +17,12 @@ const _typeColors = {
 
 const _typeLabels = {
   'easy': 'Rustig',
+  'easy_run': 'Rustig',
+  'recovery': 'Herstel',
   'tempo': 'Tempo',
   'interval': 'Interval',
   'long': 'Lang',
+  'long_run': 'Lang',
   'rest': 'Rust',
   'race': 'Wedstrijd',
   'strength': 'Kracht',

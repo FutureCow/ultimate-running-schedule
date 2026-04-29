@@ -85,7 +85,7 @@ class ApiService {
 
   // Plans
   Future<Response> getPlans() => _dio.get('/plans');
-  Future<Response> getPlan(int id) => _dio.get('/plans/$id');
+  Future<Response> getPlan(String publicId) => _dio.get('/plans/$publicId');
 
   // Sessions
   Future<Response> getSessions(int planId) => _dio.get('/sessions', queryParameters: {'plan_id': planId});
