@@ -135,31 +135,34 @@ async def sync_activities(
 
 @router.get("/activities")
 async def list_activities(
-    months: int = 3,
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    """Return Garmin activities that are linked to a planned session."""
-    try:
-        # Get all garmin_activity_ids linked to this user's sessions
-        result = await db.execute(
-            select(WorkoutSession.garmin_activity_id, WorkoutSession.scheduled_date)
-            .join(WorkoutSession.plan)
-            .where(
-                Plan.user_id == user.id,
-                WorkoutSession.garmin_activity_id.isnot(None),
-            )
+    """Return only plan-linked activities directly from DB — no Garmin call."""
+    result = await db.execute(
+        select(WorkoutSession)
+        .join(WorkoutSession.plan)
+        .where(
+            Plan.user_id == user.id,
+            WorkoutSession.garmin_activity_id.isnot(None),
         )
-        linked = {row[0] for row in result.all()}
-        if not linked:
-            return []
-
-        data = await garmin_service.fetch_activities(db, user.id, months=months, user_tier=user.tier)
-        return [a for a in data["activities"] if a["activity_id"] in linked]
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Garmin activiteiten ophalen mislukt: {str(e)}")
+        .order_by(WorkoutSession.scheduled_date.desc())
+    )
+    sessions = result.scalars().all()
+    return [
+        {
+            "activity_id": s.garmin_activity_id,
+            "activity_name": s.title,
+            "start_time": s.scheduled_date.isoformat() if s.scheduled_date else "",
+            "distance_km": s.distance_km or 0,
+            "duration_seconds": (s.duration_minutes or 0) * 60,
+            "average_pace_per_km": None,
+            "average_heart_rate": None,
+            "average_cadence": None,
+            "elevation_gain_m": None,
+        }
+        for s in sessions
+    ]
 
 
 @router.get("/activity/{activity_id}")
