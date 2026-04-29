@@ -68,7 +68,7 @@ export const profileApi = {
   get: () => api.get("/auth/profile"),
   update: (data: Partial<{
     age: number; height_cm: number; weight_kg: number;
-    weekly_km: number; weekly_runs: number; injuries: string;
+    weekly_km: number; weekly_runs: number; injuries: string; max_hr: number;
   }>) => api.patch("/auth/profile", data),
 };
 

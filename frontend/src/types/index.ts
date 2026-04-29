@@ -14,6 +14,7 @@ export interface UserProfile {
   weekly_km?: number | null;
   weekly_runs?: number | null;
   injuries?: string | null;
+  max_hr?: number | null;
   is_admin?: boolean;
   tier?: UserTier;
 }
