@@ -29,6 +29,7 @@ class UserProfileUpdate(BaseModel):
     weekly_km: Optional[float] = None
     weekly_runs: Optional[int] = None
     injuries: Optional[str] = None
+    max_hr: Optional[int] = None
 
 
 class UserProfileResponse(BaseModel):
@@ -44,6 +45,7 @@ class UserProfileResponse(BaseModel):
     weekly_km: Optional[float] = None
     weekly_runs: Optional[int] = None
     injuries: Optional[str] = None
+    max_hr: Optional[int] = None
 
 
 class TokenResponse(BaseModel):

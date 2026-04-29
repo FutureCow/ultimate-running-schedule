@@ -65,6 +65,8 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> reloadUser() async => _loadUser();
+
   Future<void> logout() async {
     await _api.clearTokens();
     _user = null;

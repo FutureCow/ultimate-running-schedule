@@ -2,9 +2,59 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../services/api_service.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  final _api = ApiService();
+  final _ageCtrl = TextEditingController();
+  final _maxHrCtrl = TextEditingController();
+  final _weeklyKmCtrl = TextEditingController();
+  bool _saving = false;
+  String? _saveError;
+  bool _saved = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final user = context.read<AuthProvider>().user;
+    if (user != null) {
+      _ageCtrl.text = user.age?.toString() ?? '';
+      _maxHrCtrl.text = user.maxHr?.toString() ?? '';
+      _weeklyKmCtrl.text = user.weeklyKm?.toStringAsFixed(0) ?? '';
+    }
+  }
+
+  @override
+  void dispose() {
+    _ageCtrl.dispose();
+    _maxHrCtrl.dispose();
+    _weeklyKmCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    setState(() { _saving = true; _saveError = null; _saved = false; });
+    try {
+      await _api.updateProfile({
+        if (_ageCtrl.text.isNotEmpty) 'age': int.parse(_ageCtrl.text),
+        if (_maxHrCtrl.text.isNotEmpty) 'max_hr': int.parse(_maxHrCtrl.text),
+        if (_weeklyKmCtrl.text.isNotEmpty) 'weekly_km': double.parse(_weeklyKmCtrl.text),
+      });
+      await context.read<AuthProvider>().reloadUser();
+      if (mounted) setState(() => _saved = true);
+    } catch (e) {
+      if (mounted) setState(() => _saveError = 'Opslaan mislukt: ${e.toString().split('\n').first}');
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -21,81 +71,106 @@ class SettingsScreen extends StatelessWidget {
               color: const Color(0xFF1e293b),
               borderRadius: BorderRadius.circular(16),
             ),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 28,
-                  backgroundColor: const Color(0xFF6366f1).withOpacity(0.2),
-                  child: Text(
-                    (user?.name.isNotEmpty == true ? user!.name[0] : '?').toUpperCase(),
-                    style: const TextStyle(
-                        color: Color(0xFF6366f1), fontSize: 22, fontWeight: FontWeight.bold),
-                  ),
+            child: Row(children: [
+              CircleAvatar(
+                radius: 28,
+                backgroundColor: const Color(0xFF6366f1).withOpacity(0.2),
+                child: Text(
+                  (user?.name.isNotEmpty == true ? user!.name[0] : '?').toUpperCase(),
+                  style: const TextStyle(color: Color(0xFF6366f1), fontSize: 22, fontWeight: FontWeight.bold),
                 ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(user?.name ?? '–',
-                          style: const TextStyle(
-                              color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-                      Text(user?.email ?? '–',
-                          style: const TextStyle(color: Color(0xFF64748b), fontSize: 13)),
-                      const SizedBox(height: 4),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF6366f1).withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          (user?.tier ?? 'free').toUpperCase(),
-                          style: const TextStyle(
-                              color: Color(0xFF6366f1), fontSize: 10, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ],
+              ),
+              const SizedBox(width: 14),
+              Expanded(child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(user?.name ?? '–',
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                  Text(user?.email ?? '–',
+                      style: const TextStyle(color: Color(0xFF64748b), fontSize: 13)),
+                  const SizedBox(height: 4),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF6366f1).withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      (user?.tier ?? 'free').toUpperCase(),
+                      style: const TextStyle(color: Color(0xFF6366f1), fontSize: 10, fontWeight: FontWeight.bold),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              )),
+            ]),
+          ),
+
+          const SizedBox(height: 24),
+          const _SectionHeader('Atletenprofiel'),
+
+          _ProfileField(
+            label: 'Leeftijd',
+            hint: 'bijv. 35',
+            controller: _ageCtrl,
+            suffix: 'jaar',
+            keyboardType: TextInputType.number,
+          ),
+          const SizedBox(height: 12),
+          _ProfileField(
+            label: 'Max hartslag',
+            hint: 'bijv. 185',
+            controller: _maxHrCtrl,
+            suffix: 'bpm',
+            keyboardType: TextInputType.number,
+            helperText: 'Gebruik je gemeten max-HR voor nauwkeurige hartslagzones in de AI-analyse.',
+          ),
+          const SizedBox(height: 12),
+          _ProfileField(
+            label: 'Weekkilometers',
+            hint: 'bijv. 50',
+            controller: _weeklyKmCtrl,
+            suffix: 'km',
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          ),
+
+          const SizedBox(height: 20),
+
+          if (_saveError != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Text(_saveError!, style: const TextStyle(color: Colors.red, fontSize: 13)),
+            ),
+          if (_saved)
+            const Padding(
+              padding: EdgeInsets.only(bottom: 12),
+              child: Row(children: [
+                Icon(Icons.check_circle, color: Color(0xFF22c55e), size: 16),
+                SizedBox(width: 6),
+                Text('Opgeslagen', style: TextStyle(color: Color(0xFF22c55e), fontSize: 13)),
+              ]),
+            ),
+
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _saving ? null : _save,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF6366f1),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+              child: _saving
+                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Text('Opslaan'),
             ),
           ),
+
           const SizedBox(height: 24),
-
-          _SectionHeader('Account'),
-          _SettingsTile(
-            icon: Icons.person_outline,
-            title: 'Profiel bewerken',
-            onTap: () {},
-          ),
-          _SettingsTile(
-            icon: Icons.lock_outline,
-            title: 'Wachtwoord wijzigen',
-            onTap: () {},
-          ),
-
-          const SizedBox(height: 16),
-          _SectionHeader('Garmin'),
-          _SettingsTile(
-            icon: Icons.watch_outlined,
-            title: 'Garmin Connect koppeling',
-            subtitle: 'Beheer je Garmin credentials',
-            onTap: () {},
-          ),
+          const _SectionHeader('Garmin'),
           _SettingsTile(
             icon: Icons.sync,
             title: 'Activiteiten synchroniseren',
             onTap: () => context.go('/analyse'),
-          ),
-
-          const SizedBox(height: 16),
-          _SectionHeader('App'),
-          _SettingsTile(
-            icon: Icons.info_outline,
-            title: 'Over Ultimate Running',
-            subtitle: 'Versie 1.0.0',
-            onTap: () {},
           ),
 
           const SizedBox(height: 24),
@@ -109,7 +184,7 @@ class SettingsScreen extends StatelessWidget {
               icon: const Icon(Icons.logout, color: Colors.red),
               label: const Text('Uitloggen', style: TextStyle(color: Colors.red)),
               style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: Colors.red, width: 1),
+                side: const BorderSide(color: Colors.red),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 padding: const EdgeInsets.symmetric(vertical: 14),
               ),
@@ -127,40 +202,84 @@ class _SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.only(bottom: 10),
         child: Text(title,
-            style: const TextStyle(
-                color: Color(0xFF64748b), fontSize: 12, fontWeight: FontWeight.w600,
-                letterSpacing: 0.5)),
+            style: const TextStyle(color: Color(0xFF64748b), fontSize: 12,
+                fontWeight: FontWeight.w600, letterSpacing: 0.5)),
+      );
+}
+
+class _ProfileField extends StatelessWidget {
+  final String label;
+  final String hint;
+  final TextEditingController controller;
+  final String suffix;
+  final TextInputType keyboardType;
+  final String? helperText;
+
+  const _ProfileField({
+    required this.label,
+    required this.hint,
+    required this.controller,
+    required this.suffix,
+    required this.keyboardType,
+    this.helperText,
+  });
+
+  @override
+  Widget build(BuildContext context) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: const TextStyle(color: Color(0xFF94a3b8), fontSize: 12, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 6),
+          TextField(
+            controller: controller,
+            keyboardType: keyboardType,
+            style: const TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              hintText: hint,
+              hintStyle: const TextStyle(color: Color(0xFF475569)),
+              suffixText: suffix,
+              suffixStyle: const TextStyle(color: Color(0xFF64748b)),
+              filled: true,
+              fillColor: const Color(0xFF1e293b),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: Color(0xFF334155)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: Color(0xFF334155)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: Color(0xFF6366f1)),
+              ),
+            ),
+          ),
+          if (helperText != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(helperText!, style: const TextStyle(color: Color(0xFF475569), fontSize: 11)),
+            ),
+        ],
       );
 }
 
 class _SettingsTile extends StatelessWidget {
   final IconData icon;
   final String title;
-  final String? subtitle;
   final VoidCallback onTap;
 
-  const _SettingsTile({
-    required this.icon,
-    required this.title,
-    this.subtitle,
-    required this.onTap,
-  });
+  const _SettingsTile({required this.icon, required this.title, required this.onTap});
 
   @override
   Widget build(BuildContext context) => Container(
         margin: const EdgeInsets.only(bottom: 8),
-        decoration: BoxDecoration(
-          color: const Color(0xFF1e293b),
-          borderRadius: BorderRadius.circular(12),
-        ),
+        decoration: BoxDecoration(color: const Color(0xFF1e293b), borderRadius: BorderRadius.circular(12)),
         child: ListTile(
           leading: Icon(icon, color: const Color(0xFF64748b), size: 20),
           title: Text(title, style: const TextStyle(color: Colors.white, fontSize: 14)),
-          subtitle: subtitle != null
-              ? Text(subtitle!, style: const TextStyle(color: Color(0xFF64748b), fontSize: 12))
-              : null,
           trailing: const Icon(Icons.chevron_right, color: Color(0xFF334155), size: 18),
           onTap: onTap,
           contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),

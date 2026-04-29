@@ -121,6 +121,7 @@ export default function SettingsPage() {
       weekly_km: profile.weekly_km ?? undefined,
       weekly_runs: profile.weekly_runs ?? undefined,
       injuries: profile.injuries ?? undefined,
+      max_hr: profile.max_hr ?? undefined,
     }),
     onSuccess: () => {
       setProfileSaved(true); setProfileError("");
@@ -273,6 +274,16 @@ export default function SettingsPage() {
                     onChange={(e) => setProfile((p) => ({ ...p, weekly_runs: e.target.value ? Number(e.target.value) : null }))}
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="label">Max hartslag (bpm)</label>
+                <input type="number" className="input" placeholder="185"
+                  min={100} max={220}
+                  value={profile.max_hr ?? ""}
+                  onChange={(e) => setProfile((p) => ({ ...p, max_hr: e.target.value ? Number(e.target.value) : null }))}
+                />
+                <p className="mt-1 text-xs text-slate-500">Wordt gebruikt voor nauwkeurige hartslagzones in de AI-analyse. Meet je max-HR tijdens een zware inspanning of race.</p>
               </div>
 
               <div>

@@ -265,6 +265,7 @@ async def generate_run_feedback(
     language: str = "nl",
     streams: dict | None = None,
     user_age: int | None = None,
+    user_max_hr: int | None = None,
 ) -> str:
     """Generate a concise scientific run analysis for an Elite user after a completed workout.
 
@@ -294,11 +295,12 @@ async def generate_run_feedback(
     # 1. Age-based estimate (220 - age) if age known
     # 2. Highest HR ever seen in the stream (better than activity max for easy runs)
     # 3. Activity max HR as last resort
-    activity_max_hr = summary.get("max_heart_rate")
-    hr_stream_pre   = (streams or activity.get("streams") or {}).get("heart_rate") or []
-    stream_max_hr   = max((v for v in hr_stream_pre if v), default=None)
+    activity_max_hr  = summary.get("max_heart_rate")
+    hr_stream_pre    = (streams or activity.get("streams") or {}).get("heart_rate") or []
+    stream_max_hr    = max((v for v in hr_stream_pre if v), default=None)
     estimated_max_hr = (220 - user_age) if user_age else None
-    max_hr = estimated_max_hr or stream_max_hr or activity_max_hr
+    # Priority: user-set max HR > age estimate > stream max > activity max
+    max_hr = user_max_hr or estimated_max_hr or stream_max_hr or activity_max_hr
     cad     = summary.get("avg_cadence") or summary.get("average_cadence")
     elev    = summary.get("elevation_gain_m") or summary.get("elevationGain")
 
@@ -309,11 +311,14 @@ async def generate_run_feedback(
         f"- Average pace: {pace} /km",
     ]
     if hr:
-        max_hr_note = ""
-        if user_age:
+        if user_max_hr:
+            max_hr_note = f"  |  Max HR (athlete-set): {max_hr} bpm"
+        elif user_age:
             max_hr_note = f"  |  Max HR (220-{user_age}): {max_hr} bpm"
         elif max_hr:
             max_hr_note = f"  |  Max HR recorded this activity: {max_hr} bpm"
+        else:
+            max_hr_note = ""
         stats_lines.append(f"- Average heart rate: {hr} bpm{max_hr_note}")
     if cad:
         stats_lines.append(f"- Average cadence: {cad} steps/min")

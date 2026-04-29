@@ -82,6 +82,8 @@ class ApiService {
       _dio.post('/auth/register', data: {'email': email, 'password': password, 'name': name});
 
   Future<Response> getMe() => _dio.get('/auth/profile');
+  Future<Response> updateProfile(Map<String, dynamic> data) =>
+      _dio.patch('/auth/profile', data: data);
 
   // Plans
   Future<Response> getPlans() => _dio.get('/plans');

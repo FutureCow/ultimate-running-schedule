@@ -191,7 +191,8 @@ async def get_activity_detail(
         if needs_feedback:
             try:
                 session.ai_feedback = await claude_service.generate_run_feedback(
-                    data, session.title, language="nl", user_age=user.age
+                    data, session.title, language="nl",
+                    user_age=user.age, user_max_hr=user.max_hr
                 )
                 await db.commit()
             except Exception as exc:

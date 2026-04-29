@@ -29,6 +29,7 @@ class User(Base):
     weekly_km: Mapped[float | None] = mapped_column(Float, nullable=True)
     weekly_runs: Mapped[int | None] = mapped_column(Integer, nullable=True)
     injuries: Mapped[str | None] = mapped_column(Text, nullable=True)
+    max_hr: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

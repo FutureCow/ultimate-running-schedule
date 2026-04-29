@@ -4,6 +4,8 @@ class User {
   final String name;
   final String tier;
   final double? weeklyKm;
+  final int? age;
+  final int? maxHr;
 
   const User({
     required this.id,
@@ -11,6 +13,8 @@ class User {
     required this.name,
     required this.tier,
     this.weeklyKm,
+    this.age,
+    this.maxHr,
   });
 
   factory User.fromJson(Map<String, dynamic> j) => User(
@@ -19,5 +23,7 @@ class User {
         name: j['name'] as String? ?? (j['email'] as String? ?? '').split('@').first,
         tier: j['tier'] as String? ?? 'free',
         weeklyKm: (j['weekly_km'] as num?)?.toDouble(),
+        age: (j['age'] as num?)?.toInt(),
+        maxHr: (j['max_hr'] as num?)?.toInt(),
       );
 }
