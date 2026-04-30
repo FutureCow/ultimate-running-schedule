@@ -16,11 +16,19 @@ class _PlanScreenState extends State<PlanScreen> {
   bool _loading = true;
   String? _error;
   int _selectedWeek = 0;
+  late final PageController _pageController;
 
   @override
   void initState() {
     super.initState();
+    _pageController = PageController();
     _load();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -33,7 +41,14 @@ class _PlanScreenState extends State<PlanScreen> {
         final detail = await _api.getPlan(plan.publicId);
         final fullPlan = Plan.fromJson(detail.data);
         final currentWeek = _detectCurrentWeek(fullPlan);
+        final weeks = fullPlan.sessions.map((s) => s.weekNumber).toSet().toList()..sort();
+        final pageIndex = weeks.indexOf(currentWeek).clamp(0, weeks.length - 1);
         setState(() { _plan = fullPlan; _selectedWeek = currentWeek; });
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_pageController.hasClients) {
+            _pageController.jumpToPage(pageIndex);
+          }
+        });
       }
     } catch (e) {
       setState(() => _error = 'Kon plan niet laden: ${e.toString().split('\n').first}');
@@ -57,14 +72,6 @@ class _PlanScreenState extends State<PlanScreen> {
   List<int> get _weeks {
     if (_plan == null) return [];
     return _plan!.sessions.map((s) => s.weekNumber).toSet().toList()..sort();
-  }
-
-  List<WorkoutSession> get _weekSessions {
-    if (_plan == null) return [];
-    return _plan!.sessions
-        .where((s) => s.weekNumber == _selectedWeek)
-        .toList()
-      ..sort((a, b) => a.dayNumber.compareTo(b.dayNumber));
   }
 
   void _showSessionDetail(WorkoutSession session) {
@@ -105,22 +112,35 @@ class _PlanScreenState extends State<PlanScreen> {
                     children: [
                       _buildWeekSelector(),
                       Expanded(
-                        child: RefreshIndicator(
-                          onRefresh: _load,
-                          child: ListView(
-                            padding: const EdgeInsets.all(16),
-                            children: [
-                              _buildWeekHeader(),
-                              const SizedBox(height: 12),
-                              ..._weekSessions.map((s) => Padding(
-                                    padding: const EdgeInsets.only(bottom: 8),
-                                    child: SessionCard(
-                                      session: s,
-                                      onTap: () => _showSessionDetail(s),
-                                    ),
-                                  )),
-                            ],
-                          ),
+                        child: PageView.builder(
+                          controller: _pageController,
+                          itemCount: _weeks.length,
+                          onPageChanged: (idx) =>
+                              setState(() => _selectedWeek = _weeks[idx]),
+                          itemBuilder: (_, idx) {
+                            final week = _weeks[idx];
+                            final sessions = _plan!.sessions
+                                .where((s) => s.weekNumber == week)
+                                .toList()
+                              ..sort((a, b) => a.dayNumber.compareTo(b.dayNumber));
+                            return RefreshIndicator(
+                              onRefresh: _load,
+                              child: ListView(
+                                padding: const EdgeInsets.all(16),
+                                children: [
+                                  _buildWeekHeader(sessions),
+                                  const SizedBox(height: 12),
+                                  ...sessions.map((s) => Padding(
+                                        padding: const EdgeInsets.only(bottom: 8),
+                                        child: SessionCard(
+                                          session: s,
+                                          onTap: () => _showSessionDetail(s),
+                                        ),
+                                      )),
+                                ],
+                              ),
+                            );
+                          },
                         ),
                       ),
                     ],
@@ -139,7 +159,13 @@ class _PlanScreenState extends State<PlanScreen> {
             return Padding(
               padding: const EdgeInsets.only(right: 6),
               child: GestureDetector(
-                onTap: () => setState(() => _selectedWeek = w),
+                onTap: () {
+                  final idx = _weeks.indexOf(w);
+                  setState(() => _selectedWeek = w);
+                  _pageController.animateToPage(idx,
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeInOut);
+                },
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 150),
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
@@ -163,8 +189,7 @@ class _PlanScreenState extends State<PlanScreen> {
         ),
       );
 
-  Widget _buildWeekHeader() {
-    final sessions = _weekSessions;
+  Widget _buildWeekHeader(List<WorkoutSession> sessions) {
     final done = sessions.where((s) => s.isCompleted).length;
     final totalKm = sessions
         .where((s) => s.distanceKm != null)
