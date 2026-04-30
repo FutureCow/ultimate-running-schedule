@@ -30,9 +30,16 @@ class AuthProvider extends ChangeNotifier {
       final res = await _api.getMe();
       _user = User.fromJson(res.data as Map<String, dynamic>);
       _state = AuthState.authenticated;
+      _error = null;
     } catch (e) {
       _state = AuthState.unauthenticated;
-      _error = 'Kon gebruikersgegevens niet ophalen: ${e.toString().split('\n').first}';
+      // 401 means token expired and refresh failed — redirect silently to login
+      final msg = e.toString();
+      if (msg.contains('401')) {
+        _error = null;
+      } else {
+        _error = _parseError(e);
+      }
     }
     notifyListeners();
   }
