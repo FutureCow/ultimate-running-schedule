@@ -39,7 +39,7 @@ class _UltimateRunningAppState extends State<UltimateRunningApp> {
           builder: (context) {
             final router = buildRouter(context.watch<AuthProvider>());
             return MaterialApp.router(
-              title: 'Ultimate Running',
+              title: 'Metriq',
               theme: AppTheme.dark,
               routerConfig: router,
               debugShowCheckedModeBanner: false,

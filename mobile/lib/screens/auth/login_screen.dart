@@ -48,10 +48,10 @@ class _LoginScreenState extends State<LoginScreen> {
             children: [
               const SizedBox(height: 48),
               // Logo / title
-              const Icon(Icons.directions_run, size: 56, color: Color(0xFF6366f1)),
+              Image.asset('assets/logo.png', width: 72, height: 72),
               const SizedBox(height: 16),
               Text(
-                'Ultimate Running',
+                'Metriq',
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                       color: Colors.white,
