@@ -44,6 +44,8 @@ class WorkoutSession {
   final DateTime? scheduledDate;
   final String? garminActivityId;
   final String? aiInsights;
+  final Map<String, dynamic>? paces;
+  final List<dynamic>? intervals;
 
   const WorkoutSession({
     required this.id,
@@ -58,6 +60,8 @@ class WorkoutSession {
     this.scheduledDate,
     this.garminActivityId,
     this.aiInsights,
+    this.paces,
+    this.intervals,
   });
 
   factory WorkoutSession.fromJson(Map<String, dynamic> j) => WorkoutSession(
@@ -75,6 +79,8 @@ class WorkoutSession {
             : null,
         garminActivityId: j['garmin_activity_id']?.toString(),
         aiInsights: j['ai_insights'] as String?,
+        paces: j['target_paces'] as Map<String, dynamic>?,
+        intervals: j['intervals'] as List<dynamic>?,
       );
 
   String get typeColor {

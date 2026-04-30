@@ -225,6 +225,80 @@ class _SessionDetailSheetState extends State<_SessionDetailSheet> {
     'strength': Color(0xFF8b5cf6),
   };
 
+  static const _paceLabels = {
+    'warmup':  'Warming-up',
+    'main':    'Hoofdtempo',
+    'cooldown':'Cooling-down',
+    'easy':    'Rustig',
+    'threshold': 'Drempel',
+    'interval': 'Interval',
+    'repetition': 'Herhaling',
+  };
+
+  List<Widget> _buildPaceRows(Map<String, dynamic> paces, Color color) {
+    return paces.entries.map((e) {
+      final label = _paceLabels[e.key] ?? e.key;
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 6),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: const Color(0xFF0f172a),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(label, style: const TextStyle(color: Color(0xFF94a3b8), fontSize: 13)),
+              Text('${e.value} /km',
+                  style: TextStyle(color: color, fontSize: 13, fontWeight: FontWeight.w600)),
+            ],
+          ),
+        ),
+      );
+    }).toList();
+  }
+
+  Widget _buildIntervalRow(Map<String, dynamic> iv, Color color) {
+    final reps = iv['reps'];
+    final dist = iv['distance_m'];
+    final pace = iv['pace'];
+    final rest = iv['rest_seconds'];
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0f172a),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 32, height: 32,
+              decoration: BoxDecoration(color: color.withOpacity(0.15), shape: BoxShape.circle),
+              child: Center(
+                child: Text('$reps×', style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.bold)),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('$dist m @ $pace /km',
+                      style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
+                  if (rest != null)
+                    Text('Rust: ${rest}s', style: const TextStyle(color: Color(0xFF64748b), fontSize: 11)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _markComplete() async {
     setState(() => _marking = true);
     try {
@@ -286,6 +360,18 @@ class _SessionDetailSheetState extends State<_SessionDetailSheet> {
               _InfoChip(Icons.timer, '${s.durationMinutes} min'),
             ],
           ]),
+          if (s.paces != null && s.paces!.isNotEmpty) ...[
+            const SizedBox(height: 20),
+            const Text('Tempo', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+            const SizedBox(height: 8),
+            ..._buildPaceRows(s.paces!, color),
+          ],
+          if (s.intervals != null && s.intervals!.isNotEmpty) ...[
+            const SizedBox(height: 20),
+            const Text('Intervallen', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+            const SizedBox(height: 8),
+            ...s.intervals!.map((iv) => _buildIntervalRow(iv as Map<String, dynamic>, color)),
+          ],
           if (s.notes != null && s.notes!.isNotEmpty) ...[
             const SizedBox(height: 20),
             const Text('Beschrijving', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
