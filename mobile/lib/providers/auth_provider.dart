@@ -32,12 +32,24 @@ class AuthProvider extends ChangeNotifier {
       _state = AuthState.authenticated;
       _error = null;
     } catch (e) {
-      _state = AuthState.unauthenticated;
-      // 401 means token expired and refresh failed — redirect silently to login
       final msg = e.toString();
-      if (msg.contains('401')) {
+      final is401 = msg.contains('401');
+      final isNetwork = msg.contains('Connection') ||
+          msg.contains('SocketException') ||
+          msg.contains('Failed host lookup') ||
+          msg.contains('Network');
+
+      if (is401) {
+        // Refresh token was rejected by server — must re-login
+        _state = AuthState.unauthenticated;
         _error = null;
+      } else if (isNetwork && _state == AuthState.unknown) {
+        // Transient network error on startup — keep tokens, show as unauthenticated
+        // without wiping session so next open will retry
+        _state = AuthState.unauthenticated;
+        _error = 'Geen internetverbinding. Probeer opnieuw.';
       } else {
+        _state = AuthState.unauthenticated;
         _error = _parseError(e);
       }
     }

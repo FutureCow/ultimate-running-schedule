@@ -52,8 +52,15 @@ class ApiService {
         await _storage.write(key: 'refresh_token', value: res.data['refresh_token']);
       }
       return true;
+    } on DioException catch (e) {
+      // Only wipe tokens when the server explicitly rejects the refresh token.
+      // Network errors, timeouts, etc. are transient — keep tokens so the user
+      // stays logged in and the next request will retry the refresh.
+      if (e.response?.statusCode == 401) {
+        await clearTokens();
+      }
+      return false;
     } catch (_) {
-      await clearTokens();
       return false;
     } finally {
       _refreshing = false;
