@@ -361,9 +361,9 @@ async def generate_run_feedback(
 
     lang_instruction = "Dutch (Nederlands)" if language == "nl" else "English"
 
-    prompt = f"""You are a sports scientist analyzing a running workout. Based on the data below, write a brief but scientifically grounded analysis (3–4 short paragraphs) in {lang_instruction}.
+    prompt = f"""You are a sports scientist analyzing a running workout. Based on the data below, write a short analysis (2 sentences max) in {lang_instruction}.
 
-Cover: training load interpretation, heart rate zone assessment (reference Jack Daniels zones where possible), cadence efficiency, pace variability, elevation impact if relevant, and recovery recommendations. Be specific and actionable. Reference the actual numbers in your analysis.
+Mention the most important observation (e.g. HR zone, pace, cadence) and one concrete takeaway. Reference the actual numbers. Be direct and concise.
 
 Data:
 {chr(10).join(stats_lines)}
@@ -372,8 +372,8 @@ Write in plain text — no markdown, no bullet points, no headers."""
 
     message = await client.messages.create(
         model=settings.CLAUDE_MODEL,
-        max_tokens=800,
-        system=f"You are a sports scientist. Respond in {lang_instruction}. Be concise and evidence-based. Always reference the specific data values provided.",
+        max_tokens=200,
+        system=f"You are a sports scientist. Respond in {lang_instruction}. Be very concise — 2 sentences maximum. Always reference the specific data values provided.",
         messages=[{"role": "user", "content": prompt}],
     )
 
