@@ -92,6 +92,14 @@ export const sessionsApi = {
   move: (id: number, dayNumber: number, weekNumber?: number) =>
     api.patch(`/sessions/${id}`, { day_number: dayNumber, week_number: weekNumber ?? null }),
   delete: (id: number) => api.delete(`/sessions/${id}`),
+  updateDetails: (id: number, data: {
+    title?: string;
+    description?: string;
+    distance_km?: number | null;
+    duration_minutes?: number | null;
+    target_paces?: Record<string, string>;
+    scheduled_date?: string;
+  }) => api.patch(`/sessions/${id}/details`, data),
 };
 
 // Garmin

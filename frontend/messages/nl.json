@@ -303,7 +303,21 @@
       "strength":  "Kracht"
     },
     "exercises": "Oefeningen",
-    "analyse": "Analyseer"
+    "analyse": "Analyseer",
+    "edit": {
+      "button": "Bewerken",
+      "title": "Workout bewerken",
+      "titleLabel": "Titel",
+      "date": "Datum",
+      "distance": "Afstand",
+      "duration": "Duur",
+      "paces": "Tempo (min:sec/km)",
+      "paceFormat": "Formaat: 5:10 of 5:10-5:20",
+      "notes": "Notities",
+      "notesPlaceholder": "Optionele beschrijving of notities",
+      "save": "Opslaan",
+      "cancel": "Annuleren"
+    }
   },
   "analyse": {
     "title": "Activiteiten analyseren",

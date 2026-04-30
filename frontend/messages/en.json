@@ -303,7 +303,21 @@
       "strength":  "Strength"
     },
     "exercises": "Exercises",
-    "analyse": "Analyse"
+    "analyse": "Analyse",
+    "edit": {
+      "button": "Edit",
+      "title": "Edit workout",
+      "titleLabel": "Title",
+      "date": "Date",
+      "distance": "Distance",
+      "duration": "Duration",
+      "paces": "Pace (min:sec/km)",
+      "paceFormat": "Format: 5:10 or 5:10-5:20",
+      "notes": "Notes",
+      "notesPlaceholder": "Optional description or notes",
+      "save": "Save",
+      "cancel": "Cancel"
+    }
   },
   "analyse": {
     "title": "Analyse workouts",

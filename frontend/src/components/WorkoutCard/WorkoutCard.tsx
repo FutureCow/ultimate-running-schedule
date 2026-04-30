@@ -2,11 +2,12 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations } from "next-intl";
-import { Clock, Ruler, Watch, ChevronDown, ChevronUp, Zap, CheckCircle2, ArrowLeftRight, Trash2, X, Dumbbell, BarChart2 } from "lucide-react";
+import { Clock, Ruler, Watch, ChevronDown, ChevronUp, Zap, CheckCircle2, ArrowLeftRight, Trash2, X, Dumbbell, BarChart2, Pencil } from "lucide-react";
 import { useState } from "react";
 import { Link } from "@/i18n/navigation";
 import { WorkoutSession } from "@/types";
 import { cn, WORKOUT_COLORS } from "@/lib/utils";
+import { SessionEditModal } from "./SessionEditModal";
 
 interface Props {
   session: WorkoutSession;
@@ -18,6 +19,8 @@ interface Props {
   isDeleting?: boolean;
   onRemoveFromGarmin?: (sessionId: number) => void;
   isRemovingFromGarmin?: boolean;
+  onEdit?: (sessionId: number, data: Parameters<React.ComponentProps<typeof SessionEditModal>["onSave"]>[0]) => void;
+  isEditing?: boolean;
   totalWeeks?: number;
 }
 
@@ -32,12 +35,13 @@ const ACCENT_COLORS: Record<string, string> = {
   strength:  "bg-violet-500",
 };
 
-export function WorkoutCard({ session, onPushToGarmin, isPushing, onMove, isMoving, onDelete, isDeleting, onRemoveFromGarmin, isRemovingFromGarmin, totalWeeks = 1 }: Props) {
+export function WorkoutCard({ session, onPushToGarmin, isPushing, onMove, isMoving, onDelete, isDeleting, onRemoveFromGarmin, isRemovingFromGarmin, onEdit, isEditing, totalWeeks = 1 }: Props) {
   const t = useTranslations("workout");
   const tDays = useTranslations("days");
 
   const [expanded, setExpanded] = useState(false);
   const [showMovePicker, setShowMovePicker] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [moveWeek, setMoveWeek] = useState(session.week_number);
 
   const colorClass = WORKOUT_COLORS[session.workout_type];
@@ -57,6 +61,7 @@ export function WorkoutCard({ session, onPushToGarmin, isPushing, onMove, isMovi
   const isCompleted = !!session.completed_at;
 
   return (
+  <>
     <motion.div layout className={cn(
       "rounded-2xl border bg-surface-card overflow-hidden",
       isCompleted ? "border-emerald-500/40 bg-emerald-500/5" : "border-slate-700/40"
@@ -237,6 +242,19 @@ export function WorkoutCard({ session, onPushToGarmin, isPushing, onMove, isMovi
                       {t("analyse")}
                     </Link>
                   )}
+                  {onEdit && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setShowEditModal(true); }}
+                      disabled={isEditing}
+                      className="btn-ghost text-xs px-2.5 py-1.5 gap-1.5 text-slate-400 hover:text-white"
+                    >
+                      {isEditing
+                        ? <span className="w-3 h-3 rounded-full border border-current border-t-transparent animate-spin" />
+                        : <Pencil className="w-3.5 h-3.5" />
+                      }
+                      {t("edit.button")}
+                    </button>
+                  )}
                   {onMove && (
                     <button
                       onClick={(e) => { e.stopPropagation(); setShowMovePicker((v) => !v); }}
@@ -336,6 +354,19 @@ export function WorkoutCard({ session, onPushToGarmin, isPushing, onMove, isMovi
         )}
       </AnimatePresence>
     </motion.div>
+
+    {showEditModal && onEdit && (
+      <SessionEditModal
+        session={session}
+        isSaving={isEditing}
+        onClose={() => setShowEditModal(false)}
+        onSave={(data) => {
+          onEdit(session.id, data);
+          setShowEditModal(false);
+        }}
+      />
+    )}
+  </>
   );
 }
 
