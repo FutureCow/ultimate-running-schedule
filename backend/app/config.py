@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "changeme"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
-    REFRESH_TOKEN_EXPIRE_DAYS: int = 30
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 3650
 
     # Anthropic
     ANTHROPIC_API_KEY: str = ""
