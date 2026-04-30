@@ -70,6 +70,15 @@ class PlanCreate(BaseModel):
     strength: Optional[StrengthPreferences] = None
 
 
+class SessionUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    distance_km: Optional[float] = None
+    duration_minutes: Optional[int] = None
+    target_paces: Optional[dict] = None
+    scheduled_date: Optional[date] = None
+
+
 class PlanUpdate(BaseModel):
     name: Optional[str] = None
     goal: Optional[str] = None

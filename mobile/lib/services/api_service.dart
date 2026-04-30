@@ -99,6 +99,8 @@ class ApiService {
   // Sessions
   Future<Response> getSessions(int planId) => _dio.get('/sessions', queryParameters: {'plan_id': planId});
   Future<Response> markComplete(int sessionId) => _dio.post('/sessions/$sessionId/complete');
+  Future<Response> updateSessionDetails(int sessionId, Map<String, dynamic> data) =>
+      _dio.patch('/sessions/$sessionId/details', data: data);
 
   // Garmin / Activities
   Future<Response> getActivities() => _dio.get('/garmin/activities');

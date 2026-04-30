@@ -8,7 +8,7 @@ from app.database import get_db
 from app.models.user import User
 from app.models.plan import Plan, WorkoutSession
 from app.routers.deps import get_current_user
-from app.schemas.plan import WorkoutSessionResponse
+from app.schemas.plan import WorkoutSessionResponse, SessionUpdate
 from app.services import garmin_service
 
 logger = logging.getLogger(__name__)
@@ -54,6 +54,54 @@ async def move_session(
     start = start - timedelta(days=start.weekday())  # normalize to Monday
     week_start = start + timedelta(weeks=session.week_number - 1)
     session.scheduled_date = week_start + timedelta(days=payload.day_number - 1)
+
+    await db.commit()
+    await db.refresh(session)
+    return session
+
+
+@router.patch("/{session_id}/details", response_model=WorkoutSessionResponse)
+async def update_session_details(
+    session_id: int,
+    payload: SessionUpdate,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    result = await db.execute(
+        select(WorkoutSession, Plan)
+        .join(Plan, Plan.id == WorkoutSession.plan_id)
+        .where(WorkoutSession.id == session_id, Plan.user_id == user.id)
+    )
+    row = result.one_or_none()
+    if not row:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    session, plan = row
+
+    if payload.title is not None:
+        session.title = payload.title
+    if payload.description is not None:
+        session.description = payload.description
+    if payload.distance_km is not None:
+        session.distance_km = payload.distance_km
+    if payload.duration_minutes is not None:
+        session.duration_minutes = payload.duration_minutes
+    if payload.target_paces is not None:
+        session.target_paces = dict(payload.target_paces)
+
+    if payload.scheduled_date is not None:
+        start = plan.start_date or date.today()
+        week1_monday = start - timedelta(days=start.weekday())
+        delta = payload.scheduled_date - week1_monday
+        if delta.days < 0:
+            raise HTTPException(status_code=422, detail="Datum valt voor de planstart")
+        new_week = delta.days // 7 + 1
+        new_day = delta.days % 7 + 1
+        if new_week > plan.duration_weeks:
+            raise HTTPException(status_code=422, detail="Datum valt na het einde van het plan")
+        session.week_number = new_week
+        session.day_number = new_day
+        session.scheduled_date = payload.scheduled_date
 
     await db.commit()
     await db.refresh(session)

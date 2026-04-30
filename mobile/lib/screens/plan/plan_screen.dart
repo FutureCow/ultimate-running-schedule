@@ -82,7 +82,7 @@ class _PlanScreenState extends State<PlanScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (_) => _SessionDetailSheet(session: session, onMarkComplete: _load),
+      builder: (_) => _SessionDetailSheet(session: session, onMarkComplete: _load, onEdited: _load),
     );
   }
 
@@ -230,7 +230,8 @@ class _WeekStat extends StatelessWidget {
 class _SessionDetailSheet extends StatefulWidget {
   final WorkoutSession session;
   final VoidCallback onMarkComplete;
-  const _SessionDetailSheet({required this.session, required this.onMarkComplete});
+  final VoidCallback onEdited;
+  const _SessionDetailSheet({required this.session, required this.onMarkComplete, required this.onEdited});
 
   @override
   State<_SessionDetailSheet> createState() => _SessionDetailSheetState();
@@ -369,8 +370,31 @@ class _SessionDetailSheetState extends State<_SessionDetailSheet> {
               child: Text(s.title,
                   style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
             ),
-            if (s.isCompleted)
+            IconButton(
+              icon: const Icon(Icons.edit_outlined, size: 20, color: Color(0xFF64748b)),
+              onPressed: () => showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: const Color(0xFF1e293b),
+                shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                ),
+                builder: (_) => _SessionEditForm(
+                  session: widget.session,
+                  onSaved: () {
+                    Navigator.pop(context);
+                    Navigator.pop(context);
+                    widget.onEdited();
+                  },
+                ),
+              ),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+            ),
+            if (s.isCompleted) ...[
+              const SizedBox(width: 8),
               const Icon(Icons.check_circle, color: Color(0xFF22c55e), size: 24),
+            ],
           ]),
           if (s.scheduledDate != null) ...[
             const SizedBox(height: 4),
@@ -445,4 +469,309 @@ class _InfoChip extends StatelessWidget {
           Text(label, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
         ]),
       );
+}
+
+class _SessionEditForm extends StatefulWidget {
+  final WorkoutSession session;
+  final VoidCallback onSaved;
+  const _SessionEditForm({required this.session, required this.onSaved});
+
+  @override
+  State<_SessionEditForm> createState() => _SessionEditFormState();
+}
+
+class _SessionEditFormState extends State<_SessionEditForm> {
+  final _api = ApiService();
+  final _formKey = GlobalKey<FormState>();
+  bool _saving = false;
+
+  late final TextEditingController _titleCtrl;
+  late final TextEditingController _distanceCtrl;
+  late final TextEditingController _durationCtrl;
+  late final TextEditingController _notesCtrl;
+  late DateTime? _selectedDate;
+  late final Map<String, TextEditingController> _paceCtrl;
+
+  static const _paceLabels = {
+    'warmup':     'Warming-up',
+    'main':       'Hoofdtempo',
+    'cooldown':   'Cooling-down',
+    'easy':       'Rustig',
+    'threshold':  'Drempel',
+    'interval':   'Interval',
+    'repetition': 'Herhaling',
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    final s = widget.session;
+    _titleCtrl    = TextEditingController(text: s.title);
+    _distanceCtrl = TextEditingController(text: s.distanceKm?.toString() ?? '');
+    _durationCtrl = TextEditingController(text: s.durationMinutes?.toString() ?? '');
+    _notesCtrl    = TextEditingController(text: s.notes ?? '');
+    _selectedDate = s.scheduledDate;
+    _paceCtrl = {
+      for (final e in (s.paces ?? {}).entries)
+        e.key: TextEditingController(text: e.value?.toString() ?? ''),
+    };
+  }
+
+  @override
+  void dispose() {
+    _titleCtrl.dispose();
+    _distanceCtrl.dispose();
+    _durationCtrl.dispose();
+    _notesCtrl.dispose();
+    for (final c in _paceCtrl.values) c.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate ?? DateTime.now(),
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2030),
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(
+          colorScheme: const ColorScheme.dark(primary: Color(0xFF6366f1)),
+        ),
+        child: child!,
+      ),
+    );
+    if (picked != null) setState(() => _selectedDate = picked);
+  }
+
+  Future<void> _save() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _saving = true);
+    try {
+      final body = <String, dynamic>{};
+
+      final title = _titleCtrl.text.trim();
+      if (title.isNotEmpty) body['title'] = title;
+
+      final dist = double.tryParse(_distanceCtrl.text.trim());
+      if (dist != null) body['distance_km'] = dist;
+
+      final dur = int.tryParse(_durationCtrl.text.trim());
+      if (dur != null) body['duration_minutes'] = dur;
+
+      body['description'] = _notesCtrl.text.trim();
+
+      if (_selectedDate != null && _selectedDate != widget.session.scheduledDate) {
+        body['scheduled_date'] =
+            '${_selectedDate!.year.toString().padLeft(4, '0')}'
+            '-${_selectedDate!.month.toString().padLeft(2, '0')}'
+            '-${_selectedDate!.day.toString().padLeft(2, '0')}';
+      }
+
+      if (_paceCtrl.isNotEmpty) {
+        final paces = <String, String>{
+          for (final e in _paceCtrl.entries)
+            if (e.value.text.trim().isNotEmpty) e.key: e.value.text.trim(),
+        };
+        body['target_paces'] = paces;
+      }
+
+      await _api.updateSessionDetails(widget.session.id, body);
+      if (mounted) widget.onSaved();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Opslaan mislukt: ${e.toString().split('\n').first}')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  InputDecoration _dec(String hint, {String? label}) => InputDecoration(
+        hintText: hint,
+        labelText: label,
+        labelStyle: const TextStyle(color: Color(0xFF64748b)),
+        hintStyle: const TextStyle(color: Color(0xFF475569), fontSize: 14),
+        filled: true,
+        fillColor: const Color(0xFF0f172a),
+        border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: Color(0xFF334155))),
+        enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: Color(0xFF334155))),
+        focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: Color(0xFF6366f1))),
+        errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: Color(0xFFef4444))),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      );
+
+  Widget _label(String t) => Padding(
+        padding: const EdgeInsets.only(bottom: 6),
+        child: Text(t,
+            style: const TextStyle(
+                color: Color(0xFF94a3b8), fontSize: 12, fontWeight: FontWeight.w500)),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.85,
+      maxChildSize: 0.95,
+      builder: (_, controller) => Form(
+        key: _formKey,
+        child: ListView(
+          controller: controller,
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+          children: [
+            Center(
+              child: Container(
+                width: 40, height: 4,
+                decoration: BoxDecoration(
+                    color: const Color(0xFF334155),
+                    borderRadius: BorderRadius.circular(2)),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text('Workout bewerken',
+                style: TextStyle(
+                    color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 20),
+
+            _label('Titel'),
+            TextFormField(
+              controller: _titleCtrl,
+              style: const TextStyle(color: Colors.white),
+              decoration: _dec('Naam van de workout'),
+              validator: (v) =>
+                  (v == null || v.trim().isEmpty) ? 'Vul een titel in' : null,
+            ),
+            const SizedBox(height: 16),
+
+            _label('Datum'),
+            GestureDetector(
+              onTap: _pickDate,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0f172a),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFF334155)),
+                ),
+                child: Row(children: [
+                  const Icon(Icons.calendar_today, size: 16, color: Color(0xFF6366f1)),
+                  const SizedBox(width: 10),
+                  Text(
+                    _selectedDate != null
+                        ? DateFormat('EEEE d MMMM yyyy', 'nl').format(_selectedDate!)
+                        : 'Kies een datum',
+                    style: TextStyle(
+                      color: _selectedDate != null
+                          ? Colors.white
+                          : const Color(0xFF64748b),
+                      fontSize: 14,
+                    ),
+                  ),
+                ]),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            Row(children: [
+              Expanded(child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _label('Afstand (km)'),
+                  TextFormField(
+                    controller: _distanceCtrl,
+                    style: const TextStyle(color: Colors.white),
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    decoration: _dec('bv. 10.5'),
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty) return null;
+                      return double.tryParse(v.trim()) == null ? 'Ongeldig' : null;
+                    },
+                  ),
+                ],
+              )),
+              const SizedBox(width: 12),
+              Expanded(child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _label('Duur (min)'),
+                  TextFormField(
+                    controller: _durationCtrl,
+                    style: const TextStyle(color: Colors.white),
+                    keyboardType: TextInputType.number,
+                    decoration: _dec('bv. 60'),
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty) return null;
+                      return int.tryParse(v.trim()) == null ? 'Ongeldig' : null;
+                    },
+                  ),
+                ],
+              )),
+            ]),
+
+            if (_paceCtrl.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              _label('Tempo (min:sec/km)'),
+              ...(_paceCtrl.entries.map((e) => Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: TextFormField(
+                      controller: e.value,
+                      style: const TextStyle(color: Colors.white),
+                      decoration:
+                          _dec('5:10-5:20', label: _paceLabels[e.key] ?? e.key),
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) return null;
+                        return RegExp(r'^\d+:\d{2}(-\d+:\d{2})?$')
+                                .hasMatch(v.trim())
+                            ? null
+                            : '5:10 of 5:10-5:20';
+                      },
+                    ),
+                  ))),
+            ],
+
+            const SizedBox(height: 16),
+            _label('Notities'),
+            TextFormField(
+              controller: _notesCtrl,
+              style: const TextStyle(color: Colors.white),
+              maxLines: 3,
+              decoration: _dec('Optionele notities'),
+            ),
+            const SizedBox(height: 28),
+
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _saving ? null : _save,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF6366f1),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+                child: _saving
+                    ? const SizedBox(
+                        width: 18, height: 18,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white))
+                    : const Text('Opslaan',
+                        style: TextStyle(
+                            fontSize: 15, fontWeight: FontWeight.w600)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
