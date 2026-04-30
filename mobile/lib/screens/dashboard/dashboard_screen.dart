@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../models/plan.dart';
 import '../../providers/auth_provider.dart';
@@ -30,7 +31,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final res = await _api.getPlans();
       final plans = (res.data as List).map((p) => Plan.fromJson(p)).toList();
       final active = plans.where((p) => p.status == 'active').toList();
-      setState(() { _plan = active.isNotEmpty ? active.first : (plans.isNotEmpty ? plans.first : null); });
+      final base = active.isNotEmpty ? active.first : (plans.isNotEmpty ? plans.first : null);
+      if (base != null) {
+        final detail = await _api.getPlan(base.publicId);
+        setState(() => _plan = Plan.fromJson(detail.data));
+      } else {
+        setState(() => _plan = null);
+      }
     } catch (e) {
       setState(() => _error = 'Kon trainingsplan niet laden');
     } finally {
@@ -102,6 +109,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         padding: const EdgeInsets.all(16),
                         children: [
                           _buildStats(),
+                          const SizedBox(height: 16),
+                          _buildPlanInfo(),
+                          if (_plan!.paceZones != null && _plan!.paceZones!.isNotEmpty) ...[
+                            const SizedBox(height: 16),
+                            _buildPaceZones(),
+                          ],
                           const SizedBox(height: 20),
                           if (_nextSession != null) ...[
                             _buildSectionHeader('Volgende training'),
@@ -188,6 +201,99 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  Widget _buildPlanInfo() {
+    final p = _plan!;
+    final rows = <Widget>[];
+
+    if (p.formattedGoal.isNotEmpty)
+      rows.add(_InfoRow(Icons.flag_outlined, 'Doel', p.formattedGoal));
+    if (p.formattedTargetTime.isNotEmpty)
+      rows.add(_InfoRow(Icons.timer_outlined, 'Doeltijd', p.formattedTargetTime));
+    if (p.targetPacePerKm != null)
+      rows.add(_InfoRow(Icons.speed_outlined, 'Doeltempo', '${p.targetPacePerKm} /km'));
+    if (p.weeklyKm != null)
+      rows.add(_InfoRow(Icons.route_outlined, 'Km/week (huidig)', '${p.weeklyKm!.toStringAsFixed(0)} km'));
+    if (p.raceDate != null)
+      rows.add(_InfoRow(Icons.event_outlined, 'Wedstrijddatum',
+          DateFormat('d MMM yyyy', 'nl').format(p.raceDate!)));
+    if (p.startDate != null)
+      rows.add(_InfoRow(Icons.play_circle_outline, 'Startdatum',
+          DateFormat('d MMM yyyy', 'nl').format(p.startDate!)));
+
+    if (rows.isEmpty) return const SizedBox.shrink();
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Planinformatie',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+            const SizedBox(height: 12),
+            ...rows.map((r) => Padding(padding: const EdgeInsets.only(bottom: 8), child: r)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPaceZones() {
+    const zoneLabels = {
+      'easy': 'Rustig (easy)',
+      'marathon': 'Marathon',
+      'threshold': 'Drempel (tempo)',
+      'interval': 'Interval',
+      'repetition': 'Herhaling (rep)',
+    };
+    const zoneColors = {
+      'easy': Color(0xFF22c55e),
+      'marathon': Color(0xFF6366f1),
+      'threshold': Color(0xFFf59e0b),
+      'interval': Color(0xFFef4444),
+      'repetition': Color(0xFFec4899),
+    };
+
+    final zones = _plan!.paceZones!;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Trainingszones',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+            const SizedBox(height: 12),
+            ...zoneLabels.entries
+                .where((e) => zones[e.key] != null)
+                .map((e) {
+                  final color = zoneColors[e.key] ?? const Color(0xFF64748b);
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 10, height: 10,
+                          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(e.value,
+                              style: const TextStyle(color: Color(0xFF94a3b8), fontSize: 13)),
+                        ),
+                        Text('${zones[e.key]} /km',
+                            style: TextStyle(
+                                color: color, fontSize: 13, fontWeight: FontWeight.w600)),
+                      ],
+                    ),
+                  );
+                }),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildSectionHeader(String title) => Text(
         title,
         style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
@@ -212,6 +318,26 @@ class _StatChip extends StatelessWidget {
                 style: const TextStyle(color: Color(0xFF64748b), fontSize: 11)),
           ],
         ),
+      );
+}
+
+class _InfoRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  const _InfoRow(this.icon, this.label, this.value);
+
+  @override
+  Widget build(BuildContext context) => Row(
+        children: [
+          Icon(icon, size: 15, color: const Color(0xFF6366f1)),
+          const SizedBox(width: 10),
+          Text(label, style: const TextStyle(color: Color(0xFF64748b), fontSize: 13)),
+          const Spacer(),
+          Text(value,
+              style: const TextStyle(
+                  color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
+        ],
       );
 }
 

@@ -6,6 +6,13 @@ class Plan {
   final int weekCount;
   final DateTime createdAt;
   final List<WorkoutSession> sessions;
+  final String? goal;
+  final int? targetTimeSeconds;
+  final String? targetPacePerKm;
+  final DateTime? startDate;
+  final DateTime? raceDate;
+  final double? weeklyKm;
+  final Map<String, dynamic>? paceZones;
 
   const Plan({
     required this.id,
@@ -15,20 +22,56 @@ class Plan {
     required this.weekCount,
     required this.createdAt,
     required this.sessions,
+    this.goal,
+    this.targetTimeSeconds,
+    this.targetPacePerKm,
+    this.startDate,
+    this.raceDate,
+    this.weeklyKm,
+    this.paceZones,
   });
 
-  factory Plan.fromJson(Map<String, dynamic> j) => Plan(
-        id: (j['id'] as num?)?.toInt() ?? 0,
-        publicId: j['public_id'] as String? ?? '',
-        title: j['name'] as String? ?? j['title'] as String? ?? '',
-        status: j['status'] as String? ?? 'active',
-        weekCount: (j['duration_weeks'] as num?)?.toInt() ??
-            (j['week_count'] as num?)?.toInt() ?? 12,
-        createdAt: DateTime.tryParse(j['created_at'] ?? '') ?? DateTime.now(),
-        sessions: (j['sessions'] as List? ?? [])
-            .map((s) => WorkoutSession.fromJson(s))
-            .toList(),
-      );
+  factory Plan.fromJson(Map<String, dynamic> j) {
+    final planJson = j['plan_json'] as Map<String, dynamic>?;
+    final overview = planJson?['plan_overview'] as Map<String, dynamic>?;
+    final paceZones = overview?['pace_zones'] as Map<String, dynamic>?;
+    return Plan(
+      id: (j['id'] as num?)?.toInt() ?? 0,
+      publicId: j['public_id'] as String? ?? '',
+      title: j['name'] as String? ?? j['title'] as String? ?? '',
+      status: j['status'] as String? ?? 'active',
+      weekCount: (j['duration_weeks'] as num?)?.toInt() ??
+          (j['week_count'] as num?)?.toInt() ?? 12,
+      createdAt: DateTime.tryParse(j['created_at'] ?? '') ?? DateTime.now(),
+      sessions: (j['sessions'] as List? ?? [])
+          .map((s) => WorkoutSession.fromJson(s))
+          .toList(),
+      goal: j['goal'] as String?,
+      targetTimeSeconds: (j['target_time_seconds'] as num?)?.toInt(),
+      targetPacePerKm: j['target_pace_per_km'] as String?,
+      startDate: j['start_date'] != null ? DateTime.tryParse(j['start_date']) : null,
+      raceDate: j['race_date'] != null ? DateTime.tryParse(j['race_date']) : null,
+      weeklyKm: (j['weekly_km'] as num?)?.toDouble(),
+      paceZones: paceZones,
+    );
+  }
+
+  String get formattedGoal {
+    const labels = {
+      '5km': '5 km', '10km': '10 km', 'half_marathon': 'Halve marathon',
+      'marathon': 'Marathon', 'base_building': 'Basisconditie', 'fitness': 'Conditie',
+    };
+    return labels[goal?.toLowerCase()] ?? goal ?? '';
+  }
+
+  String get formattedTargetTime {
+    if (targetTimeSeconds == null) return '';
+    final h = targetTimeSeconds! ~/ 3600;
+    final m = (targetTimeSeconds! % 3600) ~/ 60;
+    final s = targetTimeSeconds! % 60;
+    if (h > 0) return '${h}u ${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+    return '${m}:${s.toString().padLeft(2, '0')}';
+  }
 }
 
 class WorkoutSession {
