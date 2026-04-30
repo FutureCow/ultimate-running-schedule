@@ -45,19 +45,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  List<WorkoutSession> get _thisWeekSessions {
-    if (_plan == null) return [];
-    final now = DateTime.now();
-    return _plan!.sessions.where((s) {
-      if (s.scheduledDate == null) return false;
-      final d = s.scheduledDate!;
-      final weekStart = now.subtract(Duration(days: now.weekday - 1));
-      final weekEnd = weekStart.add(const Duration(days: 6));
-      return !d.isBefore(weekStart) && !d.isAfter(weekEnd);
-    }).toList()
-      ..sort((a, b) => a.scheduledDate!.compareTo(b.scheduledDate!));
-  }
-
   WorkoutSession? get _nextSession {
     final now = DateTime.now();
     final upcoming = _plan?.sessions.where((s) =>
@@ -116,27 +103,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             _buildPaceZones(),
                           ],
                           const SizedBox(height: 20),
-                          if (_nextSession != null) ...[
-                            _buildSectionHeader('Volgende training'),
-                            const SizedBox(height: 8),
+                          _buildSectionHeader('Volgende training'),
+                          const SizedBox(height: 8),
+                          if (_nextSession != null)
                             SessionCard(
                               session: _nextSession!,
                               onTap: () => context.go('/plan'),
-                            ),
-                            const SizedBox(height: 20),
-                          ],
-                          _buildSectionHeader('Deze week'),
-                          const SizedBox(height: 8),
-                          if (_thisWeekSessions.isEmpty)
-                            const _EmptyWeek()
+                            )
                           else
-                            ...(_thisWeekSessions.map((s) => Padding(
-                                  padding: const EdgeInsets.only(bottom: 8),
-                                  child: SessionCard(
-                                    session: s,
-                                    onTap: () => context.go('/plan'),
-                                  ),
-                                ))),
+                            const _EmptyWeek(),
                         ],
                       ),
                     ),
