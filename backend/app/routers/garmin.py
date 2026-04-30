@@ -1,9 +1,13 @@
+import asyncio
+import logging
 from datetime import datetime, timezone, timedelta
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from pydantic import BaseModel
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from sqlalchemy.ext.asyncio import AsyncSession
+
+logger = logging.getLogger(__name__)
 
 limiter = Limiter(key_func=get_remote_address)
 from sqlalchemy import select
@@ -107,10 +111,38 @@ async def auto_sync_if_stale(
         return {"synced": False, "reason": "error", "detail": str(e)}
 
 
+async def _generate_feedback_background(
+    session_id: int,
+    activity_id: str,
+    user_id: int,
+    user_age: int | None,
+    user_max_hr: int | None,
+    language: str,
+) -> None:
+    """Fetch full stream data and generate AI feedback for a plan-linked session."""
+    from app.database import AsyncSessionLocal
+    from app.services import claude_service
+    from app.models.plan import WorkoutSession
+
+    async with AsyncSessionLocal() as db:
+        try:
+            data = await garmin_service.fetch_activity_detail(db, user_id, activity_id)
+            session = await db.get(WorkoutSession, session_id)
+            if session and not session.ai_feedback:
+                session.ai_feedback = await claude_service.generate_run_feedback(
+                    data, session.title or activity_id, language=language,
+                    user_age=user_age, user_max_hr=user_max_hr,
+                )
+                await db.commit()
+        except Exception as exc:
+            logger.warning("Background feedback failed for activity %s: %s", activity_id, exc)
+
+
 @router.post("/sync", response_model=GarminSyncResponse)
 @limiter.limit("6/hour")
 async def sync_activities(
     request: Request,
+    background_tasks: BackgroundTasks,
     months: int = 3,
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
@@ -121,6 +153,15 @@ async def sync_activities(
         if avg_weekly_km is not None:
             user.weekly_km = avg_weekly_km
             await db.commit()
+
+        if user.tier == "elite":
+            for session_id, activity_id in result.get("newly_matched_ids", []):
+                background_tasks.add_task(
+                    _generate_feedback_background,
+                    session_id, activity_id, user.id,
+                    user.age, user.max_hr, "nl",
+                )
+
         return GarminSyncResponse(
             synced=True,
             activity_count=len(result["activities"]),
@@ -183,11 +224,8 @@ async def get_activity_detail(
         )
         session = session_result.scalar_one_or_none()
 
-        # Generate feedback lazily using full stream data if not yet stored or if
-        # previously stored feedback is too short (likely generated without proper data)
-        needs_feedback = session and user.tier == "elite" and (
-            not session.ai_feedback or len(session.ai_feedback) < 200
-        )
+        # Fallback: generate feedback on-demand if background task hasn't run yet
+        needs_feedback = session and user.tier == "elite" and not session.ai_feedback
         if needs_feedback:
             try:
                 session.ai_feedback = await claude_service.generate_run_feedback(

@@ -322,10 +322,11 @@ async def fetch_activities(db: AsyncSession, user_id: int, months: int = 3, user
     weekly_km = total_km / (months * 4.3) if activities else 0
 
     # Match activities to planned WorkoutSessions by date
-    matched = await _match_activities_to_sessions(db, user_id, activities, user_tier=user_tier)
+    matched, newly_matched_ids = await _match_activities_to_sessions(db, user_id, activities, user_tier=user_tier)
 
     return {
         "activities": activities,
+        "newly_matched_ids": newly_matched_ids,
         "summary": {
             "total_runs": len(activities),
             "total_km": round(total_km, 1),
@@ -374,22 +375,19 @@ async def _match_activities_to_sessions(db: AsyncSession, user_id: int, activiti
 
     matched = 0
     now = datetime.now(timezone.utc)
-    newly_matched: list[tuple] = []  # (session, activity_dict)
+    newly_matched_ids: list[tuple[int, str]] = []  # (session_id, activity_id)
     for session in sessions:
         act = date_to_activity.get(session.scheduled_date)
         if act:
             session.completed_at = now
             session.garmin_activity_id = act["activity_id"]
             matched += 1
-            newly_matched.append((session, act))
+            newly_matched_ids.append((session.id, act["activity_id"]))
 
     if matched:
         await db.commit()
 
-    # AI feedback is generated lazily in the activity detail endpoint
-    # using full stream data (HR, cadence, pace, altitude) for better quality.
-
-    return matched
+    return matched, newly_matched_ids
 
 
 # ── Activity detail ──────────────────────────────────────────────────────────
