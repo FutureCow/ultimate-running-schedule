@@ -95,6 +95,8 @@ class ApiService {
   // Plans
   Future<Response> getPlans() => _dio.get('/plans');
   Future<Response> getPlan(String publicId) => _dio.get('/plans/$publicId');
+  Future<Response> bulkEditSessions(String publicId, Map<String, dynamic> filter, Map<String, dynamic> update) =>
+      _dio.patch('/plans/$publicId/sessions/bulk', data: {'filter': filter, 'update': update});
 
   // Sessions
   Future<Response> getSessions(int planId) => _dio.get('/sessions', queryParameters: {'plan_id': planId});

@@ -115,6 +115,7 @@
     "deleteConfirm": "Delete plan?",
     "weeklyStructure": "Weekly structure",
     "addStrength": "Add strength training",
+    "bulkEdit": "Bulk edit",
     "regenerate": "Adjust pace zones",
     "regenerateConfirm": "Adjust pace zones based on your last 6 Garmin activities? Only future sessions will be updated — the schedule stays intact.",
     "new": {
@@ -304,6 +305,18 @@
     },
     "exercises": "Exercises",
     "analyse": "Analyse",
+    "bulk": {
+      "title": "Bulk edit",
+      "filterDay": "Filter by day",
+      "filterType": "Filter by type",
+      "onlyFuture": "Only future (not yet completed) workouts",
+      "action_move_day": "Move to day",
+      "action_change_pace": "Change pace",
+      "moveTo": "Move to",
+      "paceType": "Which pace",
+      "apply": "Apply",
+      "result": "{count} workout(s) updated"
+    },
     "edit": {
       "button": "Edit",
       "title": "Edit workout",

@@ -115,6 +115,7 @@
     "deleteConfirm": "Plan verwijderen?",
     "weeklyStructure": "Weekstructuur",
     "addStrength": "Krachttraining toevoegen",
+    "bulkEdit": "Bulk bewerken",
     "regenerate": "Pacezones bijstellen",
     "regenerateConfirm": "Pacezones bijstellen op basis van je laatste 6 Garmin-activiteiten? Alleen toekomstige sessies worden bijgewerkt — het schema blijft intact.",
     "new": {
@@ -304,6 +305,18 @@
     },
     "exercises": "Oefeningen",
     "analyse": "Analyseer",
+    "bulk": {
+      "title": "Bulk bewerken",
+      "filterDay": "Filter op dag",
+      "filterType": "Filter op type",
+      "onlyFuture": "Alleen toekomstige (nog niet voltooide) trainingen",
+      "action_move_day": "Verplaats naar dag",
+      "action_change_pace": "Tempo aanpassen",
+      "moveTo": "Verplaats naar",
+      "paceType": "Welk tempo",
+      "apply": "Toepassen",
+      "result": "{count} training(en) bijgewerkt"
+    },
     "edit": {
       "button": "Bewerken",
       "title": "Workout bewerken",

@@ -3,12 +3,13 @@
 import { useParams, useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Trash2, Info, Pencil, Dumbbell, X, Loader2, RefreshCw } from "lucide-react";
+import { ArrowLeft, Trash2, Info, Pencil, Dumbbell, X, Loader2, RefreshCw, Layers } from "lucide-react";
 import { useTranslations, useLocale } from "next-intl";
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { Link } from "@/i18n/navigation";
 import { plansApi, garminApi } from "@/lib/api";
+import { BulkEditModal } from "@/components/Calendar/BulkEditModal";
 import { Plan } from "@/types";
 import { WeekCalendar } from "@/components/Calendar/WeekCalendar";
 import { PaceZonesCard } from "@/components/Calendar/PaceZonesCard";
@@ -25,6 +26,8 @@ export default function PlanDetailPage() {
   const tForm = useTranslations("form");
   const [strengthModal, setStrengthModal] = useState(false);
   const [strengthError, setStrengthError] = useState("");
+  const [bulkModal, setBulkModal] = useState(false);
+  const [bulkResult, setBulkResult] = useState<number | null>(null);
 
   const { data: plan, isLoading } = useQuery<Plan>({
     queryKey: ["plan", id],
@@ -78,6 +81,15 @@ export default function PlanDetailPage() {
     onError: (e: any) => setStrengthError(e?.response?.data?.detail || "Mislukt"),
   });
 
+  const bulkEditMutation = useMutation({
+    mutationFn: ({ filter, update }: { filter: any; update: any }) =>
+      plansApi.bulkEdit(id, filter, update),
+    onSuccess: (res) => {
+      setBulkResult(res.data.updated);
+      queryClient.invalidateQueries({ queryKey: ["plan", id] });
+    },
+  });
+
   const regenerateMutation = useMutation({
     mutationFn: () => plansApi.regenerate(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["plan", id] }),
@@ -119,6 +131,14 @@ export default function PlanDetailPage() {
                     ? <Loader2 className="w-4 h-4 animate-spin" />
                     : <RefreshCw className="w-4 h-4" />}
                   <span className="hidden sm:inline">{t("regenerate")}</span>
+                </button>
+                <button
+                  onClick={() => { setBulkResult(null); setBulkModal(true); }}
+                  className="btn-secondary text-sm px-3"
+                  title={t("bulkEdit")}
+                >
+                  <Layers className="w-4 h-4 text-brand-400" />
+                  <span className="hidden sm:inline">{t("bulkEdit")}</span>
                 </button>
                 <button
                   onClick={() => setStrengthModal(true)}
@@ -232,6 +252,17 @@ export default function PlanDetailPage() {
         </motion.div>
       )}
     </AnimatePresence>
+
+    {bulkModal && plan && (
+      <BulkEditModal
+        planPublicId={id}
+        totalWeeks={plan.duration_weeks}
+        onClose={() => setBulkModal(false)}
+        onSave={(filter, update) => bulkEditMutation.mutate({ filter, update })}
+        isSaving={bulkEditMutation.isPending}
+        lastResult={bulkResult}
+      />
+    )}
     </>
   );
 }

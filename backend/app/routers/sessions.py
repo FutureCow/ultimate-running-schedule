@@ -21,6 +21,23 @@ class SessionMove(BaseModel):
     week_number: int | None = None  # if omitted, keeps current week
 
 
+class BulkFilter(BaseModel):
+    day_number: int | None = None        # 1–7, filter by day
+    workout_type: str | None = None      # e.g. "easy_run"
+    only_future: bool = True             # skip already-completed sessions
+
+
+class BulkUpdate(BaseModel):
+    day_number: int | None = None        # move to this day
+    target_pace_key: str | None = None   # e.g. "main", "warmup"
+    target_pace_value: str | None = None # e.g. "6:50-7:00"
+
+
+class BulkEditPayload(BaseModel):
+    filter: BulkFilter
+    update: BulkUpdate
+
+
 @router.patch("/{session_id}", response_model=WorkoutSessionResponse)
 async def move_session(
     session_id: int,

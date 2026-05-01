@@ -74,6 +74,27 @@ class _PlanScreenState extends State<PlanScreen> {
     return _plan!.sessions.map((s) => s.weekNumber).toSet().toList()..sort();
   }
 
+  void _showBulkEdit() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF1e293b),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => _BulkEditSheet(
+        publicId: _plan!.publicId,
+        onApplied: (count) {
+          Navigator.pop(context);
+          _load();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('$count training(en) bijgewerkt')),
+          );
+        },
+      ),
+    );
+  }
+
   void _showSessionDetail(WorkoutSession session) {
     showModalBottomSheet(
       context: context,
@@ -91,6 +112,12 @@ class _PlanScreenState extends State<PlanScreen> {
         appBar: AppBar(
           title: Text(_plan?.title ?? 'Trainingsplan'),
           actions: [
+            if (_plan != null)
+              IconButton(
+                icon: const Icon(Icons.tune),
+                tooltip: 'Bulk bewerken',
+                onPressed: () => _showBulkEdit(),
+              ),
             IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
           ],
         ),
@@ -771,6 +798,240 @@ class _SessionEditFormState extends State<_SessionEditForm> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ── Bulk edit sheet ────────────────────────────────────────────────────────
+
+class _BulkEditSheet extends StatefulWidget {
+  final String publicId;
+  final void Function(int count) onApplied;
+  const _BulkEditSheet({required this.publicId, required this.onApplied});
+
+  @override
+  State<_BulkEditSheet> createState() => _BulkEditSheetState();
+}
+
+class _BulkEditSheetState extends State<_BulkEditSheet> {
+  final _api = ApiService();
+  bool _saving = false;
+
+  int? _filterDay;
+  String? _filterType;
+  bool _onlyFuture = true;
+
+  // action: 'move' or 'pace'
+  String _action = 'move';
+  int? _targetDay;
+  String _paceKey = 'main';
+  final _paceCtrl = TextEditingController();
+  String _paceError = '';
+
+  static const _days = ['Ma', 'Di', 'Wo', 'Do', 'Vr', 'Za', 'Zo'];
+  static const _types = [
+    ('easy_run', 'Easy Run'), ('long_run', 'Long Run'), ('tempo', 'Tempo'),
+    ('interval', 'Interval'), ('recovery', 'Herstel'), ('strength', 'Kracht'),
+  ];
+  static const _paceKeys = [
+    ('main', 'Hoofdtempo'), ('warmup', 'Warming-up'), ('cooldown', 'Cooling-down'),
+  ];
+
+  @override
+  void dispose() { _paceCtrl.dispose(); super.dispose(); }
+
+  bool get _canApply {
+    if (_filterDay == null && _filterType == null) return false;
+    if (_action == 'move') return _targetDay != null;
+    return _paceCtrl.text.trim().isNotEmpty;
+  }
+
+  Future<void> _apply() async {
+    if (_action == 'pace') {
+      final v = _paceCtrl.text.trim();
+      if (!RegExp(r'^\d+:\d{2}(-\d+:\d{2})?$').hasMatch(v)) {
+        setState(() => _paceError = 'Formaat: 5:10 of 5:10-5:20');
+        return;
+      }
+    }
+    setState(() => _saving = true);
+    try {
+      final filter = <String, dynamic>{'only_future': _onlyFuture};
+      if (_filterDay != null) filter['day_number'] = _filterDay;
+      if (_filterType != null) filter['workout_type'] = _filterType;
+
+      final Map<String, dynamic> update;
+      if (_action == 'move') {
+        update = {'day_number': _targetDay};
+      } else {
+        update = {'target_pace_key': _paceKey, 'target_pace_value': _paceCtrl.text.trim()};
+      }
+
+      final res = await _api.bulkEditSessions(widget.publicId, filter, update);
+      final count = (res.data['updated'] as num?)?.toInt() ?? 0;
+      widget.onApplied(count);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Mislukt: ${e.toString().split('\n').first}')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Widget _chip(String label, bool selected, VoidCallback onTap) => GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          decoration: BoxDecoration(
+            color: selected ? const Color(0xFF6366f1).withOpacity(0.2) : const Color(0xFF0f172a),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: selected ? const Color(0xFF6366f1) : const Color(0xFF334155),
+            ),
+          ),
+          child: Text(label,
+              style: TextStyle(
+                  color: selected ? const Color(0xFF818cf8) : const Color(0xFF64748b),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600)),
+        ),
+      );
+
+  Widget _section(String title, Widget child) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title,
+              style: const TextStyle(
+                  color: Color(0xFF94a3b8), fontSize: 11,
+                  fontWeight: FontWeight.w600, letterSpacing: 0.5)),
+          const SizedBox(height: 8),
+          child,
+        ],
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.8,
+      maxChildSize: 0.95,
+      builder: (_, controller) => ListView(
+        controller: controller,
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+        children: [
+          Center(child: Container(
+            width: 40, height: 4,
+            decoration: BoxDecoration(color: const Color(0xFF334155), borderRadius: BorderRadius.circular(2)),
+          )),
+          const SizedBox(height: 16),
+          const Text('Bulk bewerken',
+              style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 20),
+
+          _section('Filter op dag', Wrap(spacing: 6, runSpacing: 6, children: [
+            for (int i = 0; i < _days.length; i++)
+              _chip(_days[i], _filterDay == i + 1,
+                  () => setState(() => _filterDay = _filterDay == i + 1 ? null : i + 1)),
+          ])),
+          const SizedBox(height: 16),
+
+          _section('Filter op type', Wrap(spacing: 6, runSpacing: 6, children: [
+            for (final (key, label) in _types)
+              _chip(label, _filterType == key,
+                  () => setState(() => _filterType = _filterType == key ? null : key)),
+          ])),
+          const SizedBox(height: 12),
+
+          Row(children: [
+            Checkbox(
+              value: _onlyFuture,
+              onChanged: (v) => setState(() => _onlyFuture = v ?? true),
+              activeColor: const Color(0xFF6366f1),
+            ),
+            const Expanded(
+              child: Text('Alleen toekomstige trainingen',
+                  style: TextStyle(color: Color(0xFFcbd5e1), fontSize: 13)),
+            ),
+          ]),
+
+          const Divider(color: Color(0xFF1e293b), height: 28),
+
+          _section('Actie', Row(children: [
+            Expanded(child: _chip('Verplaats naar dag', _action == 'move',
+                () => setState(() => _action = 'move'))),
+            const SizedBox(width: 8),
+            Expanded(child: _chip('Tempo aanpassen', _action == 'pace',
+                () => setState(() => _action = 'pace'))),
+          ])),
+          const SizedBox(height: 16),
+
+          if (_action == 'move') ...[
+            _section('Verplaats naar', Wrap(spacing: 6, runSpacing: 6, children: [
+              for (int i = 0; i < _days.length; i++)
+                _chip(_days[i], _targetDay == i + 1,
+                    () => setState(() => _targetDay = i + 1)),
+            ])),
+          ] else ...[
+            _section('Welk tempo', Wrap(spacing: 6, runSpacing: 6, children: [
+              for (final (key, label) in _paceKeys)
+                _chip(label, _paceKey == key,
+                    () => setState(() => _paceKey = key)),
+            ])),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _paceCtrl,
+              style: const TextStyle(color: Colors.white, fontFamily: 'monospace'),
+              keyboardType: TextInputType.text,
+              onChanged: (_) => setState(() => _paceError = ''),
+              decoration: InputDecoration(
+                hintText: '6:50-7:00',
+                hintStyle: const TextStyle(color: Color(0xFF475569)),
+                suffixText: '/km',
+                suffixStyle: const TextStyle(color: Color(0xFF64748b)),
+                errorText: _paceError.isEmpty ? null : _paceError,
+                filled: true,
+                fillColor: const Color(0xFF0f172a),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: Color(0xFF334155)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: Color(0xFF334155)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: Color(0xFF6366f1)),
+                ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              ),
+            ),
+          ],
+
+          const SizedBox(height: 28),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: (_saving || !_canApply) ? null : _apply,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF6366f1),
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: const Color(0xFF6366f1).withOpacity(0.4),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+              child: _saving
+                  ? const SizedBox(width: 18, height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Text('Toepassen',
+                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+            ),
+          ),
+        ],
       ),
     );
   }

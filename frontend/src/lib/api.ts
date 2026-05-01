@@ -85,6 +85,15 @@ export const plansApi = {
     api.post(`/plans/${publicId}/add-strength`, strength),
   regenerate: (publicId: string) =>
     api.post(`/plans/${publicId}/regenerate`),
+  bulkEdit: (publicId: string, filter: {
+    day_number?: number | null;
+    workout_type?: string | null;
+    only_future?: boolean;
+  }, update: {
+    day_number?: number | null;
+    target_pace_key?: string | null;
+    target_pace_value?: string | null;
+  }) => api.patch(`/plans/${publicId}/sessions/bulk`, { filter, update }),
 };
 
 // Sessions

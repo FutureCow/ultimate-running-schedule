@@ -469,6 +469,76 @@ async def add_strength_to_plan(
     return result.scalar_one()
 
 
+class BulkFilter(BaseModel):
+    day_number: int | None = None
+    workout_type: str | None = None
+    only_future: bool = True
+
+
+class BulkUpdate(BaseModel):
+    day_number: int | None = None
+    target_pace_key: str | None = None
+    target_pace_value: str | None = None
+
+
+class BulkEditPayload(BaseModel):
+    filter: BulkFilter
+    update: BulkUpdate
+
+
+@router.patch("/{public_id}/sessions/bulk")
+async def bulk_edit_sessions(
+    public_id: str,
+    payload: BulkEditPayload,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Bulk edit sessions: move a day or change a pace across matching sessions."""
+    if payload.update.day_number is None and (
+        payload.update.target_pace_key is None or payload.update.target_pace_value is None
+    ):
+        raise HTTPException(status_code=422, detail="Specify day_number or target_pace_key+value to update")
+
+    result = await db.execute(select(Plan).where(Plan.public_id == public_id, Plan.user_id == user.id))
+    plan = result.scalar_one_or_none()
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found")
+
+    q = select(WorkoutSession).where(WorkoutSession.plan_id == plan.id)
+    if payload.filter.day_number is not None:
+        q = q.where(WorkoutSession.day_number == payload.filter.day_number)
+    if payload.filter.workout_type is not None:
+        q = q.where(WorkoutSession.workout_type == payload.filter.workout_type)
+    if payload.filter.only_future:
+        q = q.where(WorkoutSession.completed_at.is_(None))
+
+    sessions = (await db.execute(q)).scalars().all()
+
+    start = plan.start_date or date.today()
+    week1_monday = start - timedelta(days=start.weekday())
+
+    updated = 0
+    for session in sessions:
+        if payload.update.day_number is not None:
+            new_day = payload.update.day_number
+            session.day_number = new_day
+            session.scheduled_date = (
+                week1_monday + timedelta(weeks=session.week_number - 1, days=new_day - 1)
+            )
+        if payload.update.target_pace_key and payload.update.target_pace_value is not None:
+            key = payload.update.target_pace_key
+            current = dict(session.target_paces or {})
+            if key in current:
+                current[key] = payload.update.target_pace_value
+                session.target_paces = current
+        updated += 1
+
+    if updated:
+        await db.commit()
+
+    return {"updated": updated}
+
+
 @router.delete("/{public_id}", status_code=204)
 async def delete_plan(
     public_id: str,
