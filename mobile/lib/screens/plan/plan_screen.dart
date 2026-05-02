@@ -158,7 +158,6 @@ class _PlanScreenState extends State<PlanScreen> {
       ),
     );
     if (confirm != true) return;
-    setState(() => _loading = true);
     try {
       await _api.resetPlan(_plan!.publicId);
       await _load();
@@ -167,7 +166,6 @@ class _PlanScreenState extends State<PlanScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Terugzetten mislukt: ${e.toString().split('\n').first}')),
         );
-        setState(() => _loading = false);
       }
     }
   }
