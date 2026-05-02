@@ -630,7 +630,7 @@ class _SessionDetailSheetState extends State<_SessionDetailSheet> {
                       : const Icon(Icons.watch_outlined, size: 18, color: Color(0xFF22d3ee)),
                   label: const Text('Push naar Garmin', style: TextStyle(color: Color(0xFF22d3ee))),
                   style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Color(0xFF22d3ee30)),
+                    side: const BorderSide(color: Color(0x3022d3ee)),
                     padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
                 ),
@@ -1187,7 +1187,7 @@ class _GarminWeekButtonState extends State<_GarminWeekButton> {
           ),
         ),
         style: OutlinedButton.styleFrom(
-          side: BorderSide(color: _pushed ? const Color(0xFF22c55e30) : const Color(0xFF22d3ee30)),
+          side: BorderSide(color: _pushed ? const Color(0x3022c55e) : const Color(0x3022d3ee)),
           padding: const EdgeInsets.symmetric(vertical: 10),
         ),
       ),
