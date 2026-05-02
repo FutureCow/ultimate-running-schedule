@@ -467,6 +467,9 @@ async def regenerate_plan(
         import copy
         pj = copy.deepcopy(plan.plan_json)
         overview = pj.setdefault("plan_overview", {})
+        # Preserve original AI zones on first recalibration so reset can restore them
+        if "original_pace_zones" not in overview and current_zones:
+            overview["original_pace_zones"] = dict(current_zones)
         overview["pace_zones"] = {**current_zones, **new_zones}
         if new_data.get("notes"):
             overview["coaching_notes"] = new_data["notes"]
@@ -514,6 +517,15 @@ async def reset_plan(
         session.description      = original.get("description", session.description)
         flag_modified(session, "target_paces")
         flag_modified(session, "intervals")
+
+    # Restore pace zones to original AI-generated values
+    overview = (plan.plan_json or {}).get("plan_overview", {})
+    original_zones = overview.get("original_pace_zones")
+    if original_zones:
+        pj = copy.deepcopy(plan.plan_json)
+        pj["plan_overview"]["pace_zones"] = dict(original_zones)
+        plan.plan_json = pj
+        flag_modified(plan, "plan_json")
 
     await db.commit()
     result = await db.execute(select(Plan).where(Plan.public_id == public_id))
