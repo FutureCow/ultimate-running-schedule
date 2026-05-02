@@ -81,6 +81,7 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
                   spots: _buildSpots(d.streams.time, d.streams.pace),
                   formatY: (v) => _fmtPace(v),
                   reversed: true,
+                  yInterval: _niceInterval(_buildSpots(d.streams.time, d.streams.pace), [15, 30, 60, 120]),
                 ),
                 const SizedBox(height: 12),
               ],
@@ -201,6 +202,18 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
     );
   }
 
+  double? _niceInterval(List<FlSpot> spots, List<int> candidates) {
+    if (spots.isEmpty) return null;
+    final minY = spots.map((s) => s.y).reduce((a, b) => a < b ? a : b);
+    final maxY = spots.map((s) => s.y).reduce((a, b) => a > b ? a : b);
+    final range = maxY - minY;
+    for (final step in candidates) {
+      final ticks = range / step;
+      if (ticks >= 2 && ticks <= 6) return step.toDouble();
+    }
+    return candidates.last.toDouble();
+  }
+
   List<FlSpot> _buildSpots(List<int> time, List<double?> values) {
     final spots = <FlSpot>[];
     final step = (time.length / 300).ceil().clamp(1, 999);
@@ -255,6 +268,7 @@ class _ChartCard extends StatelessWidget {
   final String Function(double) formatY;
   final bool reversed;
   final bool filled;
+  final double? yInterval;
 
   const _ChartCard({
     required this.title,
@@ -263,6 +277,7 @@ class _ChartCard extends StatelessWidget {
     required this.formatY,
     this.reversed = false,
     this.filled = false,
+    this.yInterval,
   });
 
   @override
@@ -305,10 +320,14 @@ class _ChartCard extends StatelessWidget {
                     sideTitles: SideTitles(
                       showTitles: true,
                       reservedSize: 44,
-                      getTitlesWidget: (v, _) => Text(
-                        formatY(v),
-                        style: const TextStyle(color: Color(0xFF64748b), fontSize: 9),
-                      ),
+                      interval: yInterval,
+                      getTitlesWidget: (v, meta) {
+                        if (v == meta.min || v == meta.max) return const SizedBox.shrink();
+                        return Text(
+                          formatY(v),
+                          style: const TextStyle(color: Color(0xFF64748b), fontSize: 9),
+                        );
+                      },
                     ),
                   ),
                   rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
