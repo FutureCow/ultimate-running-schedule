@@ -118,6 +118,8 @@
     "bulkEdit": "Bulk bewerken",
     "regenerate": "Pacezones bijstellen",
     "regenerateConfirm": "Pacezones bijstellen op basis van je laatste 6 Garmin-activiteiten? Alleen toekomstige sessies worden bijgewerkt — het schema blijft intact.",
+    "resetPlan": "Plan terugzetten",
+    "resetPlanConfirm": "Alle niet-voltooide workouts terugzetten naar de originele AI-waarden? Voltooide trainingen blijven onaangetast.",
     "new": {
       "title": "Nieuw Trainingsplan",
       "subtitle": "AI genereert een gepersonaliseerd schema op basis van jouw profiel en Garmin-data."

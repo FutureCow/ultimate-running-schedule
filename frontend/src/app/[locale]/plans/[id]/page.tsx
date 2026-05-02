@@ -3,7 +3,7 @@
 import { useParams, useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Trash2, Info, Pencil, Dumbbell, X, Loader2, RefreshCw, Layers, Gauge } from "lucide-react";
+import { ArrowLeft, Trash2, Info, Pencil, Dumbbell, X, Loader2, RefreshCw, Layers, Gauge, RotateCcw } from "lucide-react";
 import { useTranslations, useLocale } from "next-intl";
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
@@ -105,6 +105,13 @@ export default function PlanDetailPage() {
     },
   });
 
+  const resetPlanMutation = useMutation({
+    mutationFn: () => plansApi.reset(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["plan", id] });
+    },
+  });
+
   return (
     <>
     <div className="min-h-screen lg:pl-60">
@@ -161,6 +168,16 @@ export default function PlanDetailPage() {
                 <Link href={`/plans/${id}/edit`} className="btn-ghost px-3">
                   <Pencil className="w-4 h-4" />
                 </Link>
+                <button
+                  onClick={() => { if (confirm(t("resetPlanConfirm"))) resetPlanMutation.mutate(); }}
+                  disabled={resetPlanMutation.isPending}
+                  className="btn-ghost text-amber-400 hover:text-amber-300 px-3"
+                  title={t("resetPlan")}
+                >
+                  {resetPlanMutation.isPending
+                    ? <Loader2 className="w-4 h-4 animate-spin" />
+                    : <RotateCcw className="w-4 h-4" />}
+                </button>
                 <button
                   onClick={() => { if (confirm(t("deleteConfirm"))) deleteMutation.mutate(); }}
                   className="btn-ghost text-red-400 hover:text-red-300 px-3"

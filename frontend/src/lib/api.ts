@@ -101,6 +101,7 @@ export const plansApi = {
     target_pace_key?: string | null;
     target_pace_value?: string | null;
   }) => api.patch(`/plans/${publicId}/sessions/bulk`, { filter, update }),
+  reset: (publicId: string) => api.post(`/plans/${publicId}/reset`),
 };
 
 // Sessions

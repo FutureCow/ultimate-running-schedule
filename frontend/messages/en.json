@@ -118,6 +118,8 @@
     "bulkEdit": "Bulk edit",
     "regenerate": "Adjust pace zones",
     "regenerateConfirm": "Adjust pace zones based on your last 6 Garmin activities? Only future sessions will be updated — the schedule stays intact.",
+    "resetPlan": "Restore plan",
+    "resetPlanConfirm": "Restore all incomplete workouts to the original AI-generated values? Completed sessions will not be affected.",
     "new": {
       "title": "New Training Plan",
       "subtitle": "AI generates a personalized schedule based on your profile and Garmin data."
