@@ -316,6 +316,10 @@
       "action_change_pace": "Tempo aanpassen",
       "moveTo": "Verplaats naar",
       "paceType": "Welk tempo",
+      "paceMode_absolute": "Vaste waarde",
+      "paceMode_delta": "Verschuiving",
+      "paceDeltaPlaceholder": "bv. -10 of +15",
+      "paceDeltaSuffix": "sec/km",
       "apply": "Toepassen",
       "result": "{count} training(en) bijgewerkt"
     },

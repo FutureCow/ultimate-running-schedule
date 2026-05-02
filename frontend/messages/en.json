@@ -316,6 +316,10 @@
       "action_change_pace": "Change pace",
       "moveTo": "Move to",
       "paceType": "Which pace",
+      "paceMode_absolute": "Fixed value",
+      "paceMode_delta": "Shift",
+      "paceDeltaPlaceholder": "e.g. -10 or +15",
+      "paceDeltaSuffix": "sec/km",
       "apply": "Apply",
       "result": "{count} workout(s) updated"
     },

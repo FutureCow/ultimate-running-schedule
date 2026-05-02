@@ -13,6 +13,7 @@ const PACE_KEYS = [
 ];
 
 type Action = "move_day" | "change_pace";
+type PaceMode = "absolute" | "delta";
 
 interface Props {
   planPublicId: string;
@@ -26,6 +27,7 @@ interface Props {
     day_number?: number | null;
     target_pace_key?: string | null;
     target_pace_value?: string | null;
+    target_pace_delta_seconds?: number | null;
   }) => void;
   isSaving?: boolean;
   lastResult?: number | null;
@@ -47,7 +49,9 @@ export function BulkEditModal({ onClose, onSave, isSaving, lastResult }: Props) 
 
   // Change pace
   const [paceKey, setPaceKey] = useState("main");
+  const [paceMode, setPaceMode] = useState<PaceMode>("absolute");
   const [paceValue, setPaceValue] = useState("");
+  const [paceDelta, setPaceDelta] = useState("");
   const [paceError, setPaceError] = useState("");
 
   function validatePace(v: string) {
@@ -56,25 +60,40 @@ export function BulkEditModal({ onClose, onSave, isSaving, lastResult }: Props) 
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (action === "change_pace" && !validatePace(paceValue)) {
-      setPaceError("Formaat: 5:10 of 5:10-5:20");
-      return;
+    if (action === "change_pace") {
+      if (paceMode === "absolute" && !validatePace(paceValue)) {
+        setPaceError("Formaat: 5:10 of 5:10-5:20");
+        return;
+      }
+      if (paceMode === "delta") {
+        const n = parseInt(paceDelta.replace(/^\+/, ""), 10);
+        if (isNaN(n) || paceDelta.trim() === "") {
+          setPaceError("Vul een getal in, bijv. -10 of +15");
+          return;
+        }
+      }
     }
     const filter = {
       day_number: filterDay,
       workout_type: filterType,
       only_future: onlyFuture,
     };
-    const update =
-      action === "move_day"
-        ? { day_number: targetDay }
-        : { target_pace_key: paceKey, target_pace_value: paceValue.trim() };
+    let update: Parameters<typeof onSave>[1];
+    if (action === "move_day") {
+      update = { day_number: targetDay };
+    } else if (paceMode === "absolute") {
+      update = { target_pace_key: paceKey, target_pace_value: paceValue.trim() };
+    } else {
+      const delta = parseInt(paceDelta.replace(/^\+/, ""), 10);
+      update = { target_pace_key: paceKey, target_pace_delta_seconds: delta };
+    }
     onSave(filter, update);
   }
 
+  const paceInputFilled = paceMode === "absolute" ? paceValue.trim() !== "" : paceDelta.trim() !== "";
   const canSubmit =
     (filterDay !== null || filterType !== null) &&
-    (action === "move_day" ? targetDay !== null : paceValue.trim() !== "");
+    (action === "move_day" ? targetDay !== null : paceInputFilled);
 
   const sel = "bg-brand-500/20 text-brand-300 border-brand-500/40";
   const unsel = "bg-slate-800/60 text-slate-400 border-slate-700/40 hover:border-slate-600";
@@ -182,6 +201,7 @@ export function BulkEditModal({ onClose, onSave, isSaving, lastResult }: Props) 
             {/* Change pace */}
             {action === "change_pace" && (
               <div className="space-y-3">
+                {/* Pace key selector */}
                 <div className="space-y-2">
                   <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">{t("bulk.paceType")}</p>
                   <div className="flex gap-1.5">
@@ -197,21 +217,60 @@ export function BulkEditModal({ onClose, onSave, isSaving, lastResult }: Props) 
                     ))}
                   </div>
                 </div>
-                <div className="space-y-1">
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={paceValue}
-                      onChange={(e) => { setPaceValue(e.target.value); setPaceError(""); }}
-                      placeholder="6:50-7:00"
-                      className={`w-full bg-slate-800/60 border rounded-xl px-3 py-2.5 pr-14 text-sm font-mono text-white placeholder-slate-500 focus:outline-none focus:ring-1 ${
-                        paceError ? "border-red-500/60 focus:ring-red-500/30" : "border-slate-700/60 focus:border-brand-500/60 focus:ring-brand-500/30"
-                      }`}
-                    />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-500">/km</span>
-                  </div>
-                  {paceError && <p className="text-xs text-red-400">{paceError}</p>}
+
+                {/* Absolute / delta mode toggle */}
+                <div className="grid grid-cols-2 gap-2">
+                  {(["absolute", "delta"] as PaceMode[]).map((m) => (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => { setPaceMode(m); setPaceError(""); }}
+                      className={`py-1.5 rounded-lg border text-xs font-semibold transition-colors ${paceMode === m ? sel : unsel}`}
+                    >
+                      {t(`bulk.paceMode_${m}`)}
+                    </button>
+                  ))}
                 </div>
+
+                {/* Absolute input */}
+                {paceMode === "absolute" && (
+                  <div className="space-y-1">
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={paceValue}
+                        onChange={(e) => { setPaceValue(e.target.value); setPaceError(""); }}
+                        placeholder="6:50-7:00"
+                        className={`w-full bg-slate-800/60 border rounded-xl px-3 py-2.5 pr-14 text-sm font-mono text-white placeholder-slate-500 focus:outline-none focus:ring-1 ${
+                          paceError ? "border-red-500/60 focus:ring-red-500/30" : "border-slate-700/60 focus:border-brand-500/60 focus:ring-brand-500/30"
+                        }`}
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-500">/km</span>
+                    </div>
+                    {paceError && <p className="text-xs text-red-400">{paceError}</p>}
+                  </div>
+                )}
+
+                {/* Delta input */}
+                {paceMode === "delta" && (
+                  <div className="space-y-1">
+                    <div className="relative">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={paceDelta}
+                        onChange={(e) => { setPaceDelta(e.target.value); setPaceError(""); }}
+                        placeholder={t("bulk.paceDeltaPlaceholder")}
+                        className={`w-full bg-slate-800/60 border rounded-xl px-3 py-2.5 pr-20 text-sm font-mono text-white placeholder-slate-500 focus:outline-none focus:ring-1 ${
+                          paceError ? "border-red-500/60 focus:ring-red-500/30" : "border-slate-700/60 focus:border-brand-500/60 focus:ring-brand-500/30"
+                        }`}
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-500">{t("bulk.paceDeltaSuffix")}</span>
+                    </div>
+                    <p className="text-xs text-slate-500">Negatief = sneller, positief = langzamer</p>
+                    {paceError && <p className="text-xs text-red-400">{paceError}</p>}
+                  </div>
+                )}
               </div>
             )}
 

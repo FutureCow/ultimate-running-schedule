@@ -644,7 +644,8 @@ class BulkFilter(BaseModel):
 class BulkUpdate(BaseModel):
     day_number: int | None = None
     target_pace_key: str | None = None
-    target_pace_value: str | None = None
+    target_pace_value: str | None = None          # absolute value, e.g. "6:30-6:50"
+    target_pace_delta_seconds: int | None = None  # relative shift, e.g. -10 or +15
 
 
 class BulkEditPayload(BaseModel):
@@ -660,10 +661,11 @@ async def bulk_edit_sessions(
     user: User = Depends(get_current_user),
 ):
     """Bulk edit sessions: move a day or change a pace across matching sessions."""
-    if payload.update.day_number is None and (
-        payload.update.target_pace_key is None or payload.update.target_pace_value is None
-    ):
-        raise HTTPException(status_code=422, detail="Specify day_number or target_pace_key+value to update")
+    has_pace_update = payload.update.target_pace_key is not None and (
+        payload.update.target_pace_value is not None or payload.update.target_pace_delta_seconds is not None
+    )
+    if payload.update.day_number is None and not has_pace_update:
+        raise HTTPException(status_code=422, detail="Specify day_number or target_pace_key+value/delta to update")
 
     result = await db.execute(select(Plan).where(Plan.public_id == public_id, Plan.user_id == user.id))
     plan = result.scalar_one_or_none()
@@ -691,11 +693,14 @@ async def bulk_edit_sessions(
             session.scheduled_date = (
                 week1_monday + timedelta(weeks=session.week_number - 1, days=new_day - 1)
             )
-        if payload.update.target_pace_key and payload.update.target_pace_value is not None:
+        if payload.update.target_pace_key:
             key = payload.update.target_pace_key
             current = dict(session.target_paces or {})
             if key in current:
-                current[key] = payload.update.target_pace_value
+                if payload.update.target_pace_value is not None:
+                    current[key] = payload.update.target_pace_value
+                elif payload.update.target_pace_delta_seconds is not None:
+                    current[key] = _shift_pace(current[key], payload.update.target_pace_delta_seconds)
                 session.target_paces = current
         updated += 1
 

@@ -1409,7 +1409,9 @@ class _BulkEditSheetState extends State<_BulkEditSheet> {
   String _action = 'move';
   int? _targetDay;
   String _paceKey = 'main';
+  String _paceMode = 'absolute'; // 'absolute' or 'delta'
   final _paceCtrl = TextEditingController();
+  final _deltaSecs = TextEditingController();
   String _paceError = '';
 
   static const _days = ['Ma', 'Di', 'Wo', 'Do', 'Vr', 'Za', 'Zo'];
@@ -1422,20 +1424,29 @@ class _BulkEditSheetState extends State<_BulkEditSheet> {
   ];
 
   @override
-  void dispose() { _paceCtrl.dispose(); super.dispose(); }
+  void dispose() { _paceCtrl.dispose(); _deltaSecs.dispose(); super.dispose(); }
 
   bool get _canApply {
     if (_filterDay == null && _filterType == null) return false;
     if (_action == 'move') return _targetDay != null;
-    return _paceCtrl.text.trim().isNotEmpty;
+    if (_paceMode == 'absolute') return _paceCtrl.text.trim().isNotEmpty;
+    return _deltaSecs.text.trim().isNotEmpty;
   }
 
   Future<void> _apply() async {
     if (_action == 'pace') {
-      final v = _paceCtrl.text.trim();
-      if (!RegExp(r'^\d+:\d{2}(-\d+:\d{2})?$').hasMatch(v)) {
-        setState(() => _paceError = 'Formaat: 5:10 of 5:10-5:20');
-        return;
+      if (_paceMode == 'absolute') {
+        final v = _paceCtrl.text.trim();
+        if (!RegExp(r'^\d+:\d{2}(-\d+:\d{2})?$').hasMatch(v)) {
+          setState(() => _paceError = 'Formaat: 5:10 of 5:10-5:20');
+          return;
+        }
+      } else {
+        final raw = _deltaSecs.text.trim().replaceAll('+', '');
+        if (int.tryParse(raw) == null) {
+          setState(() => _paceError = 'Vul een getal in, bijv. -10 of +15');
+          return;
+        }
       }
     }
     setState(() => _saving = true);
@@ -1447,8 +1458,11 @@ class _BulkEditSheetState extends State<_BulkEditSheet> {
       final Map<String, dynamic> update;
       if (_action == 'move') {
         update = {'day_number': _targetDay};
-      } else {
+      } else if (_paceMode == 'absolute') {
         update = {'target_pace_key': _paceKey, 'target_pace_value': _paceCtrl.text.trim()};
+      } else {
+        final delta = int.parse(_deltaSecs.text.trim().replaceAll('+', ''));
+        update = {'target_pace_key': _paceKey, 'target_pace_delta_seconds': delta};
       }
 
       final res = await _api.bulkEditSessions(widget.publicId, filter, update);
@@ -1566,34 +1580,62 @@ class _BulkEditSheetState extends State<_BulkEditSheet> {
                     () => setState(() => _paceKey = key)),
             ])),
             const SizedBox(height: 12),
-            TextField(
-              controller: _paceCtrl,
-              style: const TextStyle(color: Colors.white, fontFamily: 'monospace'),
-              keyboardType: TextInputType.text,
-              onChanged: (_) => setState(() => _paceError = ''),
-              decoration: InputDecoration(
-                hintText: '6:50-7:00',
-                hintStyle: const TextStyle(color: Color(0xFF475569)),
-                suffixText: '/km',
-                suffixStyle: const TextStyle(color: Color(0xFF64748b)),
-                errorText: _paceError.isEmpty ? null : _paceError,
-                filled: true,
-                fillColor: const Color(0xFF0f172a),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: Color(0xFF334155)),
+            Row(children: [
+              Expanded(child: _chip('Vaste waarde', _paceMode == 'absolute',
+                  () => setState(() { _paceMode = 'absolute'; _paceError = ''; }))),
+              const SizedBox(width: 8),
+              Expanded(child: _chip('Verschuiving', _paceMode == 'delta',
+                  () => setState(() { _paceMode = 'delta'; _paceError = ''; }))),
+            ]),
+            const SizedBox(height: 12),
+            if (_paceMode == 'absolute')
+              TextField(
+                controller: _paceCtrl,
+                style: const TextStyle(color: Colors.white, fontFamily: 'monospace'),
+                keyboardType: TextInputType.text,
+                onChanged: (_) => setState(() => _paceError = ''),
+                decoration: InputDecoration(
+                  hintText: '6:50-7:00',
+                  hintStyle: const TextStyle(color: Color(0xFF475569)),
+                  suffixText: '/km',
+                  suffixStyle: const TextStyle(color: Color(0xFF64748b)),
+                  errorText: _paceError.isEmpty ? null : _paceError,
+                  filled: true,
+                  fillColor: const Color(0xFF0f172a),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFF334155))),
+                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFF334155))),
+                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFF6366f1))),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: Color(0xFF334155)),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: Color(0xFF6366f1)),
-                ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              )
+            else
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextField(
+                    controller: _deltaSecs,
+                    style: const TextStyle(color: Colors.white, fontFamily: 'monospace'),
+                    keyboardType: const TextInputType.numberWithOptions(signed: true),
+                    onChanged: (_) => setState(() => _paceError = ''),
+                    decoration: InputDecoration(
+                      hintText: 'bijv. -10 of +15',
+                      hintStyle: const TextStyle(color: Color(0xFF475569)),
+                      suffixText: 'sec/km',
+                      suffixStyle: const TextStyle(color: Color(0xFF64748b)),
+                      errorText: _paceError.isEmpty ? null : _paceError,
+                      filled: true,
+                      fillColor: const Color(0xFF0f172a),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFF334155))),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFF334155))),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFF6366f1))),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text('Negatief = sneller, positief = langzamer',
+                      style: TextStyle(color: Color(0xFF475569), fontSize: 11)),
+                ],
               ),
-            ),
           ],
 
           const SizedBox(height: 28),

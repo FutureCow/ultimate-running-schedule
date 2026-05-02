@@ -100,6 +100,7 @@ export const plansApi = {
     day_number?: number | null;
     target_pace_key?: string | null;
     target_pace_value?: string | null;
+    target_pace_delta_seconds?: number | null;
   }) => api.patch(`/plans/${publicId}/sessions/bulk`, { filter, update }),
   reset: (publicId: string) => api.post(`/plans/${publicId}/reset`),
 };
