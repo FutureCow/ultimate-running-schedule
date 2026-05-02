@@ -81,7 +81,7 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
                   spots: _buildSpots(d.streams.time, d.streams.pace),
                   formatY: (v) => _fmtPace(v),
                   reversed: true,
-                  yInterval: _niceInterval(_buildSpots(d.streams.time, d.streams.pace), [15, 30, 60, 120]),
+                  yInterval: _niceInterval(_buildSpots(d.streams.time, d.streams.pace), [5, 10, 15, 30, 60, 120]),
                 ),
                 const SizedBox(height: 12),
               ],
@@ -223,6 +223,8 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
       final ticks = range / step;
       if (ticks >= 2 && ticks <= 6) return step.toDouble();
     }
+    // range too small for any candidate → use smallest so at least 1–2 labels appear
+    if (range < candidates.first * 2) return candidates.first.toDouble();
     return candidates.last.toDouble();
   }
 
