@@ -63,7 +63,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Hallo, ${user?.name.split(' ').first ?? 'Atleet'} 👋',
+            Text('Hallo, ${user?.name.isNotEmpty == true ? user!.name.split(' ').first : 'Atleet'}',
                 style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             if (_plan != null)
               Text(_plan!.title,
