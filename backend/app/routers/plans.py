@@ -478,6 +478,43 @@ async def regenerate_plan(
     return result.scalar_one()
 
 
+@router.post("/{public_id}/reset", response_model=PlanResponse)
+async def reset_plan(
+    public_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Restore all future uncompleted sessions to their original AI-generated values."""
+    result = await db.execute(select(Plan).where(Plan.public_id == public_id, Plan.user_id == user.id))
+    plan = result.scalar_one_or_none()
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan niet gevonden")
+    if not plan.plan_json:
+        raise HTTPException(status_code=400, detail="Plan heeft geen opgeslagen originele data.")
+
+    # Build lookup: (week_number, day_number) -> original workout dict
+    originals: dict[tuple[int, int], dict] = {}
+    for week in plan.plan_json.get("weeks", []):
+        for w in week.get("workouts", []):
+            originals[(week["week_number"], w["day_number"])] = w
+
+    future_sessions = [s for s in plan.sessions if not s.completed_at]
+    for session in future_sessions:
+        original = originals.get((session.week_number, session.day_number))
+        if not original:
+            continue
+        session.target_paces    = original.get("target_paces")
+        session.intervals       = original.get("intervals")
+        session.distance_km     = original.get("distance_km")
+        session.duration_minutes = original.get("duration_minutes")
+        session.title           = original.get("title", session.title)
+        session.description     = original.get("description", session.description)
+
+    await db.commit()
+    result = await db.execute(select(Plan).where(Plan.public_id == public_id))
+    return result.scalar_one()
+
+
 class RecalculateDatesPayload(BaseModel):
     start_date: Optional[date] = None
 

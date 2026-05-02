@@ -137,6 +137,41 @@ class _PlanScreenState extends State<PlanScreen> {
     return 1;
   }
 
+  Future<void> _resetPlan() async {
+    if (_plan == null) return;
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF1e293b),
+        title: const Text('Heel plan terugzetten?', style: TextStyle(color: Colors.white, fontSize: 16)),
+        content: const Text(
+          'Alle toekomstige, niet-voltooide workouts worden teruggezet naar de originele AI-waarden. Voltooide trainingen blijven onaangetast.',
+          style: TextStyle(color: Color(0xFF94a3b8), fontSize: 13),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Annuleren')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Terugzetten', style: TextStyle(color: Color(0xFFef4444))),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    setState(() => _loading = true);
+    try {
+      await _api.resetPlan(_plan!.publicId);
+      await _load();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Terugzetten mislukt: ${e.toString().split('\n').first}')),
+        );
+        setState(() => _loading = false);
+      }
+    }
+  }
+
   List<int> get _weeks {
     if (_plan == null) return [];
     return _plan!.sessions.map((s) => s.weekNumber).toSet().toList()..sort();
@@ -196,6 +231,23 @@ class _PlanScreenState extends State<PlanScreen> {
                 icon: const Icon(Icons.tune),
                 tooltip: 'Bulk bewerken',
                 onPressed: () => _showBulkEdit(),
+              ),
+              PopupMenuButton<String>(
+                icon: const Icon(Icons.more_vert),
+                color: const Color(0xFF1e293b),
+                onSelected: (value) {
+                  if (value == 'reset') _resetPlan();
+                },
+                itemBuilder: (_) => [
+                  const PopupMenuItem(
+                    value: 'reset',
+                    child: Row(children: [
+                      Icon(Icons.restart_alt, size: 18, color: Color(0xFFef4444)),
+                      SizedBox(width: 10),
+                      Text('Plan terugzetten', style: TextStyle(color: Color(0xFFef4444))),
+                    ]),
+                  ),
+                ],
               ),
             ],
             IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
