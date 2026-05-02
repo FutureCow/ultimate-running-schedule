@@ -23,6 +23,7 @@ class UserResponse(BaseModel):
 
 
 class UserProfileUpdate(BaseModel):
+    name: Optional[str] = None
     age: Optional[int] = None
     height_cm: Optional[float] = None
     weight_kg: Optional[float] = None
@@ -37,6 +38,8 @@ class UserProfileResponse(BaseModel):
 
     id: int
     email: str
+    name: Optional[str] = None
+    avatar_url: Optional[str] = None
     tier: str = "elite"
     is_admin: bool = False
     age: Optional[int] = None

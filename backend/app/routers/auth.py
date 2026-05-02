@@ -1,6 +1,8 @@
+import io
+import os
 import secrets
 from datetime import datetime, timezone, timedelta
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File, status
 from pydantic import BaseModel
 from slowapi import Limiter
 from slowapi.util import get_remote_address
@@ -120,6 +122,41 @@ async def update_profile(
 ):
     for field, value in payload.model_dump(exclude_unset=True).items():
         setattr(user, field, value)
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+
+@router.post("/profile/avatar", response_model=UserProfileResponse)
+async def upload_avatar(
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    if file.content_type not in ("image/jpeg", "image/png", "image/webp"):
+        raise HTTPException(status_code=422, detail="Only JPEG, PNG or WebP images are allowed")
+
+    data = await file.read()
+    if len(data) > 5 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="Image must be smaller than 5 MB")
+
+    try:
+        from PIL import Image
+        img = Image.open(io.BytesIO(data)).convert("RGB")
+        img.thumbnail((256, 256), Image.LANCZOS)
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG", quality=85)
+        jpeg_bytes = buf.getvalue()
+    except Exception:
+        raise HTTPException(status_code=422, detail="Could not process image")
+
+    upload_dir = "/app/uploads/avatars"
+    os.makedirs(upload_dir, exist_ok=True)
+    filename = f"{user.id}.jpg"
+    with open(os.path.join(upload_dir, filename), "wb") as f:
+        f.write(jpeg_bytes)
+
+    user.avatar_url = f"/uploads/avatars/{filename}"
     await db.commit()
     await db.refresh(user)
     return user
