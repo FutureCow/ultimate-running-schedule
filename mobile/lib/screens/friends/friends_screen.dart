@@ -30,16 +30,16 @@ class _FriendsScreenState extends State<FriendsScreen> with SingleTickerProvider
           bottom: TabBar(
             controller: _tab,
             tabs: const [
-              Tab(text: 'Zoeken & verzoeken'),
               Tab(text: 'Mijn vrienden'),
+              Tab(text: 'Zoeken & verzoeken'),
             ],
           ),
         ),
         body: TabBarView(
           controller: _tab,
           children: const [
-            _SearchTab(),
             _FriendListTab(),
+            _SearchTab(),
           ],
         ),
       );
