@@ -119,6 +119,8 @@ class ApiService {
   Future<Response> getActivities() => _dio.get('/garmin/activities');
   Future<Response> getActivity(String id) => _dio.get('/garmin/activity/$id');
   Future<Response> syncGarmin() => _dio.post('/garmin/sync');
+  Future<Response> previewRegeneratePlan(String publicId) =>
+      _dio.post('/plans/$publicId/regenerate/preview');
   Future<Response> regeneratePlan(String publicId) =>
       _dio.post('/plans/$publicId/regenerate');
   Future<Response> pushSessions(List<int> sessionIds) =>

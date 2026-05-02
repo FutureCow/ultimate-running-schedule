@@ -88,6 +88,8 @@ export const plansApi = {
     api.patch(`/plans/${publicId}/recalculate-dates`, { start_date: startDate ?? null }),
   addStrength: (publicId: string, strength: object) =>
     api.post(`/plans/${publicId}/add-strength`, strength),
+  previewRegenerate: (publicId: string) =>
+    api.post(`/plans/${publicId}/regenerate/preview`),
   regenerate: (publicId: string) =>
     api.post(`/plans/${publicId}/regenerate`),
   bulkEdit: (publicId: string, filter: {

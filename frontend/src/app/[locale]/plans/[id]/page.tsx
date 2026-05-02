@@ -3,13 +3,14 @@
 import { useParams, useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Trash2, Info, Pencil, Dumbbell, X, Loader2, RefreshCw, Layers } from "lucide-react";
+import { ArrowLeft, Trash2, Info, Pencil, Dumbbell, X, Loader2, RefreshCw, Layers, Gauge } from "lucide-react";
 import { useTranslations, useLocale } from "next-intl";
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { Link } from "@/i18n/navigation";
 import { plansApi, garminApi } from "@/lib/api";
 import { BulkEditModal } from "@/components/Calendar/BulkEditModal";
+import { PaceZonesPreviewModal } from "@/components/Calendar/PaceZonesPreviewModal";
 import { Plan } from "@/types";
 import { WeekCalendar } from "@/components/Calendar/WeekCalendar";
 import { PaceZonesCard } from "@/components/Calendar/PaceZonesCard";
@@ -28,6 +29,7 @@ export default function PlanDetailPage() {
   const [strengthError, setStrengthError] = useState("");
   const [bulkModal, setBulkModal] = useState(false);
   const [bulkResult, setBulkResult] = useState<number | null>(null);
+  const [pacePreview, setPacePreview] = useState<any | null>(null);
 
   const { data: plan, isLoading } = useQuery<Plan>({
     queryKey: ["plan", id],
@@ -90,9 +92,17 @@ export default function PlanDetailPage() {
     },
   });
 
+  const previewMutation = useMutation({
+    mutationFn: () => plansApi.previewRegenerate(id),
+    onSuccess: (res) => setPacePreview(res.data),
+  });
+
   const regenerateMutation = useMutation({
     mutationFn: () => plansApi.regenerate(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["plan", id] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["plan", id] });
+      setPacePreview(null);
+    },
   });
 
   return (
@@ -122,14 +132,14 @@ export default function PlanDetailPage() {
               </div>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => { if (confirm(t("regenerateConfirm"))) regenerateMutation.mutate(); }}
-                  disabled={regenerateMutation.isPending}
+                  onClick={() => previewMutation.mutate()}
+                  disabled={previewMutation.isPending || regenerateMutation.isPending}
                   className="btn-secondary text-sm px-3"
                   title={t("regenerate")}
                 >
-                  {regenerateMutation.isPending
+                  {previewMutation.isPending
                     ? <Loader2 className="w-4 h-4 animate-spin" />
-                    : <RefreshCw className="w-4 h-4" />}
+                    : <Gauge className="w-4 h-4" />}
                   <span className="hidden sm:inline">{t("regenerate")}</span>
                 </button>
                 <button
@@ -250,6 +260,17 @@ export default function PlanDetailPage() {
             </div>
           </motion.div>
         </motion.div>
+      )}
+    </AnimatePresence>
+
+    <AnimatePresence>
+      {pacePreview && (
+        <PaceZonesPreviewModal
+          preview={pacePreview}
+          applying={regenerateMutation.isPending}
+          onApply={() => regenerateMutation.mutate()}
+          onClose={() => setPacePreview(null)}
+        />
       )}
     </AnimatePresence>
 

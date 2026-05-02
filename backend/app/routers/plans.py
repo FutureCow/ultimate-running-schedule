@@ -265,6 +265,78 @@ _ZONE_FOR_TYPE: dict[str, str] = {
 }
 
 
+@router.post("/{public_id}/regenerate/preview")
+@limiter.limit("10/hour")
+async def preview_regenerate_plan(
+    request: Request,
+    public_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_tier("tempo")),
+):
+    """Calculate new pace zones without saving — returns preview for user confirmation."""
+    result = await db.execute(select(Plan).where(Plan.public_id == public_id, Plan.user_id == user.id))
+    plan = result.scalar_one_or_none()
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found")
+
+    activity_by_id: dict[str, dict] = {}
+    try:
+        sync_result = await garmin_service.fetch_activities(db, user.id, months=3, user_tier=user.tier)
+        for act in sync_result.get("activities", []):
+            activity_by_id[act["activity_id"]] = act
+    except Exception:
+        pass
+
+    completed = sorted(
+        [s for s in plan.sessions if s.completed_at and s.workout_type not in ("rest", "strength")],
+        key=lambda s: s.completed_at,
+        reverse=True,
+    )[:6]
+
+    recent_runs = []
+    for s in completed:
+        act = activity_by_id.get(s.garmin_activity_id or "", {})
+        recent_runs.append({
+            "workout_type": s.workout_type,
+            "planned_paces": s.target_paces or {},
+            "actual_pace": act.get("average_pace_per_km"),
+            "actual_hr":   act.get("average_heart_rate"),
+            "distance_km": act.get("distance_km") or s.distance_km,
+        })
+
+    if not recent_runs:
+        raise HTTPException(
+            status_code=400,
+            detail="Geen voltooide sessies gevonden — voltooi eerst een paar runs via Garmin sync.",
+        )
+
+    current_zones: dict = {}
+    if plan.plan_json:
+        current_zones = (plan.plan_json.get("plan_overview") or {}).get("pace_zones") or {}
+
+    try:
+        new_data = await claude_service.recalibrate_paces(recent_runs, current_zones)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Pace recalibratie mislukt: {str(e)}")
+
+    new_zones = {k: v for k, v in new_data.items() if k != "notes"}
+    if not new_zones:
+        raise HTTPException(status_code=502, detail="Claude kon geen nieuwe pacezones berekenen.")
+
+    future_count = len([
+        s for s in plan.sessions
+        if not s.completed_at and s.workout_type in _ZONE_FOR_TYPE
+    ])
+
+    return {
+        "current_zones": current_zones,
+        "new_zones": new_zones,
+        "notes": new_data.get("notes"),
+        "sessions_to_update": future_count,
+        "based_on_runs": len(recent_runs),
+    }
+
+
 @router.post("/{public_id}/regenerate", response_model=PlanResponse)
 @limiter.limit("5/hour")
 async def regenerate_plan(

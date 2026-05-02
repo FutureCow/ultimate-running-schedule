@@ -60,37 +60,48 @@ class _PlanScreenState extends State<PlanScreen> {
 
   Future<void> _recalibratePaces() async {
     if (_plan == null) return;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: const Color(0xFF1e293b),
-        title: const Text('Tempo zones bijstellen', style: TextStyle(color: Colors.white)),
-        content: const Text(
-          'Op basis van je laatste 6 Garmin activiteiten worden de tempo zones en trainingspacings bijgesteld door AI. Wil je doorgaan?',
-          style: TextStyle(color: Color(0xFF94a3b8), fontSize: 14),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Annuleren')),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Bijstellen', style: TextStyle(color: Color(0xFF6366f1))),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
     setState(() => _recalibrating = true);
     try {
-      final res = await _api.regeneratePlan(_plan!.publicId);
-      final updatedPlan = Plan.fromJson(res.data);
-      setState(() => _plan = updatedPlan);
-      if (mounted) {
-        _showPaceZonesResult(updatedPlan.paceZones);
-      }
+      final res = await _api.previewRegeneratePlan(_plan!.publicId);
+      final preview = res.data as Map<String, dynamic>;
+      if (!mounted) return;
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: const Color(0xFF1e293b),
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+        builder: (_) => _PaceZonesPreviewSheet(
+          preview: preview,
+          onApply: () async {
+            Navigator.pop(context);
+            setState(() => _recalibrating = true);
+            try {
+              final applyRes = await _api.regeneratePlan(_plan!.publicId);
+              final updatedPlan = Plan.fromJson(applyRes.data);
+              setState(() => _plan = updatedPlan);
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                  content: Text('Tempo zones bijgewerkt'),
+                  backgroundColor: Color(0xFF1e293b),
+                ));
+              }
+            } catch (e) {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  content: Text('Toepassen mislukt: ${e.toString().split('\n').first}'),
+                  backgroundColor: const Color(0xFF1e293b),
+                ));
+              }
+            } finally {
+              if (mounted) setState(() => _recalibrating = false);
+            }
+          },
+        ),
+      );
     } catch (e) {
       final msg = e.toString().contains('400')
           ? 'Geen voltooide trainingen gevonden — voltooi eerst een paar runs via Garmin sync.'
-          : 'Bijstellen mislukt: ${e.toString().split('\n').first}';
+          : 'Preview mislukt: ${e.toString().split('\n').first}';
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(msg), backgroundColor: const Color(0xFF1e293b)),
@@ -99,16 +110,6 @@ class _PlanScreenState extends State<PlanScreen> {
     } finally {
       if (mounted) setState(() => _recalibrating = false);
     }
-  }
-
-  void _showPaceZonesResult(Map<String, dynamic>? zones) {
-    if (zones == null) return;
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF1e293b),
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (_) => _PaceZonesSheet(zones: zones),
-    );
   }
 
   int _detectCurrentWeek(Plan plan) {
@@ -966,11 +967,19 @@ class _SessionEditFormState extends State<_SessionEditForm> {
   }
 }
 
-// ── Pace zones result sheet ─────────────────────────────────────────────────
+// ── Pace zones preview sheet ─────────────────────────────────────────────────
 
-class _PaceZonesSheet extends StatelessWidget {
-  final Map<String, dynamic> zones;
-  const _PaceZonesSheet({required this.zones});
+class _PaceZonesPreviewSheet extends StatefulWidget {
+  final Map<String, dynamic> preview;
+  final Future<void> Function() onApply;
+  const _PaceZonesPreviewSheet({required this.preview, required this.onApply});
+
+  @override
+  State<_PaceZonesPreviewSheet> createState() => _PaceZonesPreviewSheetState();
+}
+
+class _PaceZonesPreviewSheetState extends State<_PaceZonesPreviewSheet> {
+  bool _applying = false;
 
   static const _zoneConfig = [
     {'key': 'easy',       'label': 'Rustig',    'color': Color(0xFF22c55e)},
@@ -981,53 +990,137 @@ class _PaceZonesSheet extends StatelessWidget {
   ];
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(20, 20, 20, 36),
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(children: [
-          const Icon(Icons.speed_outlined, color: Color(0xFF6366f1), size: 20),
-          const SizedBox(width: 10),
-          const Expanded(
-            child: Column(
+  Widget build(BuildContext context) {
+    final current = (widget.preview['current_zones'] as Map?)?.cast<String, dynamic>() ?? {};
+    final next    = (widget.preview['new_zones']     as Map?)?.cast<String, dynamic>() ?? {};
+    final notes   = widget.preview['notes'] as String?;
+    final count   = widget.preview['sessions_to_update'] as int? ?? 0;
+    final runs    = widget.preview['based_on_runs']  as int? ?? 0;
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(context).viewInsets.bottom + 28),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            const Icon(Icons.speed_outlined, color: Color(0xFF6366f1), size: 20),
+            const SizedBox(width: 10),
+            Expanded(child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Tempo zones bijgesteld', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-                Text('Op basis van je laatste activiteiten', style: TextStyle(color: Color(0xFF64748b), fontSize: 12)),
+                const Text('Tempo zones bijstellen', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                Text('Op basis van $runs activiteiten · $count trainingen worden bijgewerkt',
+                    style: const TextStyle(color: Color(0xFF64748b), fontSize: 12)),
               ],
-            ),
-          ),
-          IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close, color: Color(0xFF64748b))),
-        ]),
-        const SizedBox(height: 16),
-        ..._zoneConfig.map((z) {
-          final pace = zones[z['key']];
-          if (pace == null) return const SizedBox.shrink();
-          final color = z['color'] as Color;
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            )),
+            IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close, color: Color(0xFF64748b))),
+          ]),
+
+          if (notes != null && notes.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.08),
+                color: const Color(0xFF1d4ed8).withOpacity(0.1),
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: color.withOpacity(0.2)),
+                border: Border.all(color: const Color(0xFF3b82f6).withOpacity(0.2)),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(z['label'] as String, style: const TextStyle(color: Color(0xFF94a3b8), fontSize: 13)),
-                  Text('$pace /km', style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13, fontFamily: 'monospace')),
-                ],
+              child: Text(notes, style: const TextStyle(color: Color(0xFFcbd5e1), fontSize: 12, height: 1.5)),
+            ),
+          ],
+
+          const SizedBox(height: 16),
+          Row(children: [
+            const Expanded(child: Text('Huidig', style: TextStyle(color: Color(0xFF64748b), fontSize: 11, fontWeight: FontWeight.w600))),
+            const SizedBox(width: 24),
+            const Expanded(child: Text('Nieuw', textAlign: TextAlign.right, style: TextStyle(color: Color(0xFF64748b), fontSize: 11, fontWeight: FontWeight.w600))),
+          ]),
+          const SizedBox(height: 8),
+
+          ..._zoneConfig.map((z) {
+            final key   = z['key'] as String;
+            final label = z['label'] as String;
+            final color = z['color'] as Color;
+            final cur   = current[key]?.toString();
+            final nxt   = next[key]?.toString();
+            if (nxt == null) return const SizedBox.shrink();
+            final changed = cur != nxt;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.07),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: color.withOpacity(0.18)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(label, style: const TextStyle(color: Color(0xFF64748b), fontSize: 11, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 4),
+                    Row(children: [
+                      Expanded(
+                        child: Text(
+                          cur ?? '–',
+                          style: TextStyle(
+                            color: changed ? const Color(0xFF475569) : color,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            decoration: changed ? TextDecoration.lineThrough : null,
+                          ),
+                        ),
+                      ),
+                      if (changed) ...[
+                        const Icon(Icons.arrow_forward, size: 14, color: Color(0xFF475569)),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(nxt, textAlign: TextAlign.right,
+                              style: TextStyle(color: color, fontSize: 13, fontWeight: FontWeight.bold)),
+                        ),
+                      ],
+                    ]),
+                  ],
+                ),
+              ),
+            );
+          }),
+
+          const SizedBox(height: 16),
+          Row(children: [
+            Expanded(
+              child: OutlinedButton(
+                onPressed: _applying ? null : () => Navigator.pop(context),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Color(0xFF334155)),
+                  padding: const EdgeInsets.symmetric(vertical: 13),
+                ),
+                child: const Text('Annuleren', style: TextStyle(color: Color(0xFF94a3b8))),
               ),
             ),
-          );
-        }),
-      ],
-    ),
-  );
+            const SizedBox(width: 12),
+            Expanded(
+              child: ElevatedButton(
+                onPressed: _applying ? null : () async {
+                  setState(() => _applying = true);
+                  await widget.onApply();
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF6366f1),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 13),
+                ),
+                child: _applying
+                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : const Text('Toepassen'),
+              ),
+            ),
+          ]),
+        ],
+      ),
+    );
+  }
 }
 
 // ── Garmin week push button ─────────────────────────────────────────────────
