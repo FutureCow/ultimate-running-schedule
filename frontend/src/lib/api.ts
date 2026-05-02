@@ -7,11 +7,14 @@ export const api = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
-// Attach JWT from localStorage on every request
+// Attach JWT from localStorage on every request; let browser set Content-Type for FormData
 api.interceptors.request.use((config) => {
   if (typeof window !== "undefined") {
     const token = localStorage.getItem("access_token");
     if (token) config.headers.Authorization = `Bearer ${token}`;
+  }
+  if (config.data instanceof FormData) {
+    delete config.headers["Content-Type"];
   }
   return config;
 });
@@ -73,7 +76,7 @@ export const profileApi = {
   uploadAvatar: (file: File) => {
     const form = new FormData();
     form.append("file", file);
-    return api.post("/auth/profile/avatar", form, { headers: { "Content-Type": undefined } });
+    return api.post("/auth/profile/avatar", form);
   },
 };
 
