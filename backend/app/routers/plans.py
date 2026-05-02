@@ -256,6 +256,31 @@ async def update_plan(
     return result.scalar_one()
 
 
+def _pace_secs(pace_str: str) -> int | None:
+    import re as _re
+    m = _re.search(r'(\d+):(\d{2})', pace_str or "")
+    return int(m.group(1)) * 60 + int(m.group(2)) if m else None
+
+def _zone_delta(old_zone: str, new_zone: str) -> int:
+    import re as _re
+    def midpoint(z: str) -> int | None:
+        vals = [_pace_secs(p) for p in _re.findall(r'\d+:\d{2}', z or "")]
+        vals = [v for v in vals if v is not None]
+        return sum(vals) // len(vals) if vals else None
+    old, new = midpoint(old_zone), midpoint(new_zone)
+    return (new - old) if (old is not None and new is not None) else 0
+
+def _shift_pace(pace_str: str, delta_secs: int) -> str:
+    import re as _re
+    if not pace_str or not delta_secs:
+        return pace_str
+    def shift(m):
+        secs = int(m.group(1)) * 60 + int(m.group(2)) + delta_secs
+        mins, s = divmod(max(0, secs), 60)
+        return f"{mins}:{s:02d}"
+    return _re.sub(r'(\d+):(\d{2})', shift, pace_str)
+
+
 _ZONE_FOR_TYPE: dict[str, str] = {
     "easy_run": "easy",
     "long_run":  "marathon",
@@ -405,22 +430,37 @@ async def regenerate_plan(
         s for s in plan.sessions
         if not s.completed_at and s.workout_type in _ZONE_FOR_TYPE
     ]
+    easy_delta = _zone_delta(current_zones.get("easy", ""), new_zones.get("easy", ""))
     for session in future_sessions:
         zone = _ZONE_FOR_TYPE[session.workout_type]
-        new_main = new_zones.get(zone)
-        if not new_main:
+        new_zone = new_zones.get(zone)
+        if not new_zone:
             continue
+        delta = _zone_delta(current_zones.get(zone, ""), new_zone)
         paces = dict(session.target_paces or {})
-        paces["main"] = new_main
-        if "warmup" in paces and new_zones.get("easy"):
-            paces["warmup"] = new_zones["easy"]
-        if "cooldown" in paces and new_zones.get("easy"):
-            paces["cooldown"] = new_zones["easy"]
+
+        # Shift existing main pace by delta; fall back to zone value if none set
+        existing_main = paces.get("main", "")
+        if existing_main and existing_main.upper() != "N/A":
+            paces["main"] = _shift_pace(existing_main, delta) if delta else existing_main
+        else:
+            paces["main"] = new_zone
+
+        # Only update warmup/cooldown if they already had a real (non-empty) value
+        if paces.get("warmup") and paces["warmup"].upper() != "N/A":
+            paces["warmup"] = _shift_pace(paces["warmup"], easy_delta) if easy_delta else paces["warmup"]
+        if paces.get("cooldown") and paces["cooldown"].upper() != "N/A":
+            paces["cooldown"] = _shift_pace(paces["cooldown"], easy_delta) if easy_delta else paces["cooldown"]
+
         session.target_paces = paces
 
-        # Update interval paces too
+        # Update interval paces by delta too
         if session.workout_type == "interval" and session.intervals and new_zones.get("interval"):
-            session.intervals = [{**iv, "pace": new_zones["interval"]} for iv in session.intervals]
+            int_delta = _zone_delta(current_zones.get("interval", ""), new_zones["interval"])
+            session.intervals = [
+                {**iv, "pace": _shift_pace(iv["pace"], int_delta) if iv.get("pace") and int_delta else iv.get("pace", new_zones["interval"])}
+                for iv in session.intervals
+            ]
 
     # Update pace zones + notes in stored plan_json
     if plan.plan_json:
