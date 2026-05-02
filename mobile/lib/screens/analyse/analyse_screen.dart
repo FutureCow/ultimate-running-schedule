@@ -131,7 +131,9 @@ class _ActivityTile extends StatelessWidget {
   String _fmtDate(String iso) {
     try {
       final dt = DateTime.parse(iso.replaceFirst(' ', 'T'));
-      return DateFormat('EEE d MMM, HH:mm', 'nl').format(dt);
+      final hasTime = dt.hour != 0 || dt.minute != 0 || dt.second != 0;
+      final fmt = hasTime ? 'EEE d MMM, HH:mm' : 'EEE d MMM';
+      return DateFormat(fmt, 'nl').format(dt);
     } catch (_) {
       return iso.length > 10 ? iso.substring(0, 10) : iso;
     }
@@ -173,8 +175,10 @@ class _ActivityTile extends StatelessWidget {
                     Row(
                       children: [
                         _Chip(Icons.route, '${activity.distanceKm.toStringAsFixed(1)} km'),
-                        const SizedBox(width: 8),
-                        _Chip(Icons.timer, _fmtDuration(activity.durationSeconds)),
+                        if (activity.durationSeconds != null) ...[
+                          const SizedBox(width: 8),
+                          _Chip(Icons.timer, _fmtDuration(activity.durationSeconds!)),
+                        ],
                         if (activity.avgPacePerKm != null) ...[
                           const SizedBox(width: 8),
                           _Chip(Icons.speed, '${activity.avgPacePerKm} /km'),

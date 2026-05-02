@@ -3,7 +3,7 @@ class ActivitySummary {
   final String name;
   final String startTime;
   final double distanceKm;
-  final int durationSeconds;
+  final int? durationSeconds;
   final String? avgPacePerKm;
   final int? avgHeartRate;
   final int? maxHeartRate;
@@ -15,7 +15,7 @@ class ActivitySummary {
     required this.name,
     required this.startTime,
     required this.distanceKm,
-    required this.durationSeconds,
+    this.durationSeconds,
     this.avgPacePerKm,
     this.avgHeartRate,
     this.maxHeartRate,
@@ -28,7 +28,7 @@ class ActivitySummary {
         name: j['name'] as String? ?? j['activity_name'] as String? ?? '',
         startTime: j['start_time'] as String? ?? '',
         distanceKm: (j['distance_km'] as num?)?.toDouble() ?? 0,
-        durationSeconds: (j['duration_seconds'] as num?)?.toInt() ?? 0,
+        durationSeconds: (j['duration_seconds'] as num?)?.toInt(),
         avgPacePerKm: j['avg_pace_per_km'] as String? ??
             j['average_pace_per_km'] as String?,
         avgHeartRate: (j['avg_heart_rate'] as num?)?.toInt() ??

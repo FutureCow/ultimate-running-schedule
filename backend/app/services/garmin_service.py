@@ -381,6 +381,10 @@ async def _match_activities_to_sessions(db: AsyncSession, user_id: int, activiti
         if act:
             session.completed_at = now
             session.garmin_activity_id = act["activity_id"]
+            if act.get("duration_seconds"):
+                session.duration_minutes = round(act["duration_seconds"] / 60)
+            if act.get("distance_km"):
+                session.distance_km = act["distance_km"]
             matched += 1
             newly_matched_ids.append((session.id, act["activity_id"]))
 
