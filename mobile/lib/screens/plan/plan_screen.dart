@@ -18,6 +18,8 @@ class _PlanScreenState extends State<PlanScreen> {
   int _selectedWeek = 0;
   late final PageController _pageController;
   bool _recalibrating = false;
+  final ScrollController _weekScrollController = ScrollController();
+  static const double _weekChipWidth = 90.0;
 
   @override
   void initState() {
@@ -29,7 +31,18 @@ class _PlanScreenState extends State<PlanScreen> {
   @override
   void dispose() {
     _pageController.dispose();
+    _weekScrollController.dispose();
     super.dispose();
+  }
+
+  void _scrollWeekSelectorTo(int weekIndex) {
+    if (!_weekScrollController.hasClients) return;
+    final offset = (weekIndex * _weekChipWidth) - (_weekScrollController.position.viewportDimension / 2) + (_weekChipWidth / 2);
+    _weekScrollController.animateTo(
+      offset.clamp(0.0, _weekScrollController.position.maxScrollExtent),
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
   }
 
   Future<void> _load() async {
@@ -209,8 +222,10 @@ class _PlanScreenState extends State<PlanScreen> {
                         child: PageView.builder(
                           controller: _pageController,
                           itemCount: _weeks.length,
-                          onPageChanged: (idx) =>
-                              setState(() => _selectedWeek = _weeks[idx]),
+                          onPageChanged: (idx) {
+                            setState(() => _selectedWeek = _weeks[idx]);
+                            _scrollWeekSelectorTo(idx);
+                          },
                           itemBuilder: (_, idx) {
                             final week = _weeks[idx];
                             final sessions = _plan!.sessions
@@ -244,6 +259,7 @@ class _PlanScreenState extends State<PlanScreen> {
   Widget _buildWeekSelector() => SizedBox(
         height: 50,
         child: ListView.builder(
+          controller: _weekScrollController,
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           itemCount: _weeks.length,
@@ -259,6 +275,7 @@ class _PlanScreenState extends State<PlanScreen> {
                   _pageController.animateToPage(idx,
                       duration: const Duration(milliseconds: 300),
                       curve: Curves.easeInOut);
+                  _scrollWeekSelectorTo(idx);
                 },
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 150),
