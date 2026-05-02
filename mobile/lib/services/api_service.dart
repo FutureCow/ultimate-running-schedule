@@ -119,4 +119,10 @@ class ApiService {
   Future<Response> getActivities() => _dio.get('/garmin/activities');
   Future<Response> getActivity(String id) => _dio.get('/garmin/activity/$id');
   Future<Response> syncGarmin() => _dio.post('/garmin/sync');
+  Future<Response> pushSessions(List<int> sessionIds) =>
+      _dio.post('/garmin/push/sessions', data: {'session_ids': sessionIds});
+  Future<Response> pushWeek(String publicId, int weekNumber) =>
+      _dio.post('/garmin/push/week', data: {'plan_id': publicId, 'week_number': weekNumber});
+  Future<Response> removeGarminSession(int sessionId) =>
+      _dio.delete('/garmin/sessions/$sessionId');
 }

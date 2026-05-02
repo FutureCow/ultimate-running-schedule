@@ -155,7 +155,7 @@ class _PlanScreenState extends State<PlanScreen> {
                               child: ListView(
                                 padding: const EdgeInsets.all(16),
                                 children: [
-                                  _buildWeekHeader(sessions),
+                                  _buildWeekHeader(sessions, week),
                                   const SizedBox(height: 12),
                                   ...sessions.map((s) => Padding(
                                         padding: const EdgeInsets.only(bottom: 8),
@@ -216,11 +216,13 @@ class _PlanScreenState extends State<PlanScreen> {
         ),
       );
 
-  Widget _buildWeekHeader(List<WorkoutSession> sessions) {
+  Widget _buildWeekHeader(List<WorkoutSession> sessions, int weekNumber) {
     final done = sessions.where((s) => s.isCompleted).length;
     final totalKm = sessions
         .where((s) => s.distanceKm != null)
         .fold(0.0, (sum, s) => sum + s.distanceKm!);
+    final pushable = sessions.where((s) => s.workoutType != 'rest').toList();
+    final allPushed = pushable.isNotEmpty && pushable.every((s) => s.garminWorkoutId != null);
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -228,11 +230,24 @@ class _PlanScreenState extends State<PlanScreen> {
         color: const Color(0xFF1e293b),
         borderRadius: BorderRadius.circular(14),
       ),
-      child: Row(
+      child: Column(
         children: [
-          Expanded(child: _WeekStat(label: 'Trainingen', value: '${sessions.length}')),
-          Expanded(child: _WeekStat(label: 'Voltooid', value: '$done/${sessions.length}')),
-          Expanded(child: _WeekStat(label: 'Afstand', value: '${totalKm.toStringAsFixed(0)} km')),
+          Row(
+            children: [
+              Expanded(child: _WeekStat(label: 'Trainingen', value: '${sessions.length}')),
+              Expanded(child: _WeekStat(label: 'Voltooid', value: '$done/${sessions.length}')),
+              Expanded(child: _WeekStat(label: 'Afstand', value: '${totalKm.toStringAsFixed(0)} km')),
+            ],
+          ),
+          if (pushable.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            _GarminWeekButton(
+              planPublicId: _plan!.publicId,
+              weekNumber: weekNumber,
+              allPushed: allPushed,
+              onDone: _load,
+            ),
+          ],
         ],
       ),
     );
@@ -267,6 +282,47 @@ class _SessionDetailSheet extends StatefulWidget {
 class _SessionDetailSheetState extends State<_SessionDetailSheet> {
   final _api = ApiService();
   bool _marking = false;
+  bool _garminBusy = false;
+  String? _garminError;
+  late String? _garminWorkoutId;
+
+  @override
+  void initState() {
+    super.initState();
+    _garminWorkoutId = widget.session.garminWorkoutId;
+  }
+
+  Future<void> _pushToGarmin() async {
+    setState(() { _garminBusy = true; _garminError = null; });
+    try {
+      final res = await _api.pushSessions([widget.session.id]);
+      final results = (res.data['results'] as List?) ?? [];
+      final first = results.isNotEmpty ? results.first as Map<String, dynamic> : null;
+      if (first?['success'] == true) {
+        setState(() => _garminWorkoutId = first!['garmin_workout_id']?.toString() ?? 'pushed');
+        widget.onEdited();
+      } else {
+        setState(() => _garminError = first?['error']?.toString() ?? 'Push mislukt');
+      }
+    } catch (e) {
+      setState(() => _garminError = 'Fout: ${e.toString().split('\n').first}');
+    } finally {
+      if (mounted) setState(() => _garminBusy = false);
+    }
+  }
+
+  Future<void> _removeFromGarmin() async {
+    setState(() { _garminBusy = true; _garminError = null; });
+    try {
+      await _api.removeGarminSession(widget.session.id);
+      setState(() => _garminWorkoutId = null);
+      widget.onEdited();
+    } catch (e) {
+      setState(() => _garminError = 'Verwijderen mislukt');
+    } finally {
+      if (mounted) setState(() => _garminBusy = false);
+    }
+  }
 
   static const _typeColors = {
     'easy': Color(0xFF22c55e), 'easy_run': Color(0xFF22c55e), 'recovery': Color(0xFF22c55e),
@@ -473,6 +529,45 @@ class _SessionDetailSheetState extends State<_SessionDetailSheet> {
                 ),
               ),
             ),
+          ],
+          if (s.workoutType != 'rest') ...[
+            const SizedBox(height: 10),
+            if (_garminError != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(_garminError!, style: const TextStyle(color: Colors.red, fontSize: 12)),
+              ),
+            if (_garminWorkoutId != null)
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: _garminBusy ? null : _removeFromGarmin,
+                  icon: _garminBusy
+                      ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 1.5))
+                      : const Icon(Icons.watch_off_outlined, size: 18),
+                  label: const Text('Verwijder van Garmin'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF64748b),
+                    side: const BorderSide(color: Color(0xFF334155)),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ),
+              )
+            else
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: _garminBusy ? null : _pushToGarmin,
+                  icon: _garminBusy
+                      ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 1.5, color: Color(0xFF22d3ee)))
+                      : const Icon(Icons.watch_outlined, size: 18, color: Color(0xFF22d3ee)),
+                  label: const Text('Push naar Garmin', style: TextStyle(color: Color(0xFF22d3ee))),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Color(0xFF22d3ee30)),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ),
+              ),
           ],
         ],
       ),
@@ -803,6 +898,78 @@ class _SessionEditFormState extends State<_SessionEditForm> {
       ),
     );
   }
+}
+
+// ── Garmin week push button ─────────────────────────────────────────────────
+
+class _GarminWeekButton extends StatefulWidget {
+  final String planPublicId;
+  final int weekNumber;
+  final bool allPushed;
+  final VoidCallback onDone;
+  const _GarminWeekButton({required this.planPublicId, required this.weekNumber, required this.allPushed, required this.onDone});
+
+  @override
+  State<_GarminWeekButton> createState() => _GarminWeekButtonState();
+}
+
+class _GarminWeekButtonState extends State<_GarminWeekButton> {
+  final _api = ApiService();
+  bool _busy = false;
+  String? _error;
+  late bool _pushed;
+
+  @override
+  void initState() {
+    super.initState();
+    _pushed = widget.allPushed;
+  }
+
+  Future<void> _push() async {
+    setState(() { _busy = true; _error = null; });
+    try {
+      await _api.pushWeek(widget.planPublicId, widget.weekNumber);
+      setState(() => _pushed = true);
+      widget.onDone();
+    } catch (e) {
+      setState(() => _error = 'Push mislukt');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      if (_error != null)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 6),
+          child: Text(_error!, style: const TextStyle(color: Colors.red, fontSize: 11), textAlign: TextAlign.center),
+        ),
+      OutlinedButton.icon(
+        onPressed: _busy ? null : (_pushed ? null : _push),
+        icon: _busy
+            ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 1.5, color: Color(0xFF22d3ee)))
+            : Icon(
+                _pushed ? Icons.watch_later : Icons.watch_outlined,
+                size: 16,
+                color: _pushed ? const Color(0xFF22c55e) : const Color(0xFF22d3ee),
+              ),
+        label: Text(
+          _busy ? 'Bezig...' : (_pushed ? 'Week gepusht naar Garmin' : 'Push week naar Garmin'),
+          style: TextStyle(
+            fontSize: 13,
+            color: _pushed ? const Color(0xFF22c55e) : const Color(0xFF22d3ee),
+          ),
+        ),
+        style: OutlinedButton.styleFrom(
+          side: BorderSide(color: _pushed ? const Color(0xFF22c55e30) : const Color(0xFF22d3ee30)),
+          padding: const EdgeInsets.symmetric(vertical: 10),
+        ),
+      ),
+    ],
+  );
 }
 
 // ── Bulk edit sheet ────────────────────────────────────────────────────────

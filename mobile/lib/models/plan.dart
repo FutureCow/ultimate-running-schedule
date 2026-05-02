@@ -86,6 +86,8 @@ class WorkoutSession {
   final bool isCompleted;
   final DateTime? scheduledDate;
   final String? garminActivityId;
+  final String? garminWorkoutId;
+  final DateTime? garminPushedAt;
   final String? aiInsights;
   final Map<String, dynamic>? paces;
   final List<dynamic>? intervals;
@@ -102,6 +104,8 @@ class WorkoutSession {
     required this.isCompleted,
     this.scheduledDate,
     this.garminActivityId,
+    this.garminWorkoutId,
+    this.garminPushedAt,
     this.aiInsights,
     this.paces,
     this.intervals,
@@ -121,6 +125,8 @@ class WorkoutSession {
             ? DateTime.tryParse(j['scheduled_date'])
             : null,
         garminActivityId: j['garmin_activity_id']?.toString(),
+        garminWorkoutId: j['garmin_workout_id']?.toString(),
+        garminPushedAt: j['garmin_pushed_at'] != null ? DateTime.tryParse(j['garmin_pushed_at']) : null,
         aiInsights: j['ai_insights'] as String?,
         paces: j['target_paces'] as Map<String, dynamic>?,
         intervals: j['intervals'] as List<dynamic>?,
