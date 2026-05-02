@@ -146,6 +146,7 @@ export default function SettingsPage() {
     onSuccess: () => {
       setProfileSaved(true); setProfileError("");
       setTimeout(() => setProfileSaved(false), 2500);
+      qc.invalidateQueries({ queryKey: ["user-profile"] });
     },
     onError: (e: any) => setProfileError(e?.response?.data?.detail || tp("saveFailed")),
   });
