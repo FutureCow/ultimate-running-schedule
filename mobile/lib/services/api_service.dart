@@ -94,13 +94,18 @@ class ApiService {
   Future<Response> updateProfile(Map<String, dynamic> data) =>
       _dio.patch('/auth/profile', data: data);
   Future<Response> uploadAvatar(String filePath) {
+    final ext = filePath.split('.').last.toLowerCase();
+    final contentType = ext == 'png'
+        ? DioMediaType('image', 'png')
+        : ext == 'webp'
+            ? DioMediaType('image', 'webp')
+            : DioMediaType('image', 'jpeg');
     final form = FormData.fromMap({
       'file': MultipartFile.fromFileSync(filePath,
-          filename: filePath.split('/').last),
+          filename: filePath.split('/').last,
+          contentType: contentType),
     });
-    return _dio.post('/auth/profile/avatar',
-        data: form,
-        options: Options(contentType: 'multipart/form-data'));
+    return _dio.post('/auth/profile/avatar', data: form);
   }
 
   // Plans
