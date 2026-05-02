@@ -204,7 +204,7 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
       crossAxisSpacing: 8,
       children: [
         _StatTile(icon: Icons.route, label: 'Afstand', value: '${s.distanceKm.toStringAsFixed(2)} km'),
-        _StatTile(icon: Icons.timer, label: 'Duur', value: _fmtTime(s.durationSeconds)),
+        _StatTile(icon: Icons.timer, label: 'Duur', value: s.durationSeconds != null ? _fmtTime(s.durationSeconds!) : '–'),
         _StatTile(icon: Icons.speed, label: 'Tempo', value: s.avgPacePerKm != null ? '${s.avgPacePerKm} /km' : '–'),
         if (s.avgHeartRate != null)
           _StatTile(icon: Icons.favorite, label: 'Hartslag', value: '${s.avgHeartRate} bpm',
