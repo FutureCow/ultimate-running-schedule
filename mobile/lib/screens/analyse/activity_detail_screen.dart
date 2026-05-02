@@ -92,6 +92,10 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
                   spots: _buildSpots(d.streams.time,
                       d.streams.heartRate.map((v) => v?.toDouble()).toList()),
                   formatY: (v) => '${v.round()} bpm',
+                  yInterval: _niceInterval(
+                    _buildSpots(d.streams.time, d.streams.heartRate.map((v) => v?.toDouble()).toList()),
+                    [5, 10, 20, 25],
+                  ),
                 ),
                 const SizedBox(height: 12),
               ],
@@ -102,6 +106,10 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
                   spots: _buildSpots(d.streams.time,
                       d.streams.cadence.map((v) => v?.toDouble()).toList()),
                   formatY: (v) => '${v.round()} spm',
+                  yInterval: _niceInterval(
+                    _buildSpots(d.streams.time, d.streams.cadence.map((v) => v?.toDouble()).toList()),
+                    [2, 5, 10, 20],
+                  ),
                 ),
                 const SizedBox(height: 12),
               ],
@@ -112,6 +120,10 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
                   spots: _buildSpots(d.streams.time, d.streams.altitude),
                   formatY: (v) => '${v.round()} m',
                   filled: true,
+                  yInterval: _niceInterval(
+                    _buildSpots(d.streams.time, d.streams.altitude),
+                    [5, 10, 25, 50, 100],
+                  ),
                 ),
                 const SizedBox(height: 12),
               ],
