@@ -25,7 +25,7 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> _loadUser({int _retries = 1}) async {
+  Future<void> _loadUser({int retries = 1}) async {
     try {
       final res = await _api.getMe();
       _user = User.fromJson(res.data as Map<String, dynamic>);
@@ -46,9 +46,9 @@ class AuthProvider extends ChangeNotifier {
       //   clearTokens() would have run and hasToken() would return false)
       final isTransient = isNetwork || (is401 && await _api.hasToken());
 
-      if (isTransient && _retries > 0) {
+      if (isTransient && retries > 0) {
         await Future.delayed(const Duration(milliseconds: 1500));
-        return _loadUser(_retries: _retries - 1);
+        return _loadUser(retries: retries - 1);
       }
 
       if (is401) {
