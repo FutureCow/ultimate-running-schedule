@@ -498,17 +498,22 @@ async def reset_plan(
         for w in week.get("workouts", []):
             originals[(week["week_number"], w["day_number"])] = w
 
+    import copy
+    from sqlalchemy.orm.attributes import flag_modified
+
     future_sessions = [s for s in plan.sessions if not s.completed_at]
     for session in future_sessions:
         original = originals.get((session.week_number, session.day_number))
         if not original:
             continue
-        session.target_paces    = original.get("target_paces")
-        session.intervals       = original.get("intervals")
-        session.distance_km     = original.get("distance_km")
+        session.target_paces     = copy.deepcopy(original.get("target_paces"))
+        session.intervals        = copy.deepcopy(original.get("intervals"))
+        session.distance_km      = original.get("distance_km")
         session.duration_minutes = original.get("duration_minutes")
-        session.title           = original.get("title", session.title)
-        session.description     = original.get("description", session.description)
+        session.title            = original.get("title", session.title)
+        session.description      = original.get("description", session.description)
+        flag_modified(session, "target_paces")
+        flag_modified(session, "intervals")
 
     await db.commit()
     result = await db.execute(select(Plan).where(Plan.public_id == public_id))

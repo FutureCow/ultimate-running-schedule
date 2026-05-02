@@ -160,12 +160,17 @@ async def reset_session(
     if not original:
         raise HTTPException(status_code=404, detail="Originele workout niet gevonden in plan JSON.")
 
-    session.target_paces   = original.get("target_paces")
-    session.intervals      = original.get("intervals")
-    session.distance_km    = original.get("distance_km")
+    import copy
+    from sqlalchemy.orm.attributes import flag_modified
+
+    session.target_paces     = copy.deepcopy(original.get("target_paces"))
+    session.intervals        = copy.deepcopy(original.get("intervals"))
+    session.distance_km      = original.get("distance_km")
     session.duration_minutes = original.get("duration_minutes")
-    session.title          = original.get("title", session.title)
-    session.description    = original.get("description", session.description)
+    session.title            = original.get("title", session.title)
+    session.description      = original.get("description", session.description)
+    flag_modified(session, "target_paces")
+    flag_modified(session, "intervals")
 
     await db.commit()
     await db.refresh(session)
