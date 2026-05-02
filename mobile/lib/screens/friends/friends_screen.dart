@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 import '../../services/api_service.dart';
 
 class FriendsScreen extends StatefulWidget {
@@ -10,7 +9,6 @@ class FriendsScreen extends StatefulWidget {
 }
 
 class _FriendsScreenState extends State<FriendsScreen> with SingleTickerProviderStateMixin {
-  final _api = ApiService();
   late final TabController _tab;
 
   @override
