@@ -162,12 +162,14 @@ export function WorkoutCard({ session, onPushToGarmin, isPushing, onMove, isMovi
                 </>
               )}
 
-              {session.workout_type !== "strength" && session.target_paces && (
+              {session.workout_type !== "strength" && session.target_paces && (session.target_paces.warmup || session.target_paces.main || session.target_paces.cooldown) && (
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   {session.target_paces.warmup && (
                     <PaceBlock label={t("warmup")} pace={session.target_paces.warmup} />
                   )}
-                  <PaceBlock label={t("mainPace")} pace={session.target_paces.main} highlight />
+                  {session.target_paces.main && (
+                    <PaceBlock label={t("mainPace")} pace={session.target_paces.main} highlight />
+                  )}
                   {session.target_paces.cooldown && (
                     <PaceBlock label={t("cooldown")} pace={session.target_paces.cooldown} />
                   )}
@@ -186,8 +188,8 @@ export function WorkoutCard({ session, onPushToGarmin, isPushing, onMove, isMovi
                         <span className="text-slate-300">
                           {iv.distance_m ? `${iv.distance_m}m` : iv.duration_seconds ? `${iv.duration_seconds}s` : ""}
                         </span>
-                        <span className="text-slate-500">@</span>
-                        <span className="font-mono font-semibold text-orange-300">{iv.pace}/km</span>
+                        {iv.pace && <><span className="text-slate-500">@</span>
+                        <span className="font-mono font-semibold text-orange-300">{iv.pace}/km</span></>}
                         <span className="text-slate-600 text-xs">· {t("restSeconds", { seconds: iv.rest_seconds })}</span>
                       </div>
                     ))}

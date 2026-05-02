@@ -289,7 +289,8 @@ class _SessionDetailSheetState extends State<_SessionDetailSheet> {
   };
 
   List<Widget> _buildPaceRows(Map<String, dynamic> paces, Color color) {
-    return paces.entries.map((e) {
+    final entries = paces.entries.where((e) => e.value != null && e.value.toString().isNotEmpty).toList();
+    return entries.map((e) {
       final label = _paceLabels[e.key] ?? e.key;
       return Padding(
         padding: const EdgeInsets.only(bottom: 6),
@@ -315,37 +316,34 @@ class _SessionDetailSheetState extends State<_SessionDetailSheet> {
   Widget _buildIntervalRow(Map<String, dynamic> iv, Color color) {
     final reps = iv['reps'];
     final dist = iv['distance_m'];
+    final dur = iv['duration_seconds'];
     final pace = iv['pace'];
     final rest = iv['rest_seconds'];
+    final distLabel = dist != null ? '${dist}m' : (dur != null ? '${dur}s' : '');
     return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.only(bottom: 6, right: 4),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
           color: const Color(0xFF0f172a),
           borderRadius: BorderRadius.circular(10),
         ),
         child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 32, height: 32,
-              decoration: BoxDecoration(color: color.withOpacity(0.15), shape: BoxShape.circle),
-              child: Center(
-                child: Text('$reps×', style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.bold)),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('$dist m @ $pace /km',
-                      style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
-                  if (rest != null)
-                    Text('Rust: ${rest}s', style: const TextStyle(color: Color(0xFF64748b), fontSize: 11)),
-                ],
-              ),
-            ),
+            Text('${reps}×', style: TextStyle(color: color, fontSize: 13, fontWeight: FontWeight.bold)),
+            if (distLabel.isNotEmpty) ...[
+              const SizedBox(width: 4),
+              Text(distLabel, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
+            ],
+            if (pace != null) ...[
+              const SizedBox(width: 6),
+              Text('@ $pace /km', style: const TextStyle(color: Color(0xFF94a3b8), fontSize: 12)),
+            ],
+            if (rest != null) ...[
+              const SizedBox(width: 6),
+              Text('· ${rest}s rust', style: const TextStyle(color: Color(0xFF475569), fontSize: 11)),
+            ],
           ],
         ),
       ),
@@ -446,7 +444,11 @@ class _SessionDetailSheetState extends State<_SessionDetailSheet> {
             const SizedBox(height: 20),
             const Text('Intervallen', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
             const SizedBox(height: 8),
-            ...s.intervals!.map((iv) => _buildIntervalRow(iv as Map<String, dynamic>, color)),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: s.intervals!.map((iv) => _buildIntervalRow(iv as Map<String, dynamic>, color)).toList(),
+            ),
           ],
           if (s.notes != null && s.notes!.isNotEmpty) ...[
             const SizedBox(height: 20),
