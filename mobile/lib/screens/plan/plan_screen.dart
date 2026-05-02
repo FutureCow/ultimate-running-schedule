@@ -141,7 +141,7 @@ class _PlanScreenState extends State<PlanScreen> {
     if (_plan == null) return;
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dialogCtx) => AlertDialog(
         backgroundColor: const Color(0xFF1e293b),
         title: const Text('Heel plan terugzetten?', style: TextStyle(color: Colors.white, fontSize: 16)),
         content: const Text(
@@ -149,9 +149,9 @@ class _PlanScreenState extends State<PlanScreen> {
           style: TextStyle(color: Color(0xFF94a3b8), fontSize: 13),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Annuleren')),
+          TextButton(onPressed: () => Navigator.pop(dialogCtx, false), child: const Text('Annuleren')),
           TextButton(
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.pop(dialogCtx, true),
             child: const Text('Terugzetten', style: TextStyle(color: Color(0xFFef4444))),
           ),
         ],
@@ -161,10 +161,33 @@ class _PlanScreenState extends State<PlanScreen> {
     try {
       await _api.resetPlan(_plan!.publicId);
       await _load();
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: const Color(0xFF1e293b),
+            title: const Text('Plan teruggezet', style: TextStyle(color: Colors.white, fontSize: 16)),
+            content: const Text('Het plan is teruggezet naar de originele AI-waarden.',
+                style: TextStyle(color: Color(0xFF94a3b8), fontSize: 13)),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK')),
+            ],
+          ),
+        );
+      }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Terugzetten mislukt: ${e.toString().split('\n').first}')),
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: const Color(0xFF1e293b),
+            title: const Text('Fout', style: TextStyle(color: Color(0xFFef4444), fontSize: 16)),
+            content: Text('Terugzetten mislukt: ${e.toString().split('\n').first}',
+                style: const TextStyle(color: Color(0xFF94a3b8), fontSize: 13)),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK')),
+            ],
+          ),
         );
       }
     }
@@ -584,15 +607,15 @@ class _SessionDetailSheetState extends State<_SessionDetailSheet> {
   Future<void> _reset() async {
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dialogCtx) => AlertDialog(
         backgroundColor: const Color(0xFF1e293b),
         title: const Text('Terugzetten naar origineel?', style: TextStyle(color: Colors.white, fontSize: 16)),
         content: const Text('Alle handmatige aanpassingen aan tempo, intervallen en afstand worden ongedaan gemaakt.',
             style: TextStyle(color: Color(0xFF94a3b8), fontSize: 13)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Annuleren')),
+          TextButton(onPressed: () => Navigator.pop(dialogCtx, false), child: const Text('Annuleren')),
           TextButton(
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.pop(dialogCtx, true),
             child: const Text('Terugzetten', style: TextStyle(color: Color(0xFFef4444))),
           ),
         ],
@@ -608,8 +631,17 @@ class _SessionDetailSheetState extends State<_SessionDetailSheet> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Terugzetten mislukt: ${e.toString().split('\n').first}')),
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: const Color(0xFF1e293b),
+            title: const Text('Fout', style: TextStyle(color: Color(0xFFef4444), fontSize: 16)),
+            content: Text('Terugzetten mislukt: ${e.toString().split('\n').first}',
+                style: const TextStyle(color: Color(0xFF94a3b8), fontSize: 13)),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK')),
+            ],
+          ),
         );
       }
     } finally {
