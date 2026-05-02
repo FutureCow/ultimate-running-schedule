@@ -368,7 +368,7 @@ Data:
 
     message = await client.messages.create(
         model=settings.CLAUDE_MODEL,
-        max_tokens=80,
+        max_tokens=200,
         system=f"Sports scientist. {lang_instruction}. One sentence, max 25 words. Numbers only, no fluff.",
         messages=[{"role": "user", "content": prompt}],
     )
