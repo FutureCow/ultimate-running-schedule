@@ -412,7 +412,9 @@ class _SessionDetailSheetState extends State<_SessionDetailSheet> {
   };
 
   List<Widget> _buildPaceRows(Map<String, dynamic> paces, Color color) {
-    final entries = paces.entries.where((e) => e.value != null && e.value.toString().isNotEmpty).toList();
+    final entries = paces.entries
+        .where((e) => e.key != 'strides' && e.value != null && e.value.toString().isNotEmpty)
+        .toList();
     return entries.map((e) {
       final label = _paceLabels[e.key] ?? e.key;
       return Padding(
@@ -434,6 +436,44 @@ class _SessionDetailSheetState extends State<_SessionDetailSheet> {
         ),
       );
     }).toList();
+  }
+
+  Widget _buildStrideChip(Map<String, dynamic> st, Color color) {
+    final reps = st['reps'];
+    final dist = st['distance_m'];
+    final pace = st['pace'];
+    final rest = st['rest_seconds'];
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: const Color(0xFF0f172a),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Text('Strides', style: TextStyle(color: color, fontSize: 13, fontWeight: FontWeight.bold)),
+            if (reps != null) ...[
+              const SizedBox(width: 6),
+              Text('$reps×', style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
+            ],
+            if (dist != null) ...[
+              const SizedBox(width: 4),
+              Text('${dist}m', style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
+            ],
+            if (pace != null) ...[
+              const SizedBox(width: 6),
+              Text('@ $pace /km', style: const TextStyle(color: Color(0xFF94a3b8), fontSize: 12)),
+            ],
+            if (rest != null) ...[
+              const SizedBox(width: 6),
+              Text('· ${rest}s rust', style: const TextStyle(color: Color(0xFF475569), fontSize: 11)),
+            ],
+          ]),
+        ),
+      ]),
+    );
   }
 
   Widget _buildIntervalRow(Map<String, dynamic> iv, Color color) {
@@ -562,6 +602,10 @@ class _SessionDetailSheetState extends State<_SessionDetailSheet> {
             const Text('Tempo', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
             const SizedBox(height: 8),
             ..._buildPaceRows(s.paces!, color),
+            if (s.paces!['strides'] is Map) ...[
+              const SizedBox(height: 8),
+              _buildStrideChip(s.paces!['strides'] as Map<String, dynamic>, color),
+            ],
           ],
           if (s.intervals != null && s.intervals!.isNotEmpty) ...[
             const SizedBox(height: 20),

@@ -55,11 +55,19 @@ export interface StrengthPreferences {
   notes?: string | null;
 }
 
+export interface Strides {
+  reps: number;
+  distance_m?: number | null;
+  pace?: string | null;
+  rest_seconds?: number | null;
+}
+
 export interface TargetPaces {
   warmup?: string | null;
-  main: string;
+  main?: string | null;
   cooldown?: string | null;
   note?: string | null;
+  strides?: Strides | null;
 }
 
 export interface IntervalStep {

@@ -176,6 +176,29 @@ export function WorkoutCard({ session, onPushToGarmin, isPushing, onMove, isMovi
                 </div>
               )}
 
+              {session.target_paces?.strides && (
+                <div className="space-y-1.5">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Strides</p>
+                  <div className="flex flex-wrap gap-2">
+                    <div className="flex items-center gap-1.5 bg-surface-elevated rounded-xl px-3 py-2 text-sm">
+                      <span className="font-bold text-white">{session.target_paces.strides.reps}×</span>
+                      {session.target_paces.strides.distance_m && (
+                        <span className="text-slate-300">{session.target_paces.strides.distance_m}m</span>
+                      )}
+                      {session.target_paces.strides.pace && (
+                        <>
+                          <span className="text-slate-500">@</span>
+                          <span className="font-mono font-semibold text-orange-300">{session.target_paces.strides.pace}/km</span>
+                        </>
+                      )}
+                      {session.target_paces.strides.rest_seconds && (
+                        <span className="text-slate-600 text-xs">· {t("restSeconds", { seconds: session.target_paces.strides.rest_seconds })}</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {session.intervals && session.intervals.length > 0 && (
                 <div className="space-y-1.5">
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
