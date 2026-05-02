@@ -329,8 +329,10 @@
       "notes": "Notes",
       "notesPlaceholder": "Optional description or notes",
       "save": "Save",
-      "cancel": "Cancel"
-    }
+      "cancel": "Cancel",
+      "reset": "Restore original"
+    },
+    "resetConfirm": "Restore this workout to the original AI-generated values?"
   },
   "analyse": {
     "title": "Analyse workouts",

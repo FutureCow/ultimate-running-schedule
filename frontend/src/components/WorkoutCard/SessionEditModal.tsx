@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
-import { X, Save } from "lucide-react";
+import { X, Save, RotateCcw } from "lucide-react";
 import { WorkoutSession } from "@/types";
 
 interface Props {
@@ -17,6 +17,8 @@ interface Props {
     scheduled_date?: string;
   }) => void;
   isSaving?: boolean;
+  onReset?: () => void;
+  isResetting?: boolean;
 }
 
 const PACE_LABELS: Record<string, string> = {
@@ -29,7 +31,7 @@ const PACE_LABELS: Record<string, string> = {
   repetition: "Herhaling",
 };
 
-export function SessionEditModal({ session, onClose, onSave, isSaving }: Props) {
+export function SessionEditModal({ session, onClose, onSave, isSaving, onReset, isResetting }: Props) {
   const t = useTranslations("workout");
 
   const [title, setTitle] = useState(session.title);
@@ -226,21 +228,39 @@ export function SessionEditModal({ session, onClose, onSave, isSaving }: Props) 
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-slate-700/40">
-            <button type="button" onClick={onClose} className="btn-ghost text-sm px-4 py-2">
-              {t("edit.cancel")}
-            </button>
-            <button
-              type="submit"
-              disabled={isSaving}
-              className="btn-primary text-sm px-4 py-2 gap-2 flex items-center"
-            >
-              {isSaving
-                ? <span className="w-3.5 h-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-                : <Save className="w-3.5 h-3.5" />
-              }
-              {t("edit.save")}
-            </button>
+          <div className="flex items-center justify-between gap-3 px-5 py-4 border-t border-slate-700/40">
+            <div>
+              {onReset && (
+                <button
+                  type="button"
+                  onClick={onReset}
+                  disabled={isResetting}
+                  className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-orange-400 transition-colors disabled:opacity-50"
+                >
+                  {isResetting
+                    ? <span className="w-3.5 h-3.5 rounded-full border-2 border-current border-t-transparent animate-spin" />
+                    : <RotateCcw className="w-3.5 h-3.5" />
+                  }
+                  {t("edit.reset")}
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-3">
+              <button type="button" onClick={onClose} className="btn-ghost text-sm px-4 py-2">
+                {t("edit.cancel")}
+              </button>
+              <button
+                type="submit"
+                disabled={isSaving}
+                className="btn-primary text-sm px-4 py-2 gap-2 flex items-center"
+              >
+                {isSaving
+                  ? <span className="w-3.5 h-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                  : <Save className="w-3.5 h-3.5" />
+                }
+                {t("edit.save")}
+              </button>
+            </div>
           </div>
         </form>
       </div>

@@ -366,6 +366,7 @@ class _SessionDetailSheet extends StatefulWidget {
 class _SessionDetailSheetState extends State<_SessionDetailSheet> {
   final _api = ApiService();
   bool _marking = false;
+  bool _resetting = false;
   bool _garminBusy = false;
   String? _garminError;
   late String? _garminWorkoutId;
@@ -530,6 +531,42 @@ class _SessionDetailSheetState extends State<_SessionDetailSheet> {
     );
   }
 
+  Future<void> _reset() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF1e293b),
+        title: const Text('Terugzetten naar origineel?', style: TextStyle(color: Colors.white, fontSize: 16)),
+        content: const Text('Alle handmatige aanpassingen aan tempo, intervallen en afstand worden ongedaan gemaakt.',
+            style: TextStyle(color: Color(0xFF94a3b8), fontSize: 13)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Annuleren')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Terugzetten', style: TextStyle(color: Color(0xFFef4444))),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    setState(() => _resetting = true);
+    try {
+      await _api.resetSession(widget.session.id);
+      if (mounted) {
+        Navigator.pop(context);
+        widget.onEdited();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Terugzetten mislukt: ${e.toString().split('\n').first}')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _resetting = false);
+    }
+  }
+
   Future<void> _markComplete() async {
     setState(() => _marking = true);
     try {
@@ -575,6 +612,17 @@ class _SessionDetailSheetState extends State<_SessionDetailSheet> {
               child: Text(s.title,
                   style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
             ),
+            if (_resetting)
+              const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF64748b)))
+            else
+              IconButton(
+                icon: const Icon(Icons.restart_alt, size: 20, color: Color(0xFF64748b)),
+                tooltip: 'Terugzetten naar origineel',
+                onPressed: _reset,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
+            const SizedBox(width: 4),
             IconButton(
               icon: const Icon(Icons.edit_outlined, size: 20, color: Color(0xFF64748b)),
               onPressed: () => showModalBottomSheet(

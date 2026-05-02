@@ -329,8 +329,10 @@
       "notes": "Notities",
       "notesPlaceholder": "Optionele beschrijving of notities",
       "save": "Opslaan",
-      "cancel": "Annuleren"
-    }
+      "cancel": "Annuleren",
+      "reset": "Terugzetten naar origineel"
+    },
+    "resetConfirm": "Workout terugzetten naar de originele AI-waarden?"
   },
   "analyse": {
     "title": "Activiteiten analyseren",

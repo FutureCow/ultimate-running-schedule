@@ -116,6 +116,7 @@ export const sessionsApi = {
     target_paces?: Record<string, string>;
     scheduled_date?: string;
   }) => api.patch(`/sessions/${id}/details`, data),
+  reset: (id: number) => api.post(`/sessions/${id}/reset`),
 };
 
 // Garmin

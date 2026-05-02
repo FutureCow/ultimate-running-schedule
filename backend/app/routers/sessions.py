@@ -125,6 +125,53 @@ async def update_session_details(
     return session
 
 
+@router.post("/{session_id}/reset", response_model=WorkoutSessionResponse)
+async def reset_session(
+    session_id: int,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Restore a session's paces, intervals, distance and duration to the original AI-generated values."""
+    result = await db.execute(
+        select(WorkoutSession, Plan)
+        .join(Plan, Plan.id == WorkoutSession.plan_id)
+        .where(WorkoutSession.id == session_id, Plan.user_id == user.id)
+    )
+    row = result.one_or_none()
+    if not row:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    session, plan = row
+
+    if not plan.plan_json:
+        raise HTTPException(status_code=400, detail="Plan heeft geen opgeslagen originele data.")
+
+    # Find the matching workout in plan_json by week_number + day_number
+    original: dict | None = None
+    for week in plan.plan_json.get("weeks", []):
+        if week.get("week_number") == session.week_number:
+            for w in week.get("workouts", []):
+                if w.get("day_number") == session.day_number:
+                    original = w
+                    break
+        if original:
+            break
+
+    if not original:
+        raise HTTPException(status_code=404, detail="Originele workout niet gevonden in plan JSON.")
+
+    session.target_paces   = original.get("target_paces")
+    session.intervals      = original.get("intervals")
+    session.distance_km    = original.get("distance_km")
+    session.duration_minutes = original.get("duration_minutes")
+    session.title          = original.get("title", session.title)
+    session.description    = original.get("description", session.description)
+
+    await db.commit()
+    await db.refresh(session)
+    return session
+
+
 @router.delete("/{session_id}", status_code=204)
 async def delete_session(
     session_id: int,

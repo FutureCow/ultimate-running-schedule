@@ -21,6 +21,8 @@ interface Props {
   isRemovingFromGarmin?: boolean;
   onEdit?: (sessionId: number, data: Parameters<React.ComponentProps<typeof SessionEditModal>["onSave"]>[0]) => void;
   isEditing?: boolean;
+  onReset?: (sessionId: number) => void;
+  isResetting?: boolean;
   totalWeeks?: number;
 }
 
@@ -35,7 +37,7 @@ const ACCENT_COLORS: Record<string, string> = {
   strength:  "bg-violet-500",
 };
 
-export function WorkoutCard({ session, onPushToGarmin, isPushing, onMove, isMoving, onDelete, isDeleting, onRemoveFromGarmin, isRemovingFromGarmin, onEdit, isEditing, totalWeeks = 1 }: Props) {
+export function WorkoutCard({ session, onPushToGarmin, isPushing, onMove, isMoving, onDelete, isDeleting, onRemoveFromGarmin, isRemovingFromGarmin, onEdit, isEditing, onReset, isResetting, totalWeeks = 1 }: Props) {
   const t = useTranslations("workout");
   const tDays = useTranslations("days");
 
@@ -384,11 +386,13 @@ export function WorkoutCard({ session, onPushToGarmin, isPushing, onMove, isMovi
       <SessionEditModal
         session={session}
         isSaving={isEditing}
+        isResetting={isResetting}
         onClose={() => setShowEditModal(false)}
         onSave={(data) => {
           onEdit(session.id, data);
           setShowEditModal(false);
         }}
+        onReset={onReset ? () => { onReset(session.id); setShowEditModal(false); } : undefined}
       />
     )}
   </>

@@ -90,6 +90,8 @@ class ApiService {
   Future<Response> register(String email, String password, String name) =>
       _dio.post('/auth/register', data: {'email': email, 'password': password, 'name': name});
 
+  Future<Response> resetSession(int sessionId) => _dio.post('/sessions/$sessionId/reset');
+
   Future<Response> getMe() => _dio.get('/auth/profile');
   Future<Response> updateProfile(Map<String, dynamic> data) =>
       _dio.patch('/auth/profile', data: data);

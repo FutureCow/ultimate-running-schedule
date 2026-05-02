@@ -96,6 +96,11 @@ export function WeekCalendar({ plan }: Props) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["plan", plan.public_id] }),
   });
 
+  const resetMutation = useMutation({
+    mutationFn: (sessionId: number) => sessionsApi.reset(sessionId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["plan", plan.public_id] }),
+  });
+
   const week = weeks.find((w) => w.week_number === currentWeek);
   const sessions = plan.sessions.filter((s) => s.week_number === currentWeek);
   const totalWeeks = plan.duration_weeks;
@@ -235,6 +240,10 @@ export function WeekCalendar({ plan }: Props) {
                         isRemovingFromGarmin={removeFromGarminMutation.isPending && removeFromGarminMutation.variables === s.id}
                         onEdit={(sessionId, data) => editMutation.mutate({ sessionId, data })}
                         isEditing={editMutation.isPending && editMutation.variables?.sessionId === s.id}
+                        onReset={(sessionId) => {
+                          if (confirm(tWorkout("resetConfirm"))) resetMutation.mutate(sessionId);
+                        }}
+                        isResetting={resetMutation.isPending && resetMutation.variables === s.id}
                       />
                     ))
                   ) : (
