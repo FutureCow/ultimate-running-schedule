@@ -79,6 +79,9 @@ class _FriendActivitiesScreenState extends State<FriendActivitiesScreen> {
                           itemCount: _activities.length,
                           itemBuilder: (_, i) {
                             final a = _activities[i] as Map<String, dynamic>;
+                            final actName = (a['activity_name'] as String?)?.isNotEmpty == true
+                                ? a['activity_name'] as String
+                                : (a['name'] as String?) ?? 'Hardlooptraining';
                             final distKm = a['distance_meters'] != null
                                 ? ((a['distance_meters'] as num) / 1000).toStringAsFixed(2)
                                 : null;
@@ -115,7 +118,7 @@ class _FriendActivitiesScreenState extends State<FriendActivitiesScreen> {
                                       child: Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
-                                          Text(a['name'] ?? 'Hardlooptraining',
+                                          Text(actName,
                                               style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14),
                                               maxLines: 1, overflow: TextOverflow.ellipsis),
                                           const SizedBox(height: 2),

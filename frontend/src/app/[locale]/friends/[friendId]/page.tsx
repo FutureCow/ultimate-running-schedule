@@ -90,7 +90,7 @@ export default function FriendActivitiesPage() {
                           </span>
                           {dateStr && <span className="text-xs text-slate-500">{dateStr}</span>}
                         </div>
-                        <p className="text-sm font-semibold text-white truncate">{act.name ?? act.activity_id}</p>
+                        <p className="text-sm font-semibold text-white truncate">{act.activity_name || act.name || act.activity_id}</p>
                         <div className="flex items-center gap-3 mt-1.5">
                           {act.distance_meters && (
                             <span className="flex items-center gap-1 text-xs text-slate-400">
