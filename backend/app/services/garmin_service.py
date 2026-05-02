@@ -379,7 +379,11 @@ async def _match_activities_to_sessions(db: AsyncSession, user_id: int, activiti
     for session in sessions:
         act = date_to_activity.get(session.scheduled_date)
         if act:
-            session.completed_at = now
+            try:
+                from datetime import datetime as dt_cls
+                session.completed_at = dt_cls.fromisoformat(act["start_time"].replace(" ", "T")).replace(tzinfo=timezone.utc)
+            except Exception:
+                session.completed_at = now
             session.garmin_activity_id = act["activity_id"]
             if act.get("duration_seconds"):
                 session.duration_minutes = round(act["duration_seconds"] / 60)

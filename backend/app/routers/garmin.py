@@ -194,7 +194,7 @@ async def list_activities(
         {
             "activity_id": s.garmin_activity_id,
             "activity_name": s.title,
-            "start_time": s.scheduled_date.isoformat() if s.scheduled_date else "",
+            "start_time": s.completed_at.isoformat() if s.completed_at else (s.scheduled_date.isoformat() if s.scheduled_date else ""),
             "distance_km": s.distance_km or 0,
             "duration_seconds": (s.duration_minutes * 60) if s.duration_minutes else None,
             "average_pace_per_km": None,
