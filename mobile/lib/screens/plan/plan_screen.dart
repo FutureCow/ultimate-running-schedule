@@ -17,6 +17,7 @@ class _PlanScreenState extends State<PlanScreen> {
   String? _error;
   int _selectedWeek = 0;
   late final PageController _pageController;
+  bool _recalibrating = false;
 
   @override
   void initState() {
@@ -55,6 +56,59 @@ class _PlanScreenState extends State<PlanScreen> {
     } finally {
       setState(() => _loading = false);
     }
+  }
+
+  Future<void> _recalibratePaces() async {
+    if (_plan == null) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF1e293b),
+        title: const Text('Tempo zones bijstellen', style: TextStyle(color: Colors.white)),
+        content: const Text(
+          'Op basis van je laatste 6 Garmin activiteiten worden de tempo zones en trainingspacings bijgesteld door AI. Wil je doorgaan?',
+          style: TextStyle(color: Color(0xFF94a3b8), fontSize: 14),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Annuleren')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Bijstellen', style: TextStyle(color: Color(0xFF6366f1))),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    setState(() => _recalibrating = true);
+    try {
+      final res = await _api.regeneratePlan(_plan!.publicId);
+      final updatedPlan = Plan.fromJson(res.data);
+      setState(() => _plan = updatedPlan);
+      if (mounted) {
+        _showPaceZonesResult(updatedPlan.paceZones);
+      }
+    } catch (e) {
+      final msg = e.toString().contains('400')
+          ? 'Geen voltooide trainingen gevonden — voltooi eerst een paar runs via Garmin sync.'
+          : 'Bijstellen mislukt: ${e.toString().split('\n').first}';
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(msg), backgroundColor: const Color(0xFF1e293b)),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _recalibrating = false);
+    }
+  }
+
+  void _showPaceZonesResult(Map<String, dynamic>? zones) {
+    if (zones == null) return;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1e293b),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => _PaceZonesSheet(zones: zones),
+    );
   }
 
   int _detectCurrentWeek(Plan plan) {
@@ -112,12 +166,24 @@ class _PlanScreenState extends State<PlanScreen> {
         appBar: AppBar(
           title: Text(_plan?.title ?? 'Trainingsplan'),
           actions: [
-            if (_plan != null)
+            if (_plan != null) ...[
+              if (_recalibrating)
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 12),
+                  child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+                )
+              else
+                IconButton(
+                  icon: const Icon(Icons.speed_outlined),
+                  tooltip: 'Tempo zones bijstellen',
+                  onPressed: _recalibratePaces,
+                ),
               IconButton(
                 icon: const Icon(Icons.tune),
                 tooltip: 'Bulk bewerken',
                 onPressed: () => _showBulkEdit(),
               ),
+            ],
             IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
           ],
         ),
@@ -898,6 +964,70 @@ class _SessionEditFormState extends State<_SessionEditForm> {
       ),
     );
   }
+}
+
+// ── Pace zones result sheet ─────────────────────────────────────────────────
+
+class _PaceZonesSheet extends StatelessWidget {
+  final Map<String, dynamic> zones;
+  const _PaceZonesSheet({required this.zones});
+
+  static const _zoneConfig = [
+    {'key': 'easy',       'label': 'Rustig',    'color': Color(0xFF22c55e)},
+    {'key': 'marathon',   'label': 'Marathon',  'color': Color(0xFF3b82f6)},
+    {'key': 'threshold',  'label': 'Drempel',   'color': Color(0xFFf59e0b)},
+    {'key': 'interval',   'label': 'Interval',  'color': Color(0xFFef4444)},
+    {'key': 'repetition', 'label': 'Herhaling', 'color': Color(0xFF8b5cf6)},
+  ];
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(20, 20, 20, 36),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(children: [
+          const Icon(Icons.speed_outlined, color: Color(0xFF6366f1), size: 20),
+          const SizedBox(width: 10),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Tempo zones bijgesteld', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                Text('Op basis van je laatste activiteiten', style: TextStyle(color: Color(0xFF64748b), fontSize: 12)),
+              ],
+            ),
+          ),
+          IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close, color: Color(0xFF64748b))),
+        ]),
+        const SizedBox(height: 16),
+        ..._zoneConfig.map((z) {
+          final pace = zones[z['key']];
+          if (pace == null) return const SizedBox.shrink();
+          final color = z['color'] as Color;
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: color.withOpacity(0.2)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(z['label'] as String, style: const TextStyle(color: Color(0xFF94a3b8), fontSize: 13)),
+                  Text('$pace /km', style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13, fontFamily: 'monospace')),
+                ],
+              ),
+            ),
+          );
+        }),
+      ],
+    ),
+  );
 }
 
 // ── Garmin week push button ─────────────────────────────────────────────────
