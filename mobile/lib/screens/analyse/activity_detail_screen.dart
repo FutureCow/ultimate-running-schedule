@@ -337,7 +337,7 @@ class _ChartCard extends StatelessWidget {
                     sideTitles: SideTitles(
                       showTitles: true,
                       reservedSize: 44,
-                      interval: yInterval,
+                      interval: reversed && yInterval != null ? -yInterval! : yInterval,
                       getTitlesWidget: (v, meta) {
                         if (v == meta.min || v == meta.max) return const SizedBox.shrink();
                         return Text(
