@@ -9,7 +9,7 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 from app.database import Base
-from app.models import user, plan, garmin  # noqa – register all models
+from app.models import user, plan, garmin, friendship  # noqa – register all models
 target_metadata = Base.metadata
 
 

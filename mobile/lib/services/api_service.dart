@@ -138,4 +138,23 @@ class ApiService {
       _dio.post('/garmin/push/week', data: {'plan_id': publicId, 'week_number': weekNumber});
   Future<Response> removeGarminSession(int sessionId) =>
       _dio.delete('/garmin/sessions/$sessionId');
+
+  // Friends
+  Future<Response> searchFriends(String name) =>
+      _dio.post('/friends/search', data: {'name': name});
+  Future<Response> sendFriendRequest(int addresseeId) =>
+      _dio.post('/friends/request/$addresseeId');
+  Future<Response> getFriendRequests() => _dio.get('/friends/requests');
+  Future<Response> getSentRequests() => _dio.get('/friends/sent');
+  Future<Response> acceptFriendRequest(int friendshipId) =>
+      _dio.post('/friends/requests/$friendshipId/accept');
+  Future<Response> declineFriendRequest(int friendshipId) =>
+      _dio.delete('/friends/requests/$friendshipId');
+  Future<Response> getFriends() => _dio.get('/friends');
+  Future<Response> removeFriend(int friendId) =>
+      _dio.delete('/friends/$friendId');
+  Future<Response> getFriendActivities(int friendId) =>
+      _dio.get('/friends/$friendId/activities');
+  Future<Response> getFriendActivity(int friendId, String activityId) =>
+      _dio.get('/friends/$friendId/activity/$activityId');
 }

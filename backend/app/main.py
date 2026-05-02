@@ -10,7 +10,7 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from app.config import settings
 from app.database import init_db
-from app.routers import auth, garmin, plans, sessions, admin
+from app.routers import auth, garmin, plans, sessions, admin, friends
 
 limiter = Limiter(key_func=get_remote_address, default_limits=[])
 
@@ -50,6 +50,7 @@ app.include_router(garmin.router, prefix="/api/v1")
 app.include_router(plans.router, prefix="/api/v1")
 app.include_router(sessions.router, prefix="/api/v1")
 app.include_router(admin.router, prefix="/api/v1")
+app.include_router(friends.router, prefix="/api/v1")
 
 upload_dir = "/app/uploads"
 os.makedirs(upload_dir, exist_ok=True)

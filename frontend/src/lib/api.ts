@@ -124,6 +124,20 @@ export const sessionsApi = {
   reset: (id: number) => api.post(`/sessions/${id}/reset`),
 };
 
+// Friends
+export const friendsApi = {
+  search: (name: string) => api.post("/friends/search", { name }),
+  sendRequest: (addresseeId: number) => api.post(`/friends/request/${addresseeId}`),
+  listRequests: () => api.get("/friends/requests"),
+  listSent: () => api.get("/friends/sent"),
+  acceptRequest: (friendshipId: number) => api.post(`/friends/requests/${friendshipId}/accept`),
+  declineRequest: (friendshipId: number) => api.delete(`/friends/requests/${friendshipId}`),
+  list: () => api.get("/friends"),
+  remove: (friendId: number) => api.delete(`/friends/${friendId}`),
+  getActivities: (friendId: number) => api.get(`/friends/${friendId}/activities`),
+  getActivity: (friendId: number, activityId: string) => api.get(`/friends/${friendId}/activity/${activityId}`),
+};
+
 // Garmin
 export const garminApi = {
   saveCredentials: (email: string, password: string) => api.post("/garmin/credentials", { email, password }),

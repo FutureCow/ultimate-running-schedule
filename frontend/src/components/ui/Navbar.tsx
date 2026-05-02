@@ -4,7 +4,7 @@ import { useRef, useState, useEffect } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { Link, usePathname, useRouter } from "@/i18n/navigation";
 import { motion } from "framer-motion";
-import { LayoutDashboard, Plus, Settings, LogOut, ChevronDown, Sun, Moon, Calendar, BarChart2 } from "lucide-react";
+import { LayoutDashboard, Plus, Settings, LogOut, ChevronDown, Sun, Moon, Calendar, BarChart2, Users } from "lucide-react";
 import { logout } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/components/ui/ThemeProvider";
@@ -72,6 +72,7 @@ export function Navbar() {
       : []),
     { href: "/plans/new" as const, label: t("newPlan"), icon: Plus },
     { href: "/analyse" as const, label: t("analyse"), icon: BarChart2 },
+    { href: "/friends" as const, label: t("friends"), icon: Users },
     { href: "/settings" as const, label: t("settings"), icon: Settings },
   ];
 
@@ -240,6 +241,23 @@ export function Navbar() {
             >
               <BarChart2 className="w-5 h-5" />
               <span className="text-[10px] font-medium">{t("analyse")}</span>
+              {active && <motion.div layoutId="mob-active" className="w-1 h-1 bg-brand-400 rounded-full" />}
+            </Link>
+          );
+        })()}
+
+        {(() => {
+          const active = pathname.startsWith("/friends");
+          return (
+            <Link
+              href="/friends"
+              className={cn(
+                "flex flex-col items-center gap-1 px-4 py-1.5 rounded-xl transition-all duration-200",
+                active ? "text-brand-400" : "text-slate-500 hover:text-slate-300"
+              )}
+            >
+              <Users className="w-5 h-5" />
+              <span className="text-[10px] font-medium">{t("friends")}</span>
               {active && <motion.div layoutId="mob-active" className="w-1 h-1 bg-brand-400 rounded-full" />}
             </Link>
           );

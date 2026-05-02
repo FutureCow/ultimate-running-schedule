@@ -31,7 +31,8 @@
     "settings": "Instellingen",
     "logout": "Uitloggen",
     "subtitle": "Ritme brengen in je training",
-    "analyse": "Analyse"
+    "analyse": "Analyse",
+    "friends": "Vrienden"
   },
   "auth": {
     "login": {
@@ -505,6 +506,36 @@
     "footer": {
       "tagline": "Ritme brengen in je training"
     }
+  },
+  "friends": {
+    "title": "Vrienden",
+    "subtitle": "Zoek vrienden en bekijk hun trainingsactiviteiten.",
+    "searchLabel": "Zoek op naam",
+    "searchPlaceholder": "Voor- en achternaam",
+    "searchButton": "Zoeken",
+    "noResults": "Geen gebruiker gevonden met deze naam.",
+    "sendRequest": "Vriendschapsverzoek sturen",
+    "requestSent": "Verzoek verstuurd",
+    "requestPending": "In behandeling",
+    "incoming": "Verzoek ontvangen",
+    "accept": "Accepteren",
+    "decline": "Weigeren",
+    "cancel": "Annuleren",
+    "remove": "Vriend verwijderen",
+    "removeConfirm": "Vriend verwijderen?",
+    "pendingRequests": "Openstaande verzoeken",
+    "noPendingRequests": "Geen openstaande verzoeken.",
+    "friendsList": "Mijn vrienden",
+    "noFriends": "Nog geen vrienden toegevoegd.",
+    "activities": "Activiteiten",
+    "noActivities": "Geen activiteiten gevonden.",
+    "viewActivity": "Bekijk",
+    "alreadyFriends": "Jullie zijn al vrienden",
+    "errorSearch": "Zoeken mislukt. Probeer opnieuw.",
+    "errorRequest": "Verzoek sturen mislukt.",
+    "errorAccept": "Accepteren mislukt.",
+    "errorDecline": "Weigeren mislukt.",
+    "errorActivities": "Activiteiten laden mislukt."
   },
   "days": {
     "full": {

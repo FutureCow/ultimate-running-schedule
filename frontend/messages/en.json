@@ -31,7 +31,8 @@
     "settings": "Settings",
     "logout": "Log out",
     "subtitle": "Bringing rhythm to your training",
-    "analyse": "Analyse"
+    "analyse": "Analyse",
+    "friends": "Friends"
   },
   "auth": {
     "login": {
@@ -505,6 +506,36 @@
     "footer": {
       "tagline": "Bringing rhythm to your training"
     }
+  },
+  "friends": {
+    "title": "Friends",
+    "subtitle": "Search for friends and view their training activities.",
+    "searchLabel": "Search by name",
+    "searchPlaceholder": "First and last name",
+    "searchButton": "Search",
+    "noResults": "No user found with this name.",
+    "sendRequest": "Send friend request",
+    "requestSent": "Request sent",
+    "requestPending": "Pending",
+    "incoming": "Incoming request",
+    "accept": "Accept",
+    "decline": "Decline",
+    "cancel": "Cancel",
+    "remove": "Remove friend",
+    "removeConfirm": "Remove this friend?",
+    "pendingRequests": "Pending requests",
+    "noPendingRequests": "No pending requests.",
+    "friendsList": "My friends",
+    "noFriends": "No friends added yet.",
+    "activities": "Activities",
+    "noActivities": "No activities found.",
+    "viewActivity": "View",
+    "alreadyFriends": "Already friends",
+    "errorSearch": "Search failed. Please try again.",
+    "errorRequest": "Failed to send request.",
+    "errorAccept": "Failed to accept request.",
+    "errorDecline": "Failed to decline request.",
+    "errorActivities": "Failed to load activities."
   },
   "days": {
     "full": {

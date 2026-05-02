@@ -7,7 +7,8 @@ import '../../services/api_service.dart';
 
 class ActivityDetailScreen extends StatefulWidget {
   final String activityId;
-  const ActivityDetailScreen({super.key, required this.activityId});
+  final int? friendId;
+  const ActivityDetailScreen({super.key, required this.activityId, this.friendId});
 
   @override
   State<ActivityDetailScreen> createState() => _ActivityDetailScreenState();
@@ -26,7 +27,9 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
 
   Future<void> _load() async {
     try {
-      final res = await _api.getActivity(widget.activityId);
+      final res = widget.friendId != null
+          ? await _api.getFriendActivity(widget.friendId!, widget.activityId)
+          : await _api.getActivity(widget.activityId);
       setState(() => _detail = ActivityDetail.fromJson(res.data));
     } catch (_) {
     } finally {
