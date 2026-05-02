@@ -6,6 +6,8 @@ class ApiService {
   static final ApiService _instance = ApiService._internal();
   factory ApiService() => _instance;
 
+  static String get baseUrl => AppConfig.apiBaseUrl;
+
   late final Dio _dio;
   final _storage = const FlutterSecureStorage();
   bool _refreshing = false;
@@ -91,6 +93,15 @@ class ApiService {
   Future<Response> getMe() => _dio.get('/auth/profile');
   Future<Response> updateProfile(Map<String, dynamic> data) =>
       _dio.patch('/auth/profile', data: data);
+  Future<Response> uploadAvatar(String filePath) {
+    final form = FormData.fromMap({
+      'file': MultipartFile.fromFileSync(filePath,
+          filename: filePath.split('/').last),
+    });
+    return _dio.post('/auth/profile/avatar',
+        data: form,
+        options: Options(contentType: 'multipart/form-data'));
+  }
 
   // Plans
   Future<Response> getPlans() => _dio.get('/plans');

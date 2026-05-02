@@ -9,8 +9,8 @@ import { logout } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/components/ui/ThemeProvider";
 import { useQuery } from "@tanstack/react-query";
-import { plansApi, garminApi } from "@/lib/api";
-import { Plan } from "@/types";
+import { plansApi, garminApi, profileApi } from "@/lib/api";
+import { Plan, UserProfile } from "@/types";
 
 const LOCALES = [
   { code: "nl", flag: "🇳🇱", label: "Nederlands", short: "NL" },
@@ -33,6 +33,13 @@ export function Navbar() {
     queryFn: () => plansApi.list().then((r) => r.data),
   });
   const activePlan = plans[0] ?? null;
+
+  const { data: userProfile } = useQuery<UserProfile>({
+    queryKey: ["user-profile"],
+    queryFn: () => profileApi.get().then((r) => r.data),
+  });
+
+  const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL?.replace("/api/v1", "") ?? "http://localhost:8000";
   const langRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -156,6 +163,33 @@ export function Navbar() {
           }
           {resolved === "dark" ? "Light mode" : "Dark mode"}
         </button>
+
+        {/* User info */}
+        {userProfile && (
+          <Link href="/settings" className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-surface-elevated transition-all group">
+            {userProfile.avatar_url ? (
+              <img
+                src={`${apiBaseUrl}${userProfile.avatar_url}`}
+                alt="avatar"
+                className="w-8 h-8 rounded-full object-cover shrink-0 border border-slate-600"
+              />
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-brand-500/20 border border-brand-500/30 flex items-center justify-center shrink-0">
+                <span className="text-sm font-bold text-brand-400">
+                  {(userProfile.name ?? userProfile.email ?? "?").charAt(0).toUpperCase()}
+                </span>
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-slate-300 truncate group-hover:text-white transition-colors">
+                {userProfile.name ?? userProfile.email ?? "–"}
+              </p>
+              {userProfile.name && (
+                <p className="text-[10px] text-slate-600 truncate">{userProfile.email}</p>
+              )}
+            </div>
+          </Link>
+        )}
 
         <button
           onClick={logout}

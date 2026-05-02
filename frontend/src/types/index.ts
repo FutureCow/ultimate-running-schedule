@@ -8,6 +8,8 @@ export interface User {
 export type UserTier = "base" | "tempo" | "elite";
 
 export interface UserProfile {
+  name?: string | null;
+  avatar_url?: string | null;
   age?: number | null;
   height_cm?: number | null;
   weight_kg?: number | null;
@@ -17,6 +19,7 @@ export interface UserProfile {
   max_hr?: number | null;
   is_admin?: boolean;
   tier?: UserTier;
+  email?: string;
 }
 
 export interface AuthTokens {

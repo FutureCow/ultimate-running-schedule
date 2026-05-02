@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/api_service.dart';
@@ -13,18 +15,22 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   final _api = ApiService();
+  final _nameCtrl = TextEditingController();
   final _ageCtrl = TextEditingController();
   final _maxHrCtrl = TextEditingController();
   final _weeklyKmCtrl = TextEditingController();
   bool _saving = false;
   String? _saveError;
   bool _saved = false;
+  bool _uploadingAvatar = false;
+  String? _avatarError;
 
   @override
   void initState() {
     super.initState();
     final user = context.read<AuthProvider>().user;
     if (user != null) {
+      _nameCtrl.text = user.name;
       _ageCtrl.text = user.age?.toString() ?? '';
       _maxHrCtrl.text = user.maxHr?.toString() ?? '';
       _weeklyKmCtrl.text = user.weeklyKm?.toStringAsFixed(0) ?? '';
@@ -33,16 +39,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   void dispose() {
+    _nameCtrl.dispose();
     _ageCtrl.dispose();
     _maxHrCtrl.dispose();
     _weeklyKmCtrl.dispose();
     super.dispose();
   }
 
+  Future<void> _pickAndUploadAvatar() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 85, maxWidth: 512);
+    if (picked == null) return;
+    setState(() { _uploadingAvatar = true; _avatarError = null; });
+    try {
+      await _api.uploadAvatar(picked.path);
+      await context.read<AuthProvider>().reloadUser();
+    } catch (e) {
+      if (mounted) setState(() => _avatarError = 'Upload mislukt');
+    } finally {
+      if (mounted) setState(() => _uploadingAvatar = false);
+    }
+  }
+
   Future<void> _save() async {
     setState(() { _saving = true; _saveError = null; _saved = false; });
     try {
       await _api.updateProfile({
+        'name': _nameCtrl.text,
         if (_ageCtrl.text.isNotEmpty) 'age': int.parse(_ageCtrl.text),
         if (_maxHrCtrl.text.isNotEmpty) 'max_hr': int.parse(_maxHrCtrl.text),
         if (_weeklyKmCtrl.text.isNotEmpty) 'weekly_km': double.parse(_weeklyKmCtrl.text),
@@ -54,6 +77,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
     } finally {
       if (mounted) setState(() => _saving = false);
     }
+  }
+
+  Widget _buildAvatar(user) {
+    final apiBase = ApiService.baseUrl.replaceAll('/api/v1', '');
+    if (user?.avatarUrl != null) {
+      return CircleAvatar(
+        radius: 28,
+        backgroundImage: NetworkImage('$apiBase${user!.avatarUrl}'),
+      );
+    }
+    return CircleAvatar(
+      radius: 28,
+      backgroundColor: const Color(0xFF6366f1).withOpacity(0.2),
+      child: Text(
+        (user?.name.isNotEmpty == true ? user!.name[0] : '?').toUpperCase(),
+        style: const TextStyle(color: Color(0xFF6366f1), fontSize: 22, fontWeight: FontWeight.bold),
+      ),
+    );
   }
 
   @override
@@ -72,23 +113,38 @@ class _SettingsScreenState extends State<SettingsScreen> {
               borderRadius: BorderRadius.circular(16),
             ),
             child: Row(children: [
-              CircleAvatar(
-                radius: 28,
-                backgroundColor: const Color(0xFF6366f1).withOpacity(0.2),
-                child: Text(
-                  (user?.name.isNotEmpty == true ? user!.name[0] : '?').toUpperCase(),
-                  style: const TextStyle(color: Color(0xFF6366f1), fontSize: 22, fontWeight: FontWeight.bold),
+              GestureDetector(
+                onTap: _pickAndUploadAvatar,
+                child: Stack(
+                  children: [
+                    _buildAvatar(user),
+                    Positioned(
+                      bottom: 0, right: 0,
+                      child: Container(
+                        width: 22, height: 22,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF6366f1),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: const Color(0xFF1e293b), width: 2),
+                        ),
+                        child: _uploadingAvatar
+                            ? const Padding(
+                                padding: EdgeInsets.all(4),
+                                child: CircularProgressIndicator(strokeWidth: 1.5, color: Colors.white),
+                              )
+                            : const Icon(Icons.camera_alt, size: 12, color: Colors.white),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(width: 14),
               Expanded(child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(user?.name ?? '–',
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
                   Text(user?.email ?? '–',
-                      style: const TextStyle(color: Color(0xFF64748b), fontSize: 13)),
-                  const SizedBox(height: 4),
+                      style: const TextStyle(color: Color(0xFF64748b), fontSize: 12)),
+                  const SizedBox(height: 2),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
@@ -104,8 +160,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
               )),
             ]),
           ),
+          if (_avatarError != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(_avatarError!, style: const TextStyle(color: Colors.red, fontSize: 12)),
+            ),
 
           const SizedBox(height: 24),
+          const _SectionHeader('Profiel'),
+          _ProfileField(
+            label: 'Naam',
+            hint: 'bijv. Jan de Vries',
+            controller: _nameCtrl,
+            suffix: '',
+            keyboardType: TextInputType.name,
+          ),
+          const SizedBox(height: 12),
           const _SectionHeader('Atletenprofiel'),
 
           _ProfileField(

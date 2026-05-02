@@ -67,9 +67,14 @@ export const adminApi = {
 export const profileApi = {
   get: () => api.get("/auth/profile"),
   update: (data: Partial<{
-    age: number; height_cm: number; weight_kg: number;
+    name: string; age: number; height_cm: number; weight_kg: number;
     weekly_km: number; weekly_runs: number; injuries: string; max_hr: number;
   }>) => api.patch("/auth/profile", data),
+  uploadAvatar: (file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    return api.post("/auth/profile/avatar", form, { headers: { "Content-Type": "multipart/form-data" } });
+  },
 };
 
 // Plans

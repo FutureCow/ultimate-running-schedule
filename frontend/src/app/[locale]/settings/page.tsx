@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { useTranslations, useLocale } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
-import { Watch, Trash2, RefreshCw, CheckCircle2, AlertCircle, Lock, Globe, User, Sun, Moon, Monitor, ShieldCheck } from "lucide-react";
+import { Watch, Trash2, RefreshCw, CheckCircle2, AlertCircle, Lock, Globe, User, Sun, Moon, Monitor, ShieldCheck, Camera } from "lucide-react";
 import { useTheme } from "@/components/ui/ThemeProvider";
 import { garminApi, profileApi } from "@/lib/api";
 import { Link } from "@/i18n/navigation";
@@ -38,6 +38,10 @@ export default function SettingsPage() {
   const [profileError, setProfileError] = useState("");
   const [profile, setProfile] = useState<UserProfile>({});
   const [profileLoaded, setProfileLoaded] = useState(false);
+  const [avatarError, setAvatarError] = useState("");
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL?.replace("/api/v1", "") ?? "http://localhost:8000";
 
   const { data: garminStatus, isLoading: garminLoading } = useQuery<GarminStatus>({
     queryKey: ["garmin-status"],
@@ -113,8 +117,24 @@ export default function SettingsPage() {
     onError: (e: any) => setSyncStatus({ error: e?.response?.data?.detail || tg("syncFailed") }),
   });
 
+  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAvatarUploading(true); setAvatarError("");
+    try {
+      await profileApi.uploadAvatar(file);
+      qc.invalidateQueries({ queryKey: ["user-profile"] });
+    } catch (err: any) {
+      setAvatarError(err?.response?.data?.detail ?? "Upload mislukt");
+    } finally {
+      setAvatarUploading(false);
+      if (avatarInputRef.current) avatarInputRef.current.value = "";
+    }
+  }
+
   const profileMutation = useMutation({
     mutationFn: () => profileApi.update({
+      name: profile.name ?? undefined,
       age: profile.age ?? undefined,
       height_cm: profile.height_cm ?? undefined,
       weight_kg: profile.weight_kg ?? undefined,
@@ -221,6 +241,51 @@ export default function SettingsPage() {
             </div>
           ) : (
             <>
+              {/* Avatar + name */}
+              <div className="flex items-center gap-4">
+                <div className="relative shrink-0">
+                  {profile.avatar_url ? (
+                    <img
+                      src={`${apiBaseUrl}${profile.avatar_url}`}
+                      alt="avatar"
+                      className="w-16 h-16 rounded-full object-cover border-2 border-brand-500/30"
+                    />
+                  ) : (
+                    <div className="w-16 h-16 rounded-full bg-brand-500/20 border-2 border-brand-500/30 flex items-center justify-center">
+                      <span className="text-2xl font-bold text-brand-400">
+                        {profile.name?.charAt(0).toUpperCase() ?? profile.email?.charAt(0).toUpperCase() ?? "?"}
+                      </span>
+                    </div>
+                  )}
+                  <button
+                    onClick={() => avatarInputRef.current?.click()}
+                    disabled={avatarUploading}
+                    className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-brand-500 flex items-center justify-center shadow-lg hover:bg-brand-400 transition-colors"
+                  >
+                    {avatarUploading
+                      ? <span className="w-3 h-3 rounded-full border border-white border-t-transparent animate-spin" />
+                      : <Camera className="w-3 h-3 text-white" />
+                    }
+                  </button>
+                  <input ref={avatarInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleAvatarChange} />
+                </div>
+                <div className="flex-1">
+                  <label className="label">Naam</label>
+                  <input
+                    type="text"
+                    className="input"
+                    placeholder="Jouw naam"
+                    value={profile.name ?? ""}
+                    onChange={(e) => setProfile((p) => ({ ...p, name: e.target.value || null }))}
+                  />
+                </div>
+              </div>
+              {avatarError && (
+                <div className="flex items-center gap-2 rounded-lg bg-red-500/10 border border-red-500/20 px-3 py-2 text-sm text-red-400">
+                  <AlertCircle className="w-4 h-4 shrink-0" />{avatarError}
+                </div>
+              )}
+
               <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="label">{tp("age")}</label>
