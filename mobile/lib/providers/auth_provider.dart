@@ -25,7 +25,7 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> _loadUser() async {
+  Future<void> _loadUser({int _retries = 1}) async {
     try {
       final res = await _api.getMe();
       _user = User.fromJson(res.data as Map<String, dynamic>);
@@ -39,18 +39,26 @@ class AuthProvider extends ChangeNotifier {
           msg.contains('Failed host lookup') ||
           msg.contains('Network');
 
+      // Transient failures worth retrying:
+      // - Network error (device just woke up, DNS not ready yet)
+      // - 401 but tokens still present (token refresh failed due to network,
+      //   NOT because the server rejected the refresh token — in that case
+      //   clearTokens() would have run and hasToken() would return false)
+      final isTransient = isNetwork || (is401 && await _api.hasToken());
+
+      if (isTransient && _retries > 0) {
+        await Future.delayed(const Duration(milliseconds: 1500));
+        return _loadUser(_retries: _retries - 1);
+      }
+
       if (is401) {
-        // Refresh token was rejected by server — must re-login
         _state = AuthState.unauthenticated;
         _error = null;
-      } else if (isNetwork && _state == AuthState.unknown) {
-        // Transient network error on startup — keep tokens, show as unauthenticated
-        // without wiping session so next open will retry
-        _state = AuthState.unauthenticated;
-        _error = 'Geen internetverbinding. Probeer opnieuw.';
       } else {
         _state = AuthState.unauthenticated;
-        _error = _parseError(e);
+        _error = isNetwork
+            ? 'Geen internetverbinding. Probeer opnieuw.'
+            : _parseError(e);
       }
     }
     notifyListeners();
