@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../config/app_config.dart';
@@ -98,19 +99,21 @@ class ApiService {
   Future<Response> getMe() => _dio.get('/auth/profile');
   Future<Response> updateProfile(Map<String, dynamic> data) =>
       _dio.patch('/auth/profile', data: data);
-  Future<Response> uploadAvatar(String filePath) {
+  Future<Response> uploadAvatar(String filePath) async {
     final ext = filePath.split('.').last.toLowerCase();
     final contentType = ext == 'png'
         ? DioMediaType('image', 'png')
         : ext == 'webp'
             ? DioMediaType('image', 'webp')
             : DioMediaType('image', 'jpeg');
+    final bytes = await File(filePath).readAsBytes();
     final form = FormData.fromMap({
-      'file': MultipartFile.fromFileSync(filePath,
+      'file': MultipartFile.fromBytes(bytes,
           filename: filePath.split('/').last,
           contentType: contentType),
     });
-    return _dio.post('/auth/profile/avatar', data: form);
+    return _dio.post('/auth/profile/avatar', data: form,
+        options: Options(headers: {Headers.contentTypeHeader: null}));
   }
 
   // Plans
