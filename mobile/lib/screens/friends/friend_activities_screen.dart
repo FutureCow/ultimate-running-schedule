@@ -164,12 +164,7 @@ class _FriendActivitiesScreenState extends State<FriendActivitiesScreen> {
                       ),
       );
 
-  String _paceStr(dynamic secPerKm) {
-    final s = (secPerKm as num).toInt();
-    final m = s ~/ 60;
-    final sec = s % 60;
-    return '$m:${sec.toString().padLeft(2, '0')}';
-  }
+
 }
 
 class _FriendAvatar extends StatelessWidget {
