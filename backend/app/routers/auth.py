@@ -66,7 +66,13 @@ async def refresh(payload: RefreshRequest, db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/profile", response_model=UserProfileResponse)
-async def get_profile(user: User = Depends(get_current_user)):
+async def get_profile(
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    if user.avatar_url and user.avatar_url.startswith("/uploads/"):
+        user.avatar_url = "/api/v1" + user.avatar_url
+        await db.commit()
     return user
 
 
@@ -153,7 +159,7 @@ async def upload_avatar(
     with open(os.path.join(upload_dir, filename), "wb") as f:
         f.write(jpeg_bytes)
 
-    user.avatar_url = f"/uploads/avatars/{filename}"
+    user.avatar_url = f"/api/v1/uploads/avatars/{filename}"
     await db.commit()
     await db.refresh(user)
     return user

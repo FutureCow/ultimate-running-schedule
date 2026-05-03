@@ -54,7 +54,7 @@ app.include_router(friends.router, prefix="/api/v1")
 
 upload_dir = "/app/uploads"
 os.makedirs(upload_dir, exist_ok=True)
-app.mount("/uploads", StaticFiles(directory=upload_dir), name="uploads")
+app.mount("/api/v1/uploads", StaticFiles(directory=upload_dir), name="uploads")
 
 
 @app.get("/health")
