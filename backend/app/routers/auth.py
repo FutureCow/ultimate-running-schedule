@@ -133,9 +133,6 @@ async def upload_avatar(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    if file.content_type not in ("image/jpeg", "image/png", "image/webp"):
-        raise HTTPException(status_code=422, detail="Only JPEG, PNG or WebP images are allowed")
-
     data = await file.read()
     if len(data) > 5 * 1024 * 1024:
         raise HTTPException(status_code=413, detail="Image must be smaller than 5 MB")
@@ -148,7 +145,7 @@ async def upload_avatar(
         img.save(buf, format="JPEG", quality=85)
         jpeg_bytes = buf.getvalue()
     except Exception:
-        raise HTTPException(status_code=422, detail="Could not process image")
+        raise HTTPException(status_code=422, detail="Kon afbeelding niet verwerken. Gebruik een JPEG, PNG of WebP.")
 
     upload_dir = "/app/uploads/avatars"
     os.makedirs(upload_dir, exist_ok=True)
