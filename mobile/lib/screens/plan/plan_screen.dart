@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import '../../models/plan.dart';
+import '../../providers/auth_provider.dart';
 import '../../services/api_service.dart';
 import '../../widgets/session_card.dart';
 
@@ -234,6 +236,8 @@ class _PlanScreenState extends State<PlanScreen> {
   @override
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(
+          leading: _AvatarLeading(user: context.watch<AuthProvider>().user),
+          leadingWidth: 56,
           title: Text(_plan?.title ?? 'Trainingsplan'),
           actions: [
             IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
@@ -411,6 +415,45 @@ class _PlanScreenState extends State<PlanScreen> {
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+class _AvatarLeading extends StatelessWidget {
+  final dynamic user;
+  const _AvatarLeading({this.user});
+
+  @override
+  Widget build(BuildContext context) {
+    final avatarUrl = user?.avatarUrl as String?;
+    final name = (user?.name as String?) ?? '';
+    final fallback = CircleAvatar(
+      radius: 17,
+      backgroundColor: const Color(0xFF6366f1).withOpacity(0.2),
+      child: Text(
+        name.isNotEmpty ? name[0].toUpperCase() : '?',
+        style: const TextStyle(color: Color(0xFF6366f1), fontWeight: FontWeight.bold, fontSize: 14),
+      ),
+    );
+    if (avatarUrl == null) {
+      return Padding(padding: const EdgeInsets.only(left: 12), child: Center(child: fallback));
+    }
+    return Padding(
+      padding: const EdgeInsets.only(left: 12),
+      child: Center(
+        child: FutureBuilder<String?>(
+          future: ApiService().getAuthHeader(),
+          builder: (context, snap) {
+            if (!snap.hasData || snap.data == null) return fallback;
+            final url = '${ApiService.baseUrl.replaceAll('/api/v1', '')}$avatarUrl';
+            return ClipOval(
+              child: Image.network(url, width: 34, height: 34, fit: BoxFit.cover,
+                  headers: {'Authorization': snap.data!},
+                  errorBuilder: (_, __, ___) => fallback),
+            );
+          },
+        ),
       ),
     );
   }

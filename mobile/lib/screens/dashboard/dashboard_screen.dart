@@ -60,6 +60,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final user = context.watch<AuthProvider>().user;
     return Scaffold(
       appBar: AppBar(
+        leading: _AvatarLeading(user: user),
+        leadingWidth: 56,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -330,4 +332,46 @@ class _EmptyWeek extends StatelessWidget {
               style: TextStyle(color: Colors.grey[500])),
         ),
       );
+}
+
+class _AvatarLeading extends StatelessWidget {
+  final dynamic user;
+  const _AvatarLeading({this.user});
+
+  @override
+  Widget build(BuildContext context) {
+    final avatarUrl = user?.avatarUrl as String?;
+    final name = (user?.name as String?) ?? '';
+    final fallback = CircleAvatar(
+      radius: 17,
+      backgroundColor: const Color(0xFF6366f1).withOpacity(0.2),
+      child: Text(
+        name.isNotEmpty ? name[0].toUpperCase() : '?',
+        style: const TextStyle(color: Color(0xFF6366f1), fontWeight: FontWeight.bold, fontSize: 14),
+      ),
+    );
+    if (avatarUrl == null) {
+      return Padding(
+        padding: const EdgeInsets.only(left: 12),
+        child: Center(child: fallback),
+      );
+    }
+    return Padding(
+      padding: const EdgeInsets.only(left: 12),
+      child: Center(
+        child: FutureBuilder<String?>(
+          future: ApiService().getAuthHeader(),
+          builder: (context, snap) {
+            if (!snap.hasData || snap.data == null) return fallback;
+            final url = '${ApiService.baseUrl.replaceAll('/api/v1', '')}$avatarUrl';
+            return ClipOval(
+              child: Image.network(url, width: 34, height: 34, fit: BoxFit.cover,
+                  headers: {'Authorization': snap.data!},
+                  errorBuilder: (_, __, ___) => fallback),
+            );
+          },
+        ),
+      ),
+    );
+  }
 }
