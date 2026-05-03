@@ -39,7 +39,6 @@ export function Navbar() {
     queryFn: () => profileApi.get().then((r) => r.data),
   });
 
-  const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL?.replace("/api/v1", "") ?? "http://localhost:8000";
   const langRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -170,7 +169,7 @@ export function Navbar() {
           <Link href="/settings" className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-surface-elevated transition-all group">
             {userProfile.avatar_url ? (
               <img
-                src={`${apiBaseUrl}${userProfile.avatar_url}`}
+                src={profileApi.getAvatarUrl(userProfile.avatar_url) ?? ""}
                 alt="avatar"
                 className="w-8 h-8 rounded-full object-cover shrink-0 border border-slate-600"
               />

@@ -3,6 +3,7 @@ import os
 import secrets
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File, status
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from slowapi import Limiter
 from slowapi.util import get_remote_address
@@ -70,8 +71,9 @@ async def get_profile(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    if user.avatar_url and user.avatar_url.startswith("/uploads/"):
-        user.avatar_url = "/api/v1" + user.avatar_url
+    # Migrate old avatar URLs to the authenticated endpoint
+    if user.avatar_url and "/uploads/avatars/" in user.avatar_url:
+        user.avatar_url = f"/api/v1/auth/avatar/{user.id}"
         await db.commit()
     return user
 
@@ -159,7 +161,28 @@ async def upload_avatar(
     with open(os.path.join(upload_dir, filename), "wb") as f:
         f.write(jpeg_bytes)
 
-    user.avatar_url = f"/api/v1/uploads/avatars/{filename}"
+    user.avatar_url = f"/api/v1/auth/avatar/{user.id}"
     await db.commit()
     await db.refresh(user)
     return user
+
+
+@router.get("/avatar/{user_id}")
+async def get_avatar(
+    user_id: int,
+    token: str | None = None,
+    db: AsyncSession = Depends(get_db),
+    credentials=Depends(__import__("fastapi.security", fromlist=["HTTPBearer"]).HTTPBearer(auto_error=False)),
+):
+    """Serve avatar image — requires authentication via Bearer header or ?token= query param."""
+    from app.services import auth_service as _auth
+    raw = token or (credentials.credentials if credentials else None)
+    if not raw:
+        raise HTTPException(status_code=401, detail="Niet ingelogd")
+    payload = _auth.decode_token(raw)
+    if not payload or payload.get("type") != "access":
+        raise HTTPException(status_code=401, detail="Ongeldig token")
+    path = f"/app/uploads/avatars/{user_id}.jpg"
+    if not os.path.exists(path):
+        raise HTTPException(status_code=404, detail="Geen avatar gevonden")
+    return FileResponse(path, media_type="image/jpeg", headers={"Cache-Control": "private, max-age=3600"})

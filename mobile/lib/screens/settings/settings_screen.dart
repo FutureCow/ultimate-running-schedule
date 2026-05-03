@@ -79,22 +79,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildAvatar(user) {
-    final apiBase = ApiService.baseUrl.replaceAll('/api/v1', '');
     if (user?.avatarUrl != null) {
-      return CircleAvatar(
-        radius: 28,
-        backgroundImage: NetworkImage('$apiBase${user!.avatarUrl}'),
+      return FutureBuilder<String?>(
+        future: ApiService().getAuthHeader(),
+        builder: (context, snap) {
+          final headers = snap.hasData && snap.data != null
+              ? {'Authorization': snap.data!} : <String, String>{};
+          final url = '${ApiService.baseUrl.replaceAll('/api/v1', '')}${user!.avatarUrl}';
+          return ClipOval(
+            child: Image.network(url, width: 56, height: 56, fit: BoxFit.cover,
+                headers: headers,
+                errorBuilder: (_, __, ___) => _avatarFallback(user)),
+          );
+        },
       );
     }
-    return CircleAvatar(
-      radius: 28,
-      backgroundColor: const Color(0xFF6366f1).withOpacity(0.2),
-      child: Text(
-        (user?.name.isNotEmpty == true ? user!.name[0] : '?').toUpperCase(),
-        style: const TextStyle(color: Color(0xFF6366f1), fontSize: 22, fontWeight: FontWeight.bold),
-      ),
-    );
+    return _avatarFallback(user);
   }
+
+  Widget _avatarFallback(user) => CircleAvatar(
+        radius: 28,
+        backgroundColor: const Color(0xFF6366f1).withOpacity(0.2),
+        child: Text(
+          (user?.name.isNotEmpty == true ? user!.name[0] : '?').toUpperCase(),
+          style: const TextStyle(color: Color(0xFF6366f1), fontSize: 22, fontWeight: FontWeight.bold),
+        ),
+      );
 
   @override
   Widget build(BuildContext context) {

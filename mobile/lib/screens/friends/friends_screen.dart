@@ -351,15 +351,7 @@ class _UserTile extends StatelessWidget {
           ),
           child: Row(
             children: [
-              CircleAvatar(
-                radius: 18,
-                backgroundColor: const Color(0xFF6366f1).withOpacity(0.2),
-                backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl!) : null,
-                child: avatarUrl == null
-                    ? Text(name.isNotEmpty ? name[0].toUpperCase() : '?',
-                        style: const TextStyle(color: Color(0xFF6366f1), fontWeight: FontWeight.bold))
-                    : null,
-              ),
+              _AuthAvatar(avatarUrl: avatarUrl, name: name, radius: 18),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(name,
@@ -371,4 +363,35 @@ class _UserTile extends StatelessWidget {
           ),
         ),
       );
+}
+
+class _AuthAvatar extends StatelessWidget {
+  final String? avatarUrl;
+  final String name;
+  final double radius;
+  const _AuthAvatar({this.avatarUrl, required this.name, this.radius = 18});
+
+  @override
+  Widget build(BuildContext context) {
+    final fallback = CircleAvatar(
+      radius: radius,
+      backgroundColor: const Color(0xFF6366f1).withOpacity(0.2),
+      child: Text(name.isNotEmpty ? name[0].toUpperCase() : '?',
+          style: const TextStyle(color: Color(0xFF6366f1), fontWeight: FontWeight.bold)),
+    );
+    if (avatarUrl == null) return fallback;
+    return FutureBuilder<String?>(
+      future: ApiService().getAuthHeader(),
+      builder: (context, snap) {
+        final headers = snap.hasData && snap.data != null
+            ? {'Authorization': snap.data!} : <String, String>{};
+        final url = '${ApiService.baseUrl.replaceAll('/api/v1', '')}$avatarUrl';
+        return ClipOval(
+          child: Image.network(url, width: radius * 2, height: radius * 2, fit: BoxFit.cover,
+              headers: headers,
+              errorBuilder: (_, __, ___) => fallback),
+        );
+      },
+    );
+  }
 }

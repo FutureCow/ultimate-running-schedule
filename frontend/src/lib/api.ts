@@ -78,6 +78,12 @@ export const profileApi = {
     form.append("file", file);
     return api.post("/auth/profile/avatar", form);
   },
+  getAvatarUrl: (avatarPath: string | null | undefined): string | null => {
+    if (!avatarPath) return null;
+    const base = process.env.NEXT_PUBLIC_API_URL?.replace("/api/v1", "") ?? "http://localhost:8000";
+    const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
+    return `${base}${avatarPath}${token ? `?token=${token}` : ""}`;
+  },
 };
 
 // Plans

@@ -41,7 +41,6 @@ export default function SettingsPage() {
   const [avatarError, setAvatarError] = useState("");
   const [avatarUploading, setAvatarUploading] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
-  const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL?.replace("/api/v1", "") ?? "http://localhost:8000";
 
   const { data: garminStatus, isLoading: garminLoading } = useQuery<GarminStatus>({
     queryKey: ["garmin-status"],
@@ -247,7 +246,7 @@ export default function SettingsPage() {
                 <div className="relative shrink-0">
                   {profile.avatar_url ? (
                     <img
-                      src={`${apiBaseUrl}${profile.avatar_url}`}
+                      src={profileApi.getAvatarUrl(profile.avatar_url) ?? ""}
                       alt="avatar"
                       className="w-16 h-16 rounded-full object-cover border-2 border-brand-500/30"
                     />

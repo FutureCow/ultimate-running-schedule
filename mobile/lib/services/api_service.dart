@@ -95,6 +95,11 @@ class ApiService {
     return t != null;
   }
 
+  Future<String?> getAuthHeader() async {
+    final t = await _storage.read(key: 'access_token');
+    return t != null ? 'Bearer $t' : null;
+  }
+
   // Auth
   Future<Response> login(String email, String password) =>
       _dio.post('/auth/login', data: {'email': email, 'password': password});

@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 import { motion } from "framer-motion";
 import { Users, Search, Check, X, UserMinus, ChevronRight, UserPlus } from "lucide-react";
 import { Link } from "@/i18n/navigation";
-import { friendsApi } from "@/lib/api";
+import { friendsApi, profileApi } from "@/lib/api";
 import { Navbar } from "@/components/ui/Navbar";
 import { cn } from "@/lib/utils";
 
@@ -32,10 +32,9 @@ interface Friend {
 }
 
 function Avatar({ user, size = "md" }: { user: UserSummary; size?: "sm" | "md" }) {
-  const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL?.replace("/api/v1", "") ?? "http://localhost:8000";
   const cls = size === "sm" ? "w-7 h-7 text-xs" : "w-9 h-9 text-sm";
   if (user.avatar_url) {
-    return <img src={`${apiBaseUrl}${user.avatar_url}`} alt={user.name} className={cn(cls, "rounded-full object-cover border border-slate-600")} />;
+    return <img src={profileApi.getAvatarUrl(user.avatar_url) ?? ""} alt={user.name} className={cn(cls, "rounded-full object-cover border border-slate-600")} />;
   }
   return (
     <div className={cn(cls, "rounded-full bg-brand-500/20 border border-brand-500/30 flex items-center justify-center shrink-0")}>
