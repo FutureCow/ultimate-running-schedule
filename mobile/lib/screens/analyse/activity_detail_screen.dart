@@ -309,7 +309,7 @@ class _ChartCard extends StatelessWidget {
     final maxY = chartSpots.map((s) => s.y).reduce((a, b) => a > b ? a : b);
     final range = (maxY - minY).clamp(1.0, double.infinity);
     final padded = range * 0.1;
-    double? labelY(double v) => reversed ? -v : v;
+    double labelY(double v) => reversed ? -v : v;
 
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 14, 12, 8),
