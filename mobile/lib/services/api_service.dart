@@ -24,6 +24,9 @@ class ApiService {
       onRequest: (options, handler) async {
         final token = await _storage.read(key: 'access_token');
         if (token != null) options.headers['Authorization'] = 'Bearer $token';
+        if (options.data is FormData) {
+          options.headers.remove('Content-Type');
+        }
         handler.next(options);
       },
       onError: (err, handler) async {
