@@ -236,30 +236,37 @@ class _PlanScreenState extends State<PlanScreen> {
         appBar: AppBar(
           title: Text(_plan?.title ?? 'Trainingsplan'),
           actions: [
-            if (_plan != null) ...[
-              if (_recalibrating)
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 12),
-                  child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
-                )
-              else
-                IconButton(
-                  icon: const Icon(Icons.speed_outlined),
-                  tooltip: 'Tempo zones bijstellen',
-                  onPressed: _recalibratePaces,
-                ),
-              IconButton(
-                icon: const Icon(Icons.tune),
-                tooltip: 'Bulk bewerken',
-                onPressed: () => _showBulkEdit(),
-              ),
+            IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
+            if (_plan != null)
               PopupMenuButton<String>(
                 icon: const Icon(Icons.more_vert),
                 color: const Color(0xFF1e293b),
                 onSelected: (value) {
+                  if (value == 'pace') _recalibratePaces();
+                  if (value == 'bulk') _showBulkEdit();
                   if (value == 'reset') _resetPlan();
                 },
                 itemBuilder: (_) => [
+                  PopupMenuItem(
+                    value: 'pace',
+                    enabled: !_recalibrating,
+                    child: Row(children: [
+                      _recalibrating
+                          ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                          : const Icon(Icons.speed_outlined, size: 18, color: Color(0xFF6366f1)),
+                      const SizedBox(width: 10),
+                      const Text('Tempo zones bijstellen', style: TextStyle(color: Colors.white)),
+                    ]),
+                  ),
+                  const PopupMenuItem(
+                    value: 'bulk',
+                    child: Row(children: [
+                      Icon(Icons.tune, size: 18, color: Color(0xFF6366f1)),
+                      SizedBox(width: 10),
+                      Text('Bulk bewerken', style: TextStyle(color: Colors.white)),
+                    ]),
+                  ),
+                  const PopupMenuDivider(),
                   const PopupMenuItem(
                     value: 'reset',
                     child: Row(children: [
@@ -270,8 +277,6 @@ class _PlanScreenState extends State<PlanScreen> {
                   ),
                 ],
               ),
-            ],
-            IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
           ],
         ),
         body: _loading
