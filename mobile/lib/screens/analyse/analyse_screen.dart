@@ -20,6 +20,7 @@ class _AnalyseScreenState extends State<AnalyseScreen> {
   void initState() {
     super.initState();
     _load();
+    _api.autoSync().catchError((_) {});
   }
 
   Future<void> _load() async {

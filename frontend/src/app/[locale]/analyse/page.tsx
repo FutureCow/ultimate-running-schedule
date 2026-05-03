@@ -1,11 +1,12 @@
 "use client";
 
+import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { motion } from "framer-motion";
 import { Activity, ChevronRight, Clock, Ruler } from "lucide-react";
 import { Link } from "@/i18n/navigation";
-import { plansApi } from "@/lib/api";
+import { plansApi, garminApi } from "@/lib/api";
 import { Plan, WorkoutSession } from "@/types";
 import { Navbar } from "@/components/ui/Navbar";
 import { format, parseISO } from "date-fns";
@@ -30,6 +31,8 @@ export default function AnalysePage() {
   const t = useTranslations("analyse");
   const locale = useLocale();
   const dateFnsLocale = locale === "nl" ? nl : enUS;
+
+  useEffect(() => { garminApi.autoSync().catch(() => {}); }, []);
 
   const { data: plans = [], isLoading } = useQuery<Plan[]>({
     queryKey: ["plans"],

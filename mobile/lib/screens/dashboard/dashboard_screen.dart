@@ -23,6 +23,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void initState() {
     super.initState();
     _load();
+    _api.autoSync().catchError((_) {});
   }
 
   Future<void> _load() async {

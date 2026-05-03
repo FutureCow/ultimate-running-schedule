@@ -141,6 +141,7 @@ class ApiService {
       _dio.patch('/sessions/$sessionId/details', data: data);
 
   // Garmin / Activities
+  Future<Response> autoSync() => _dio.post('/garmin/auto-sync');
   Future<Response> getActivities() => _dio.get('/garmin/activities');
   Future<Response> getActivity(String id) => _dio.get('/garmin/activity/$id');
   Future<Response> syncGarmin() => _dio.post('/garmin/sync');

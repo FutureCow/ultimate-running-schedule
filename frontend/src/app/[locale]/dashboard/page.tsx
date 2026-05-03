@@ -1,11 +1,12 @@
 "use client";
 
+import { useEffect } from "react";
 import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslations, useLocale } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { Plus, TrendingUp, Calendar, Target, Zap, ChevronRight } from "lucide-react";
-import { plansApi } from "@/lib/api";
+import { plansApi, garminApi } from "@/lib/api";
 import { Plan } from "@/types";
 import { format, parseISO } from "date-fns";
 import { nl, enUS } from "date-fns/locale";
@@ -15,6 +16,8 @@ export default function DashboardPage() {
   const tGoals = useTranslations("goals");
   const locale = useLocale();
   const dateFnsLocale = locale === "nl" ? nl : enUS;
+
+  useEffect(() => { garminApi.autoSync().catch(() => {}); }, []);
 
   const { data: plans = [], isLoading } = useQuery<Plan[]>({
     queryKey: ["plans"],
