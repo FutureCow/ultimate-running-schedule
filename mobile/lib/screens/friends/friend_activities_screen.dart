@@ -28,7 +28,7 @@ class _FriendActivitiesScreenState extends State<FriendActivitiesScreen> {
     setState(() { _loading = true; _error = ''; });
     try {
       final res = await _api.getFriendActivities(widget.friendId);
-      setState(() => _activities = (res.data['activities'] as List? ?? []));
+      setState(() => _activities = (res.data as List? ?? []));
     } catch (_) {
       if (mounted) setState(() => _error = 'Activiteiten laden mislukt.');
     } finally {
@@ -95,13 +95,12 @@ class _FriendActivitiesScreenState extends State<FriendActivitiesScreen> {
                             final actName = (a['activity_name'] as String?)?.isNotEmpty == true
                                 ? a['activity_name'] as String
                                 : (a['name'] as String?) ?? 'Hardlooptraining';
-                            final distKm = a['distance_meters'] != null
-                                ? ((a['distance_meters'] as num) / 1000).toStringAsFixed(2)
-                                : null;
+                            final distKm = (a['distance_km'] as num?)
+                                ?.toStringAsFixed(2);
                             final dur = a['duration_seconds'] != null
                                 ? _fmtDuration((a['duration_seconds'] as num).toInt())
                                 : null;
-                            final pace = a['avg_pace_sec_per_km'];
+                            final pace = a['average_pace_per_km'] as String?;
 
                             return GestureDetector(
                               onTap: () => context.push(
@@ -148,8 +147,8 @@ class _FriendActivitiesScreenState extends State<FriendActivitiesScreen> {
                                                 _Chip(Icons.timer, dur),
                                                 const SizedBox(width: 8),
                                               ],
-                                              if (pace != null)
-                                                _Chip(Icons.speed, '${_paceStr(pace)} /km'),
+                                              if (pace != null && pace.isNotEmpty)
+                                                _Chip(Icons.speed, '$pace /km'),
                                             ],
                                           ),
                                         ],

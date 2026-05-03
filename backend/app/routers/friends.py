@@ -235,11 +235,27 @@ async def get_friend_activities(
 ):
     if not await _get_accepted_friendship(db, user.id, friend_id):
         raise HTTPException(status_code=403, detail="Geen toegang tot activiteiten van deze gebruiker")
-    try:
-        result = await garmin_service.fetch_activities(db, friend_id)
-        return result
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Activiteiten ophalen mislukt: {e}")
+    from app.models.garmin_activity import GarminActivity
+    from sqlalchemy import select
+    result = await db.execute(
+        select(GarminActivity)
+        .where(GarminActivity.user_id == friend_id)
+        .order_by(GarminActivity.start_time.desc())
+    )
+    rows = result.scalars().all()
+    return [
+        {
+            "activity_id": r.activity_id,
+            "activity_name": r.activity_name or "",
+            "activity_type": r.activity_type,
+            "start_time": r.start_time.isoformat() if r.start_time else "",
+            "distance_km": r.distance_km or 0,
+            "duration_seconds": r.duration_seconds,
+            "average_pace_per_km": r.avg_pace_per_km,
+            "average_heart_rate": r.avg_heart_rate,
+        }
+        for r in rows
+    ]
 
 
 @router.get("/{friend_id}/activity/{activity_id}")
