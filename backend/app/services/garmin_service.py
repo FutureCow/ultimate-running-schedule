@@ -321,6 +321,9 @@ async def fetch_activities(db: AsyncSession, user_id: int, months: int = 3, user
     avg_paces = [a["average_pace_per_km"] for a in activities if a["average_pace_per_km"]]
     weekly_km = total_km / (months * 4.3) if activities else 0
 
+    # Cache activities in DB
+    await _upsert_garmin_activities(db, user_id, activities)
+
     # Match activities to planned WorkoutSessions by date
     matched, newly_matched_ids = await _match_activities_to_sessions(db, user_id, activities, user_tier=user_tier)
 
@@ -336,6 +339,56 @@ async def fetch_activities(db: AsyncSession, user_id: int, months: int = 3, user
             "matched_sessions": matched,
         },
     }
+
+
+async def _upsert_garmin_activities(db: AsyncSession, user_id: int, activities: list[dict]) -> None:
+    from app.models.garmin_activity import GarminActivity
+    from sqlalchemy.dialects.postgresql import insert as pg_insert
+
+    if not activities:
+        return
+
+    now = datetime.now(timezone.utc)
+    for act in activities:
+        start_dt = None
+        if act.get("start_time"):
+            try:
+                start_dt = datetime.fromisoformat(act["start_time"].replace(" ", "T")).replace(tzinfo=timezone.utc)
+            except Exception:
+                pass
+
+        stmt = pg_insert(GarminActivity).values(
+            user_id=user_id,
+            activity_id=act["activity_id"],
+            activity_name=act.get("activity_name") or act.get("activityName"),
+            activity_type=act.get("activity_type"),
+            start_time=start_dt,
+            distance_km=act.get("distance_km"),
+            duration_seconds=act.get("duration_seconds"),
+            avg_pace_per_km=act.get("average_pace_per_km"),
+            avg_heart_rate=act.get("average_heart_rate"),
+            max_heart_rate=act.get("max_heart_rate"),
+            avg_cadence=act.get("average_cadence"),
+            elevation_gain_m=act.get("elevation_gain_m"),
+            synced_at=now,
+        ).on_conflict_do_update(
+            constraint="uq_user_activity",
+            set_=dict(
+                activity_name=act.get("activity_name") or act.get("activityName"),
+                activity_type=act.get("activity_type"),
+                start_time=start_dt,
+                distance_km=act.get("distance_km"),
+                duration_seconds=act.get("duration_seconds"),
+                avg_pace_per_km=act.get("average_pace_per_km"),
+                avg_heart_rate=act.get("average_heart_rate"),
+                max_heart_rate=act.get("max_heart_rate"),
+                avg_cadence=act.get("average_cadence"),
+                elevation_gain_m=act.get("elevation_gain_m"),
+                synced_at=now,
+            ),
+        )
+        await db.execute(stmt)
+    await db.commit()
 
 
 async def _match_activities_to_sessions(db: AsyncSession, user_id: int, activities: list[dict], user_tier: str = "elite") -> int:

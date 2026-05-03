@@ -179,37 +179,30 @@ async def list_activities(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    """Fetch activities from Garmin (same source as friend activities)."""
-    try:
-        result = await garmin_service.fetch_activities(db, user.id, user_tier=user.tier)
-        return result["activities"]
-    except Exception:
-        # Garmin not connected — fall back to DB
-        from app.models.plan import Plan, WorkoutSession
-        db_result = await db.execute(
-            select(WorkoutSession)
-            .join(WorkoutSession.plan)
-            .where(
-                Plan.user_id == user.id,
-                WorkoutSession.garmin_activity_id.isnot(None),
-            )
-            .order_by(WorkoutSession.scheduled_date.desc())
-        )
-        sessions = db_result.scalars().all()
-        return [
-            {
-                "activity_id": s.garmin_activity_id,
-                "activity_name": s.title,
-                "start_time": s.completed_at.isoformat() if s.completed_at else (s.scheduled_date.isoformat() if s.scheduled_date else ""),
-                "distance_km": s.distance_km or 0,
-                "duration_seconds": (s.duration_minutes * 60) if s.duration_minutes else None,
-                "average_pace_per_km": None,
-                "average_heart_rate": None,
-                "average_cadence": None,
-                "elevation_gain_m": None,
-            }
-            for s in sessions
-        ]
+    """Return cached Garmin activities from DB (populated during sync)."""
+    from app.models.garmin_activity import GarminActivity
+    result = await db.execute(
+        select(GarminActivity)
+        .where(GarminActivity.user_id == user.id)
+        .order_by(GarminActivity.start_time.desc())
+    )
+    rows = result.scalars().all()
+    return [
+        {
+            "activity_id": r.activity_id,
+            "activity_name": r.activity_name or "",
+            "activity_type": r.activity_type,
+            "start_time": r.start_time.isoformat() if r.start_time else "",
+            "distance_km": r.distance_km or 0,
+            "duration_seconds": r.duration_seconds,
+            "average_pace_per_km": r.avg_pace_per_km,
+            "average_heart_rate": r.avg_heart_rate,
+            "max_heart_rate": r.max_heart_rate,
+            "average_cadence": r.avg_cadence,
+            "elevation_gain_m": r.elevation_gain_m,
+        }
+        for r in rows
+    ]
 
 
 @router.get("/activity/{activity_id}")
