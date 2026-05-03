@@ -6,7 +6,8 @@ import '../../services/api_service.dart';
 class FriendActivitiesScreen extends StatefulWidget {
   final int friendId;
   final String friendName;
-  const FriendActivitiesScreen({super.key, required this.friendId, required this.friendName});
+  final String? friendAvatarUrl;
+  const FriendActivitiesScreen({super.key, required this.friendId, required this.friendName, this.friendAvatarUrl});
   @override
   State<FriendActivitiesScreen> createState() => _FriendActivitiesScreenState();
 }
@@ -55,7 +56,19 @@ class _FriendActivitiesScreenState extends State<FriendActivitiesScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: Text(widget.friendName)),
+        appBar: AppBar(
+          title: Row(
+            children: [
+              _FriendAvatar(avatarUrl: widget.friendAvatarUrl, name: widget.friendName, radius: 17),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(widget.friendName,
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    overflow: TextOverflow.ellipsis),
+              ),
+            ],
+          ),
+        ),
         body: _loading
             ? const Center(child: CircularProgressIndicator())
             : _error.isNotEmpty
@@ -157,6 +170,36 @@ class _FriendActivitiesScreenState extends State<FriendActivitiesScreen> {
     final m = s ~/ 60;
     final sec = s % 60;
     return '$m:${sec.toString().padLeft(2, '0')}';
+  }
+}
+
+class _FriendAvatar extends StatelessWidget {
+  final String? avatarUrl;
+  final String name;
+  final double radius;
+  const _FriendAvatar({this.avatarUrl, required this.name, this.radius = 17});
+
+  @override
+  Widget build(BuildContext context) {
+    final fallback = CircleAvatar(
+      radius: radius,
+      backgroundColor: const Color(0xFF6366f1).withOpacity(0.2),
+      child: Text(name.isNotEmpty ? name[0].toUpperCase() : '?',
+          style: const TextStyle(color: Color(0xFF6366f1), fontWeight: FontWeight.bold, fontSize: 13)),
+    );
+    if (avatarUrl == null) return fallback;
+    return FutureBuilder<String?>(
+      future: ApiService().getAuthHeader(),
+      builder: (context, snap) {
+        if (!snap.hasData || snap.data == null) return fallback;
+        final url = '${ApiService.baseUrl.replaceAll('/api/v1', '')}$avatarUrl';
+        return ClipOval(
+          child: Image.network(url, width: radius * 2, height: radius * 2, fit: BoxFit.cover,
+              headers: {'Authorization': snap.data!},
+              errorBuilder: (_, __, ___) => fallback),
+        );
+      },
+    );
   }
 }
 

@@ -310,7 +310,8 @@ class _FriendListTabState extends State<_FriendListTab> {
           return _UserTile(
             name: user['name'] ?? '',
             avatarUrl: user['avatar_url'],
-            onTap: () => context.push('/friends/${user['id']}'),
+            onTap: () => context.push('/friends/${user['id']}',
+                extra: {'name': user['name'] ?? '', 'avatarUrl': user['avatar_url']}),
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [

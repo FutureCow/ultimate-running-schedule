@@ -64,8 +64,10 @@ GoRouter buildRouter(AuthProvider auth) => GoRouter(
                   parentNavigatorKey: _rootKey,
                   builder: (_, state) {
                     final friendId = int.parse(state.pathParameters['friendId']!);
-                    final friendName = state.extra as String? ?? 'Vriend';
-                    return FriendActivitiesScreen(friendId: friendId, friendName: friendName);
+                    final extra = state.extra as Map<String, dynamic>?;
+                    final friendName = extra?['name'] as String? ?? state.extra as String? ?? 'Vriend';
+                    final friendAvatarUrl = extra?['avatarUrl'] as String?;
+                    return FriendActivitiesScreen(friendId: friendId, friendName: friendName, friendAvatarUrl: friendAvatarUrl);
                   },
                   routes: [
                     GoRoute(
