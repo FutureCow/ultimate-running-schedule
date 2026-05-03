@@ -28,7 +28,7 @@ class _PlanScreenState extends State<PlanScreen> {
     super.initState();
     _pageController = PageController();
     _load();
-    _api.autoSync().catchError((_) {});
+    _api.autoSync().then((_) {}).catchError((_) {});
   }
 
   @override
