@@ -83,12 +83,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
       return FutureBuilder<String?>(
         future: ApiService().getAuthHeader(),
         builder: (context, snap) {
-          final headers = snap.hasData && snap.data != null
-              ? {'Authorization': snap.data!} : <String, String>{};
+          if (!snap.hasData || snap.data == null) return _avatarFallback(user);
           final url = '${ApiService.baseUrl.replaceAll('/api/v1', '')}${user!.avatarUrl}';
           return ClipOval(
             child: Image.network(url, width: 56, height: 56, fit: BoxFit.cover,
-                headers: headers,
+                headers: {'Authorization': snap.data!},
                 errorBuilder: (_, __, ___) => _avatarFallback(user)),
           );
         },

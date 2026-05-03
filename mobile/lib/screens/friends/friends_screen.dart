@@ -383,12 +383,11 @@ class _AuthAvatar extends StatelessWidget {
     return FutureBuilder<String?>(
       future: ApiService().getAuthHeader(),
       builder: (context, snap) {
-        final headers = snap.hasData && snap.data != null
-            ? {'Authorization': snap.data!} : <String, String>{};
+        if (!snap.hasData || snap.data == null) return fallback;
         final url = '${ApiService.baseUrl.replaceAll('/api/v1', '')}$avatarUrl';
         return ClipOval(
           child: Image.network(url, width: radius * 2, height: radius * 2, fit: BoxFit.cover,
-              headers: headers,
+              headers: {'Authorization': snap.data!},
               errorBuilder: (_, __, ___) => fallback),
         );
       },
