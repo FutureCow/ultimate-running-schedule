@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -12,6 +13,7 @@ class ApiService {
   late final Dio _dio;
   final _storage = const FlutterSecureStorage();
   bool _refreshing = false;
+  Completer<bool>? _refreshCompleter;
 
   ApiService._internal() {
     _dio = Dio(BaseOptions(
@@ -27,8 +29,13 @@ class ApiService {
         handler.next(options);
       },
       onError: (err, handler) async {
-        if (err.response?.statusCode == 401 && !_refreshing) {
-          final refreshed = await _tryRefresh();
+        if (err.response?.statusCode == 401) {
+          final bool refreshed;
+          if (_refreshing) {
+            refreshed = await (_refreshCompleter?.future ?? Future.value(false));
+          } else {
+            refreshed = await _tryRefresh();
+          }
           if (refreshed) {
             final token = await _storage.read(key: 'access_token');
             err.requestOptions.headers['Authorization'] = 'Bearer $token';
@@ -43,6 +50,8 @@ class ApiService {
 
   Future<bool> _tryRefresh() async {
     _refreshing = true;
+    _refreshCompleter = Completer<bool>();
+    bool success = false;
     try {
       final refresh = await _storage.read(key: 'refresh_token');
       if (refresh == null) return false;
@@ -53,6 +62,7 @@ class ApiService {
       if (res.data['refresh_token'] != null) {
         await _storage.write(key: 'refresh_token', value: res.data['refresh_token']);
       }
+      success = true;
       return true;
     } on DioException catch (e) {
       // Only wipe tokens when the server explicitly rejects the refresh token.
@@ -65,6 +75,8 @@ class ApiService {
     } catch (_) {
       return false;
     } finally {
+      _refreshCompleter?.complete(success);
+      _refreshCompleter = null;
       _refreshing = false;
     }
   }
