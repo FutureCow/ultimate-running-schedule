@@ -300,10 +300,16 @@ class _ChartCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (spots.isEmpty) return const SizedBox.shrink();
-    final minY = spots.map((s) => s.y).reduce((a, b) => a < b ? a : b);
-    final maxY = spots.map((s) => s.y).reduce((a, b) => a > b ? a : b);
+    // For reversed axes (pace): negate Y values so fl_chart uses a normal
+    // ascending axis internally. Labels and tooltips negate back.
+    final chartSpots = reversed
+        ? spots.map((s) => FlSpot(s.x, -s.y)).toList()
+        : spots;
+    final minY = chartSpots.map((s) => s.y).reduce((a, b) => a < b ? a : b);
+    final maxY = chartSpots.map((s) => s.y).reduce((a, b) => a > b ? a : b);
     final range = (maxY - minY).clamp(1.0, double.infinity);
     final padded = range * 0.1;
+    double? labelY(double v) => reversed ? -v : v;
 
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 14, 12, 8),
@@ -321,8 +327,8 @@ class _ChartCard extends StatelessWidget {
             height: 120,
             child: LineChart(
               LineChartData(
-                minY: reversed ? maxY + padded : minY - padded,
-                maxY: reversed ? minY - padded : maxY + padded,
+                minY: minY - padded,
+                maxY: maxY + padded,
                 gridData: FlGridData(
                   show: true,
                   drawVerticalLine: false,
@@ -337,11 +343,11 @@ class _ChartCard extends StatelessWidget {
                     sideTitles: SideTitles(
                       showTitles: true,
                       reservedSize: 44,
-                      interval: reversed && yInterval != null ? -yInterval! : yInterval,
+                      interval: yInterval,
                       getTitlesWidget: (v, meta) {
                         if (v == meta.min || v == meta.max) return const SizedBox.shrink();
                         return Text(
-                          formatY(v),
+                          formatY(labelY(v)),
                           style: const TextStyle(color: Color(0xFF64748b), fontSize: 9),
                         );
                       },
@@ -355,14 +361,14 @@ class _ChartCard extends StatelessWidget {
                   touchTooltipData: LineTouchTooltipData(
                     getTooltipColor: (_) => const Color(0xFF0f172a),
                     getTooltipItems: (spots) => spots.map((s) => LineTooltipItem(
-                          formatY(s.y),
+                          formatY(labelY(s.y)),
                           TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12),
                         )).toList(),
                   ),
                 ),
                 lineBarsData: [
                   LineChartBarData(
-                    spots: spots,
+                    spots: chartSpots,
                     isCurved: true,
                     curveSmoothness: 0.3,
                     color: color,
