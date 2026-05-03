@@ -18,16 +18,12 @@ class ApiService {
       baseUrl: AppConfig.apiBaseUrl,
       connectTimeout: const Duration(seconds: 10),
       receiveTimeout: const Duration(seconds: 30),
-      headers: {'Content-Type': 'application/json'},
     ));
 
     _dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) async {
         final token = await _storage.read(key: 'access_token');
         if (token != null) options.headers['Authorization'] = 'Bearer $token';
-        if (options.data is FormData) {
-          options.headers.remove('Content-Type');
-        }
         handler.next(options);
       },
       onError: (err, handler) async {
@@ -112,8 +108,7 @@ class ApiService {
           filename: filePath.split('/').last,
           contentType: contentType),
     });
-    return _dio.post('/auth/profile/avatar', data: form,
-        options: Options(headers: {Headers.contentTypeHeader: null}));
+    return _dio.post('/auth/profile/avatar', data: form);
   }
 
   // Plans
