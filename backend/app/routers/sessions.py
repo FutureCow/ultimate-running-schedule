@@ -59,6 +59,9 @@ async def move_session(
 
     session, plan = row
 
+    old_scheduled_date = session.scheduled_date
+    old_garmin_id = session.garmin_workout_id if session.garmin_workout_id else None
+
     if payload.week_number is not None:
         if not 1 <= payload.week_number <= plan.duration_weeks:
             raise HTTPException(status_code=422, detail="week_number out of plan range")
@@ -72,8 +75,21 @@ async def move_session(
     week_start = start + timedelta(weeks=session.week_number - 1)
     session.scheduled_date = week_start + timedelta(days=payload.day_number - 1)
 
+    date_changed = session.scheduled_date != old_scheduled_date
+    if date_changed and old_garmin_id:
+        session.garmin_workout_id = None
+        session.garmin_pushed_at = None
+
     await db.commit()
     await db.refresh(session)
+
+    if date_changed and old_garmin_id:
+        try:
+            await garmin_service.delete_workout_from_garmin(db, user.id, old_garmin_id)
+            await garmin_service.push_sessions_to_garmin(db, user.id, [session])
+        except Exception as e:
+            logger.warning("Garmin reschedule failed for session %s: %s", session_id, e)
+
     return session
 
 
@@ -94,6 +110,9 @@ async def update_session_details(
         raise HTTPException(status_code=404, detail="Session not found")
 
     session, plan = row
+
+    old_garmin_id = session.garmin_workout_id if session.garmin_workout_id else None
+    date_changed = False
 
     if payload.title is not None:
         session.title = payload.title
@@ -116,12 +135,24 @@ async def update_session_details(
         new_day = delta.days % 7 + 1
         if new_week > plan.duration_weeks:
             raise HTTPException(status_code=422, detail="Datum valt na het einde van het plan")
+        date_changed = payload.scheduled_date != session.scheduled_date
         session.week_number = new_week
         session.day_number = new_day
         session.scheduled_date = payload.scheduled_date
+        if date_changed and old_garmin_id:
+            session.garmin_workout_id = None
+            session.garmin_pushed_at = None
 
     await db.commit()
     await db.refresh(session)
+
+    if date_changed and old_garmin_id:
+        try:
+            await garmin_service.delete_workout_from_garmin(db, user.id, old_garmin_id)
+            await garmin_service.push_sessions_to_garmin(db, user.id, [session])
+        except Exception as e:
+            logger.warning("Garmin reschedule failed for session %s: %s", session_id, e)
+
     return session
 
 
