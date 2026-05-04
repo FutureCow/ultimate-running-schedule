@@ -489,6 +489,7 @@ class _SessionDetailSheetState extends State<_SessionDetailSheet> {
   final _api = ApiService();
   bool _marking = false;
   bool _resetting = false;
+  bool _rescheduling = false;
   bool _garminBusy = false;
   String? _garminError;
   late String? _garminWorkoutId;
@@ -717,6 +718,41 @@ class _SessionDetailSheetState extends State<_SessionDetailSheet> {
     }
   }
 
+  Future<void> _reschedule() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: widget.session.scheduledDate ?? DateTime.now(),
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2030),
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(
+          colorScheme: const ColorScheme.dark(primary: Color(0xFF6366f1)),
+        ),
+        child: child!,
+      ),
+    );
+    if (picked == null || !mounted) return;
+    setState(() => _rescheduling = true);
+    try {
+      final dateStr = '${picked.year.toString().padLeft(4, '0')}'
+          '-${picked.month.toString().padLeft(2, '0')}'
+          '-${picked.day.toString().padLeft(2, '0')}';
+      await _api.updateSessionDetails(widget.session.id, {'scheduled_date': dateStr});
+      if (mounted) {
+        Navigator.pop(context);
+        widget.onEdited();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Verplaatsen mislukt: ${e.toString().split('\n').first}')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _rescheduling = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = widget.session;
@@ -837,6 +873,22 @@ class _SessionDetailSheetState extends State<_SessionDetailSheet> {
               ),
             ),
           ],
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _rescheduling ? null : _reschedule,
+              icon: _rescheduling
+                  ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 1.5))
+                  : const Icon(Icons.calendar_month_outlined, size: 18, color: Color(0xFF6366f1)),
+              label: Text(_rescheduling ? 'Bezig...' : 'Verplaatsen naar andere dag',
+                  style: const TextStyle(color: Color(0xFF6366f1))),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: Color(0x336366f1)),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+            ),
+          ),
           if (s.workoutType != 'rest') ...[
             const SizedBox(height: 10),
             if (_garminError != null)
