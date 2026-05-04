@@ -28,6 +28,15 @@ const _typeLabels = {
   'strength': 'Kracht',
 };
 
+String? _mainPace(WorkoutSession s) {
+  final p = s.paces;
+  if (p == null || p.isEmpty) return null;
+  final v = p['main'] ?? p['easy'] ?? p['marathon'] ?? p['threshold'] ?? p.values.first;
+  if (v == null) return null;
+  final str = v.toString().trim();
+  return str.isEmpty ? null : str;
+}
+
 class SessionCard extends StatelessWidget {
   final WorkoutSession session;
   final VoidCallback? onTap;
@@ -90,11 +99,12 @@ class SessionCard extends StatelessWidget {
                       style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis),
-                  if (session.distanceKm != null || session.durationMinutes != null)
+                  if (session.distanceKm != null || session.durationMinutes != null || _mainPace(session) != null)
                     Text(
                       [
                         if (session.distanceKm != null) '${session.distanceKm} km',
                         if (session.durationMinutes != null) '${session.durationMinutes} min',
+                        if (_mainPace(session) != null) '${_mainPace(session)} /km',
                       ].join(' · '),
                       style: const TextStyle(color: Color(0xFF64748b), fontSize: 12),
                     ),
