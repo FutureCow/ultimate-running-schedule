@@ -20,11 +20,6 @@ function formatDuration(seconds: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-function fmtPace(secPerKm: number): string {
-  const m = Math.floor(secPerKm / 60);
-  const s = Math.round(secPerKm % 60);
-  return `${m}:${s.toString().padStart(2, "0")} /km`;
-}
 
 export default function FriendActivitiesPage() {
   const t = useTranslations("friends");
@@ -40,7 +35,7 @@ export default function FriendActivitiesPage() {
     enabled: !isNaN(friendId),
   });
 
-  const activities: any[] = data?.activities ?? [];
+  const activities: any[] = Array.isArray(data) ? data : (data?.activities ?? []);
 
   return (
     <div className="min-h-screen lg:pl-60">
@@ -92,18 +87,18 @@ export default function FriendActivitiesPage() {
                         </div>
                         <p className="text-sm font-semibold text-white truncate">{act.activity_name || act.name || act.activity_id}</p>
                         <div className="flex items-center gap-3 mt-1.5">
-                          {act.distance_meters && (
+                          {act.distance_km != null && (
                             <span className="flex items-center gap-1 text-xs text-slate-400">
-                              <Ruler className="w-3 h-3" />{(act.distance_meters / 1000).toFixed(2)} km
+                              <Ruler className="w-3 h-3" />{Number(act.distance_km).toFixed(2)} km
                             </span>
                           )}
-                          {act.duration_seconds && (
+                          {act.duration_seconds != null && (
                             <span className="flex items-center gap-1 text-xs text-slate-400">
                               <Clock className="w-3 h-3" />{formatDuration(act.duration_seconds)}
                             </span>
                           )}
-                          {act.avg_pace_sec_per_km && (
-                            <span className="text-xs text-slate-400">{fmtPace(act.avg_pace_sec_per_km)}</span>
+                          {act.average_pace_per_km && (
+                            <span className="text-xs text-slate-400">{act.average_pace_per_km} /km</span>
                           )}
                         </div>
                       </div>
