@@ -131,7 +131,7 @@ class _ActivityTile extends StatelessWidget {
 
   String _fmtDate(String iso) {
     try {
-      final dt = DateTime.parse(iso.replaceFirst(' ', 'T')).toLocal();
+      final dt = DateTime.parse(iso.replaceFirst(' ', 'T'));
       return DateFormat('EEE d MMM, HH:mm', 'nl').format(dt);
     } catch (_) {
       return iso.length > 10 ? iso.substring(0, 10) : iso;
