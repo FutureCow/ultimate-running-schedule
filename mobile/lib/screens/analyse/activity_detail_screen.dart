@@ -605,36 +605,31 @@ class _ChartCardState extends State<_ChartCard> {
                   touchTooltipData: LineTouchTooltipData(
                     getTooltipColor: (_) => const Color(0xFF0f172a),
                     getTooltipItems: (touchedSpots) {
-                      return touchedSpots.map((s) {
-                        // Bar index 0 = primary, bar index 1 = overlay
+                      // Always show primary first, overlay second.
+                      LineTooltipItem? primaryItem;
+                      LineTooltipItem? overlayItem;
+                      for (final s in touchedSpots) {
                         if (s.barIndex == 0) {
-                          return LineTooltipItem(
+                          primaryItem = LineTooltipItem(
                             primary.formatY(labelY(s.y)),
-                            TextStyle(
-                              color: primary.color,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
-                            ),
+                            TextStyle(color: primary.color, fontWeight: FontWeight.bold, fontSize: 12),
                           );
                         } else if (s.barIndex == 1 && overlay != null) {
-                          // Use spotIndex to look up real value from
-                          // the original (non-normalized) overlay spots.
                           final idx = s.spotIndex;
-                          if (idx < 0 || idx >= overlay.spots.length) {
-                            return null;
+                          if (idx >= 0 && idx < overlay.spots.length) {
+                            overlayItem = LineTooltipItem(
+                              overlay.formatY(overlay.spots[idx].y),
+                              TextStyle(color: overlay.color, fontWeight: FontWeight.bold, fontSize: 12),
+                            );
                           }
-                          final realValue = overlay.spots[idx].y;
-                          return LineTooltipItem(
-                            overlay.formatY(realValue),
-                            TextStyle(
-                              color: overlay.color,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
-                            ),
-                          );
                         }
-                        return null;
-                      }).toList();
+                      }
+                      final items = <LineTooltipItem?>[
+                        if (primaryItem != null) primaryItem,
+                        if (overlayItem != null) overlayItem,
+                      ];
+                      while (items.length < touchedSpots.length) items.add(null);
+                      return items;
                     },
                   ),
                 ),
