@@ -177,7 +177,7 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
       child: FlutterMap(
         options: MapOptions(
           initialCameraFit: CameraFit.bounds(bounds: bounds, padding: const EdgeInsets.all(24)),
-          interactionOptions: const InteractionOptions(flags: InteractiveFlag.none),
+          interactionOptions: const InteractionOptions(flags: InteractiveFlag.pinchZoom | InteractiveFlag.drag),
         ),
         children: [
           TileLayer(

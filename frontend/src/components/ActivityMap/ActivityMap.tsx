@@ -47,7 +47,7 @@ export function ActivityMap({ track, className = "h-64 lg:h-96" }: Props) {
     <MapContainer
       center={center}
       zoom={13}
-      scrollWheelZoom={false}
+      scrollWheelZoom={true}
       className={`${className} w-full rounded-2xl z-0`}
       style={{ background: tile.bg }}
     >
