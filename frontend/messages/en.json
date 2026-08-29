@@ -278,6 +278,7 @@
       "rows": {
         "name": "Plan name",
         "goal": "Goal",
+        "goalKind": "Goal type",
         "targetTime": "Target time",
         "duration": "Duration",
         "age": "Age",
@@ -290,6 +291,7 @@
         "surface": "Surface",
         "startDate": "Start date",
         "raceDate": "Race date",
+        "feedbackTone": "Analysis tone",
         "planLanguage": "Plan language"
       },
       "noInjuries": "None",

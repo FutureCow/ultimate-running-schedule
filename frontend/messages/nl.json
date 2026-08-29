@@ -278,6 +278,7 @@
       "rows": {
         "name": "Plannaam",
         "goal": "Doel",
+        "goalKind": "Type doel",
         "targetTime": "Doeltijd",
         "duration": "Duur",
         "age": "Leeftijd",
@@ -290,6 +291,7 @@
         "surface": "Ondergrond",
         "startDate": "Startdatum",
         "raceDate": "Wedstrijddatum",
+        "feedbackTone": "Toon van de analyse",
         "planLanguage": "Taal plan"
       },
       "noInjuries": "Geen",

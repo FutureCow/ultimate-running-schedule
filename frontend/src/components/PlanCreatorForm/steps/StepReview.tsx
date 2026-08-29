@@ -14,10 +14,14 @@ export function StepReview({ values }: { values: Partial<FormSchema> }) {
   const goalLocale = useLocale();
   const tDays = useTranslations("days");
   const tPrefs = useTranslations("form.prefs");
+  const tGoal = useTranslations("form.goal");
 
   const rows = [
     { label: t("rows.name"),         value: values.name },
     { label: t("rows.goal"),         value: goalLabel(tGoals, values.goal, values.custom_distance_km, goalLocale) },
+    ...(values.goal === "custom"
+      ? [{ label: t("rows.goalKind"), value: tGoal(`goalKinds.${values.goal_kind ?? "race"}.label`) }]
+      : []),
     {
       label: t("rows.targetTime"),
       value: values.target_time_seconds
@@ -45,7 +49,12 @@ export function StepReview({ values }: { values: Partial<FormSchema> }) {
     },
     { label: t("rows.surface"),       value: values.surface ? tPrefs(`surfaces.${values.surface}`) : "—" },
     { label: t("rows.startDate"),     value: values.start_date || "—" },
-    { label: t("rows.raceDate"),      value: values.race_date || "—" },
+    {
+      // A fitness goal has no race; that date is when you want to be ready
+      label: values.goal_kind === "fitness" ? tGoal("targetDateLabel") : t("rows.raceDate"),
+      value: values.race_date || "—",
+    },
+    { label: t("rows.feedbackTone"),  value: tGoal(`feedbackTones.${values.feedback_tone ?? "scientific"}.label`) },
     { label: t("rows.planLanguage"),  value: values.plan_language === "en" ? "🇬🇧 English" : "🇳🇱 Nederlands" },
   ];
 
