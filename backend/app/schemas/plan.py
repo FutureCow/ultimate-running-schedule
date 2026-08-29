@@ -1,6 +1,33 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, model_validator
 from datetime import datetime, date
-from typing import Optional, Any
+from typing import Literal, Optional, Any
+
+from app.schemas.common import FeedbackTone
+
+# A goal is either one of the fixed race distances or "custom", in which case
+# custom_distance_km carries the distance the athlete picked.
+CUSTOM_GOAL = "custom"
+MIN_CUSTOM_DISTANCE_KM = 1.0
+MAX_CUSTOM_DISTANCE_KM = 100.0
+
+GoalKind = Literal["race", "fitness"]
+
+
+def _check_custom_distance(model):
+    """A custom goal needs a distance; a preset goal must not carry one."""
+    if model.goal == CUSTOM_GOAL:
+        distance = model.custom_distance_km
+        if distance is None:
+            raise ValueError("custom_distance_km is required when goal is 'custom'")
+        if not MIN_CUSTOM_DISTANCE_KM <= distance <= MAX_CUSTOM_DISTANCE_KM:
+            raise ValueError(
+                f"custom_distance_km must be between {MIN_CUSTOM_DISTANCE_KM:g} "
+                f"and {MAX_CUSTOM_DISTANCE_KM:g} km"
+            )
+    elif model.goal is not None:
+        # Switching back to a preset must not leave the old km value behind
+        model.custom_distance_km = None
+    return model
 
 
 class StrengthPreferences(BaseModel):
@@ -51,6 +78,10 @@ class WorkoutSessionResponse(BaseModel):
 class PlanCreate(BaseModel):
     name: str
     goal: str
+    custom_distance_km: Optional[float] = None
+    goal_kind: GoalKind = "race"
+    # None means "follow the athlete's profile default"
+    feedback_tone: Optional[FeedbackTone] = None
     target_time_seconds: Optional[int] = None
     target_pace_per_km: Optional[str] = None
     age: Optional[int] = None
@@ -69,6 +100,10 @@ class PlanCreate(BaseModel):
     language: str = "nl"
     strength: Optional[StrengthPreferences] = None
 
+    @model_validator(mode="after")
+    def _validate_custom_distance(self):
+        return _check_custom_distance(self)
+
 
 class SessionUpdate(BaseModel):
     title: Optional[str] = None
@@ -82,6 +117,9 @@ class SessionUpdate(BaseModel):
 class PlanUpdate(BaseModel):
     name: Optional[str] = None
     goal: Optional[str] = None
+    custom_distance_km: Optional[float] = None
+    goal_kind: Optional[GoalKind] = None
+    feedback_tone: Optional[FeedbackTone] = None
     target_time_seconds: Optional[int] = None
     target_pace_per_km: Optional[str] = None
     age: Optional[int] = None
@@ -99,6 +137,10 @@ class PlanUpdate(BaseModel):
     race_date: Optional[date] = None
     language: Optional[str] = None
 
+    @model_validator(mode="after")
+    def _validate_custom_distance(self):
+        return _check_custom_distance(self)
+
 
 class PlanResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -108,6 +150,9 @@ class PlanResponse(BaseModel):
     user_id: int
     name: str
     goal: str
+    custom_distance_km: Optional[float] = None
+    goal_kind: str = "race"
+    feedback_tone: Optional[str] = None
     target_time_seconds: Optional[int] = None
     target_pace_per_km: Optional[str] = None
     age: Optional[int] = None

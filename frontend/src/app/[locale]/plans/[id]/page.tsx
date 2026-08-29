@@ -12,6 +12,7 @@ import { plansApi, garminApi } from "@/lib/api";
 import { BulkEditModal } from "@/components/Calendar/BulkEditModal";
 import { PaceZonesPreviewModal } from "@/components/Calendar/PaceZonesPreviewModal";
 import { Plan } from "@/types";
+import { goalLabel } from "@/lib/goal";
 import { WeekCalendar } from "@/components/Calendar/WeekCalendar";
 import { PaceZonesCard } from "@/components/Calendar/PaceZonesCard";
 import { Navbar } from "@/components/ui/Navbar";
@@ -133,7 +134,7 @@ export default function PlanDetailPage() {
                 <div>
                   <h1 className="text-xl font-bold text-white">{plan.name}</h1>
                   <p className="text-xs text-slate-400">
-                    {tGoals(plan.goal as any)} · {plan.duration_weeks} weken
+                    {goalLabel(tGoals, plan.goal, plan.custom_distance_km, locale)} · {plan.duration_weeks} weken
                   </p>
                 </div>
               </div>
@@ -294,7 +295,6 @@ export default function PlanDetailPage() {
     {bulkModal && plan && (
       <BulkEditModal
         planPublicId={id}
-        totalWeeks={plan.duration_weeks}
         onClose={() => setBulkModal(false)}
         onSave={(filter, update) => bulkEditMutation.mutate({ filter, update })}
         isSaving={bulkEditMutation.isPending}

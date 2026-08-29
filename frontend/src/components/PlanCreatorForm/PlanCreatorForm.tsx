@@ -18,7 +18,10 @@ import { StepReview } from "./steps/StepReview";
 
 const schema = z.object({
   name: z.string().min(1, "Verplicht"),
-  goal: z.enum(["5k", "10k", "half_marathon", "marathon"]),
+  goal: z.enum(["5k", "10k", "half_marathon", "marathon", "custom"]),
+  custom_distance_km: z.number().min(1).max(100).optional(),
+  goal_kind: z.enum(["race", "fitness"]),
+  feedback_tone: z.enum(["scientific", "encouraging"]).optional(),
   plan_language: z.enum(["nl", "en"]),
   target_time_seconds: z.number().optional(),
   target_pace_per_km: z.string().optional(),
@@ -43,7 +46,10 @@ const schema = z.object({
     equipment: z.array(z.string()).optional(),
     notes: z.string().optional(),
   }).optional(),
-});
+}).refine(
+  (data) => data.goal !== "custom" || data.custom_distance_km != null,
+  { path: ["custom_distance_km"], message: "Vul een afstand tussen 1 en 100 km in" },
+);
 
 export type FormSchema = z.infer<typeof schema>;
 
@@ -85,6 +91,9 @@ export function PlanCreatorForm({ editPlan }: Props) {
     defaultValues: editPlan ? {
       name: editPlan.name,
       goal: editPlan.goal as FormSchema["goal"],
+      custom_distance_km: editPlan.custom_distance_km ?? undefined,
+      goal_kind: editPlan.goal_kind ?? "race",
+      feedback_tone: editPlan.feedback_tone ?? undefined,
       plan_language: (locale === "en" ? "en" : "nl") as "nl" | "en",
       target_time_seconds: editPlan.target_time_seconds ?? undefined,
       target_pace_per_km: editPlan.target_pace_per_km ?? undefined,
@@ -109,6 +118,7 @@ export function PlanCreatorForm({ editPlan }: Props) {
       } : { enabled: false },
     } : {
       goal: "10k",
+      goal_kind: "race",
       plan_language: (locale === "en" ? "en" : "nl") as "nl" | "en",
       duration_weeks: 12,
       surface: "road",
@@ -129,6 +139,7 @@ export function PlanCreatorForm({ editPlan }: Props) {
       if (data.weekly_km) setValue("weekly_km", data.weekly_km);
       if (data.weekly_runs) setValue("weekly_runs", data.weekly_runs);
       if (data.injuries) setValue("injuries", data.injuries);
+      if (data.feedback_tone) setValue("feedback_tone", data.feedback_tone);
     }).catch(() => {/* no profile yet, leave fields empty */});
   }, [isEditMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -136,7 +147,7 @@ export function PlanCreatorForm({ editPlan }: Props) {
 
   async function nextStep() {
     const fields: (keyof FormSchema)[][] = [
-      ["name", "goal", "duration_weeks"],
+      ["name", "goal", "custom_distance_km", "duration_weeks"],
       ["age", "height_cm", "weight_kg", "weekly_km", "weekly_runs"],
       ["training_days", "long_run_day", "surface"],
       [], // strength step has no required fields

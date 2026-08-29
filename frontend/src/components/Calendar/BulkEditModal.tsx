@@ -17,7 +17,6 @@ type PaceMode = "absolute" | "delta";
 
 interface Props {
   planPublicId: string;
-  totalWeeks: number;
   onClose: () => void;
   onSave: (filter: {
     day_number?: number | null;

@@ -1,8 +1,9 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { FormSchema } from "../PlanCreatorForm";
 import { secondsToTime } from "@/lib/utils";
+import { goalLabel } from "@/lib/goal";
 import { CheckCircle2 } from "lucide-react";
 
 const DAYS_EN = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
@@ -10,11 +11,12 @@ const DAYS_EN = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturd
 export function StepReview({ values }: { values: Partial<FormSchema> }) {
   const t = useTranslations("form.review");
   const tGoals = useTranslations("goals");
+  const goalLocale = useLocale();
   const tDays = useTranslations("days");
 
   const rows = [
     { label: t("rows.name"),         value: values.name },
-    { label: t("rows.goal"),         value: values.goal ? tGoals(values.goal as any) : "—" },
+    { label: t("rows.goal"),         value: goalLabel(tGoals, values.goal, values.custom_distance_km, goalLocale) },
     {
       label: t("rows.targetTime"),
       value: values.target_time_seconds

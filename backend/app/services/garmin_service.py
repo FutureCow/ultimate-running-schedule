@@ -391,7 +391,7 @@ async def _upsert_garmin_activities(db: AsyncSession, user_id: int, activities: 
     await db.commit()
 
 
-async def _match_activities_to_sessions(db: AsyncSession, user_id: int, activities: list[dict], user_tier: str = "elite") -> int:
+async def _match_activities_to_sessions(db: AsyncSession, user_id: int, activities: list[dict], user_tier: str = "elite") -> tuple[int, list[tuple[int, str]]]:
     """Mark WorkoutSessions as completed when a Garmin activity falls on the same date."""
     from app.models.plan import Plan, WorkoutSession
 

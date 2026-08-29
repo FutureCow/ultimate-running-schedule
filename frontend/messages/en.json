@@ -173,11 +173,33 @@
         "nl": { "label": "Nederlands", "desc": "Trainingen en beschrijvingen in het Nederlands" },
         "en": { "label": "English",    "desc": "Workouts and descriptions in English" }
       },
-      "goals": {
+        "feedbackToneLabel": "Tone of the activity analysis",
+      "feedbackToneHint": "Applies to the AI analysis shown after each synced workout (Elite).",
+      "feedbackTones": {
+        "scientific":  { "label": "Scientific",  "desc": "Heart-rate zones, physiology and evidence-based recovery advice" },
+        "encouraging": { "label": "Encouraging", "desc": "What went well in plain language, plus one small thing to work on" }
+      },
+      "customDistanceLabel": "Distance in kilometres",
+      "customDistancePlaceholder": "e.g. 18.5",
+      "customDistanceHint": "1 to 100 km",
+      "customDistanceRequired": "Enter a distance between 1 and 100 km",
+      "ultraWarning": "Beyond the marathon: the plan switches to an ultra build-up with back-to-back long runs and time on feet instead of pace.",
+      "goalKindLabel": "What do you want from this distance?",
+      "goalKinds": {
+        "race":    { "label": "Race",              "desc": "Tapering toward a race day" },
+        "fitness": { "label": "Be able to run it", "desc": "Build up until you cover the distance comfortably, no race" }
+      },
+      "modeTargetDate": "Target date",
+      "targetDateLabel": "Target date",
+      "targetDateHint": "The number of weeks is calculated automatically from the start and target date.",
+      "targetDateSuggestion": "Target date based on duration:",
+      "weeksCalculatedFitness": "{weeks} weeks of training (excl. 1 consolidation week after)",
+    "goals": {
         "5k":            { "label": "5 km",           "desc": "First 5K or go faster" },
         "10k":           { "label": "10 km",           "desc": "Improve at the classic distance" },
         "half_marathon": { "label": "Half Marathon",   "desc": "21.1 km challenge" },
-        "marathon":      { "label": "Marathon",        "desc": "42.2 km – the ultimate test" }
+        "marathon":      { "label": "Marathon",        "desc": "42.2 km – the ultimate test" },
+        "custom":        { "label": "Custom distance",  "desc": "Enter your own number of km" }
       }
     },
     "profile": {
@@ -389,6 +411,12 @@
     "profile": {
       "title": "Athlete profile",
       "subtitle": "Automatically pre-filled when creating a new plan",
+      "feedbackTone": "Tone of the activity analysis",
+      "feedbackToneHint": "Your default. You can deviate from it per plan.",
+      "feedbackTones": {
+        "scientific":  { "label": "Scientific",  "desc": "Heart-rate zones and physiology" },
+        "encouraging": { "label": "Encouraging", "desc": "What went well, plus one small thing to work on" }
+      },
       "age": "Age",
       "height": "Height (cm)",
       "weight": "Weight (kg)",
@@ -551,6 +579,7 @@
     "5k":            "5 km",
     "10k":           "10 km",
     "half_marathon": "Half Marathon",
-    "marathon":      "Marathon"
+    "marathon":      "Marathon",
+    "custom":        "Custom distance"
   }
 }

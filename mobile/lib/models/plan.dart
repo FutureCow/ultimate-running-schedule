@@ -7,6 +7,8 @@ class Plan {
   final DateTime createdAt;
   final List<WorkoutSession> sessions;
   final String? goal;
+  /// Set only when goal == "custom"
+  final double? customDistanceKm;
   final int? targetTimeSeconds;
   final String? targetPacePerKm;
   final DateTime? startDate;
@@ -23,6 +25,7 @@ class Plan {
     required this.createdAt,
     required this.sessions,
     this.goal,
+    this.customDistanceKm,
     this.targetTimeSeconds,
     this.targetPacePerKm,
     this.startDate,
@@ -47,6 +50,7 @@ class Plan {
           .map((s) => WorkoutSession.fromJson(s))
           .toList(),
       goal: j['goal'] as String?,
+      customDistanceKm: (j['custom_distance_km'] as num?)?.toDouble(),
       targetTimeSeconds: (j['target_time_seconds'] as num?)?.toInt(),
       targetPacePerKm: j['target_pace_per_km'] as String?,
       startDate: j['start_date'] != null ? DateTime.tryParse(j['start_date']) : null,
@@ -57,8 +61,15 @@ class Plan {
   }
 
   String get formattedGoal {
+    if (goal == 'custom') {
+      final km = customDistanceKm;
+      if (km == null) return 'Eigen afstand';
+      // 18.5 -> "18,5 km", 25.0 -> "25 km"
+      final rounded = km.toStringAsFixed(1).replaceAll(RegExp(r'\.0$'), '');
+      return '${rounded.replaceAll('.', ',')} km';
+    }
     const labels = {
-      '5km': '5 km', '10km': '10 km', 'half_marathon': 'Halve marathon',
+      '5k': '5 km', '10k': '10 km', 'half_marathon': 'Halve marathon',
       'marathon': 'Marathon', 'base_building': 'Basisconditie', 'fitness': 'Conditie',
     };
     return labels[goal?.toLowerCase()] ?? goal ?? '';

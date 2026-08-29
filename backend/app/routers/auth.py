@@ -5,13 +5,10 @@ from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File, status
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
-from slowapi import Limiter
-from slowapi.util import get_remote_address
 from sqlalchemy.ext.asyncio import AsyncSession
-
-limiter = Limiter(key_func=get_remote_address)
 from sqlalchemy import select
 from app.config import settings
+from app.rate_limit import limiter
 from app.database import get_db
 from app.schemas.user import UserCreate, UserLogin, UserResponse, TokenResponse, RefreshRequest, UserProfileUpdate, UserProfileResponse
 from app.services import auth_service

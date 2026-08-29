@@ -11,7 +11,8 @@ An AI-powered running training plan generator with Garmin Connect integration. U
 ```
 /
 ├── backend/    # FastAPI (Python 3.12) async REST API
-└── frontend/   # Next.js 15 (React 19) TypeScript app
+├── frontend/   # Next.js 15 (React 19) TypeScript app
+└── mobile/     # Flutter (Android) client
 ```
 
 ## Commands
@@ -20,9 +21,19 @@ An AI-powered running training plan generator with Garmin Connect integration. U
 ```bash
 cd backend
 source .venv/bin/activate       # activate virtualenv
+pip install -r requirements-dev.txt  # runtime deps + pytest
 uvicorn app.main:app --reload   # dev server (port 8000)
+pytest                          # run tests
 alembic upgrade head            # run DB migrations
 alembic revision --autogenerate -m "description"  # create migration
+```
+
+### Mobile
+```bash
+cd mobile
+flutter pub get
+flutter analyze
+flutter run
 ```
 
 ### Frontend
@@ -60,7 +71,7 @@ plans (1) → (M) workout_sessions
 
 ### AI Plan Generation Flow
 1. User submits athletic profile (age, weight, goal race, current fitness, preferences) via multi-step form
-2. Backend calls Claude Opus 4.5 with a structured JSON schema prompt; optional Garmin activity summary is appended as context
+2. Backend calls Claude (model set by `CLAUDE_MODEL`, default `claude-sonnet-4-6`) with a structured JSON schema prompt; optional Garmin activity summary is appended as context
 3. Claude returns strict JSON (not markdown) parsed into `WorkoutSession` rows
 4. Plan language (NL/EN) is configurable; the AI prompt instructs Claude to respond in the selected language
 

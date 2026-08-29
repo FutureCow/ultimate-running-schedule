@@ -2,6 +2,8 @@ from pydantic import BaseModel, EmailStr, ConfigDict
 from datetime import datetime
 from typing import Optional
 
+from app.schemas.common import DEFAULT_FEEDBACK_TONE, FeedbackTone
+
 
 class UserCreate(BaseModel):
     email: EmailStr
@@ -31,6 +33,7 @@ class UserProfileUpdate(BaseModel):
     weekly_runs: Optional[int] = None
     injuries: Optional[str] = None
     max_hr: Optional[int] = None
+    feedback_tone: Optional[FeedbackTone] = None
 
 
 class UserProfileResponse(BaseModel):
@@ -49,6 +52,7 @@ class UserProfileResponse(BaseModel):
     weekly_runs: Optional[int] = None
     injuries: Optional[str] = None
     max_hr: Optional[int] = None
+    feedback_tone: str = DEFAULT_FEEDBACK_TONE
 
 
 class TokenResponse(BaseModel):

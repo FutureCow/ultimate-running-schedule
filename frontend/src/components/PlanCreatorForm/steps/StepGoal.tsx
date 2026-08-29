@@ -4,8 +4,12 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { UseFormRegister, UseFormWatch, UseFormSetValue, FieldErrors } from "react-hook-form";
 import { FormSchema } from "../PlanCreatorForm";
+import { CUSTOM_GOAL, MAX_CUSTOM_DISTANCE_KM, MIN_CUSTOM_DISTANCE_KM, isUltra } from "@/lib/goal";
 
 const GOAL_KEYS = ["5k", "10k", "half_marathon", "marathon"] as const;
+const GOAL_KINDS = ["race", "fitness"] as const;
+const FEEDBACK_TONES = ["scientific", "encouraging"] as const;
+const TONE_EMOJIS: Record<string, string> = { scientific: "🔬", encouraging: "🌱" };
 const GOAL_EMOJIS: Record<string, string> = {
   "5k": "🏃", "10k": "🎯", half_marathon: "🥈", marathon: "🏆",
 };
@@ -36,6 +40,12 @@ export function StepGoal({ register, watch, setValue, errors, targetTimeDisplay 
   const t = useTranslations("form.goal");
   const goal = watch("goal");
   const planLanguage = watch("plan_language");
+  const customKm = watch("custom_distance_km");
+  const goalKind = watch("goal_kind") ?? "race";
+  const isCustom = goal === CUSTOM_GOAL;
+  // A fitness goal has no race — the date is a target to be ready by
+  const isFitness = isCustom && goalKind === "fitness";
+  const feedbackTone = watch("feedback_tone") ?? "scientific";
 
   // Track which input is "primary" for duration
   const [durationMode, setDurationMode] = useState<"weeks" | "race_date">(
@@ -110,6 +120,66 @@ export function StepGoal({ register, watch, setValue, errors, targetTimeDisplay 
             </button>
           ))}
         </div>
+
+        <button
+          type="button"
+          onClick={() => setValue("goal", CUSTOM_GOAL)}
+          className={`mt-2 w-full rounded-xl border p-3 text-left transition-all duration-200 ${
+            isCustom
+              ? "border-brand-500 bg-brand-500/10 text-white"
+              : "border-slate-700 bg-surface-elevated text-slate-400 hover:border-slate-600"
+          }`}
+        >
+          <span className="text-xl">📏</span>
+          <p className="font-semibold mt-1 text-sm">{t("goals.custom.label")}</p>
+          <p className="text-[11px] opacity-70">{t("goals.custom.desc")}</p>
+        </button>
+
+        {isCustom && (
+          <div className="mt-3 space-y-4 rounded-xl border border-slate-700 bg-surface-elevated p-3">
+            <div>
+              <label className="label">{t("customDistanceLabel")}</label>
+              <input
+                type="number"
+                min={MIN_CUSTOM_DISTANCE_KM}
+                max={MAX_CUSTOM_DISTANCE_KM}
+                step={0.1}
+                placeholder={t("customDistancePlaceholder")}
+                className="input"
+                {...register("custom_distance_km", { valueAsNumber: true })}
+              />
+              {errors.custom_distance_km ? (
+                <p className="text-xs text-red-400 mt-1">{t("customDistanceRequired")}</p>
+              ) : (
+                <p className="text-[10px] text-slate-600 mt-1">{t("customDistanceHint")}</p>
+              )}
+              {isUltra(customKm) && (
+                <p className="text-[11px] text-amber-400 mt-2 leading-relaxed">{t("ultraWarning")}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="label">{t("goalKindLabel")}</label>
+              <div className="flex items-center gap-1 p-1 bg-surface rounded-xl w-fit">
+                {GOAL_KINDS.map((kind) => (
+                  <button
+                    key={kind}
+                    type="button"
+                    onClick={() => setValue("goal_kind", kind)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 ${
+                      goalKind === kind
+                        ? "bg-brand-500 text-white shadow"
+                        : "text-slate-500 hover:text-slate-300"
+                    }`}
+                  >
+                    {t(`goalKinds.${kind}.label`)}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[10px] text-slate-600 mt-1.5">{t(`goalKinds.${goalKind}.desc`)}</p>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-3">
@@ -178,7 +248,7 @@ export function StepGoal({ register, watch, setValue, errors, targetTimeDisplay 
                 : "text-slate-500 hover:text-slate-300"
             }`}
           >
-            {t("modeRaceDate")}
+            {t(isFitness ? "modeTargetDate" : "modeRaceDate")}
           </button>
         </div>
 
@@ -203,7 +273,7 @@ export function StepGoal({ register, watch, setValue, errors, targetTimeDisplay 
             </div>
             {raceDateSuggestion && (
               <p className="text-[11px] text-slate-500 mt-2">
-                {t("raceDateSuggestion")}{" "}
+                {t(isFitness ? "targetDateSuggestion" : "raceDateSuggestion")}{" "}
                 <span className="text-brand-400 font-medium">
                   {new Date(raceDateSuggestion).toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" })}
                 </span>
@@ -212,7 +282,7 @@ export function StepGoal({ register, watch, setValue, errors, targetTimeDisplay 
           </div>
         ) : (
           <div>
-            <label className="label">{t("raceDateLabel")}</label>
+            <label className="label">{t(isFitness ? "targetDateLabel" : "raceDateLabel")}</label>
             <input
               type="date"
               value={currentRaceDate || ""}
@@ -220,10 +290,10 @@ export function StepGoal({ register, watch, setValue, errors, targetTimeDisplay 
               className="input"
               onChange={(e) => handleRaceDateChange(e.target.value)}
             />
-            <p className="text-[10px] text-slate-600 mt-1">{t("raceDateHint")}</p>
+            <p className="text-[10px] text-slate-600 mt-1">{t(isFitness ? "targetDateHint" : "raceDateHint")}</p>
             {currentWeeks && currentRaceDate && (
               <p className="text-[11px] text-slate-500 mt-2">
-                {t("weeksCalculated", { weeks: currentWeeks })}
+                {t(isFitness ? "weeksCalculatedFitness" : "weeksCalculated", { weeks: currentWeeks })}
               </p>
             )}
           </div>
@@ -253,6 +323,29 @@ export function StepGoal({ register, watch, setValue, errors, targetTimeDisplay 
             </button>
           ))}
         </div>
+      </div>
+
+      <div>
+        <label className="label">{t("feedbackToneLabel")}</label>
+        <div className="grid grid-cols-2 gap-2">
+          {FEEDBACK_TONES.map((tone) => (
+            <button
+              key={tone}
+              type="button"
+              onClick={() => setValue("feedback_tone", tone)}
+              className={`rounded-xl border p-3 text-left transition-all duration-200 ${
+                feedbackTone === tone
+                  ? "border-brand-500 bg-brand-500/10 text-white"
+                  : "border-slate-700 bg-surface-elevated text-slate-400 hover:border-slate-600"
+              }`}
+            >
+              <span className="text-xl">{TONE_EMOJIS[tone]}</span>
+              <p className="font-semibold mt-1 text-sm">{t(`feedbackTones.${tone}.label`)}</p>
+              <p className="text-[11px] opacity-70">{t(`feedbackTones.${tone}.desc`)}</p>
+            </button>
+          ))}
+        </div>
+        <p className="text-[10px] text-slate-600 mt-1.5">{t("feedbackToneHint")}</p>
       </div>
     </div>
   );

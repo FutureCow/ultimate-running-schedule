@@ -32,6 +32,10 @@ class User(Base):
     weekly_runs: Mapped[int | None] = mapped_column(Integer, nullable=True)
     injuries: Mapped[str | None] = mapped_column(Text, nullable=True)
     max_hr: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Default tone of the AI run analysis; a plan may override it
+    feedback_tone: Mapped[str] = mapped_column(
+        String(20), default="scientific", server_default="scientific", nullable=False
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

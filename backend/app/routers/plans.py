@@ -2,13 +2,10 @@ from datetime import date, timedelta
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Request
 from pydantic import BaseModel
-from slowapi import Limiter
-from slowapi.util import get_remote_address
 from sqlalchemy.ext.asyncio import AsyncSession
-
-limiter = Limiter(key_func=get_remote_address)
 from sqlalchemy import select
 from app.database import get_db
+from app.rate_limit import limiter
 from app.models.user import User
 from app.models.plan import Plan, WorkoutSession
 from app.routers.deps import get_current_user, require_tier
@@ -21,21 +18,46 @@ router = APIRouter(prefix="/plans", tags=["plans"])
 _POST_RACE_TYPES = {"easy_run", "recovery", "rest"}
 
 
+def _plan_to_create(plan: Plan) -> PlanCreate:
+    """Rebuild the AI input from a stored plan, for regeneration on edit.
+
+    Every field that shapes the prompt has to be listed here — a missing one
+    silently drops out of the regenerated plan.
+    """
+    return PlanCreate(
+        name=plan.name,
+        goal=plan.goal,
+        custom_distance_km=plan.custom_distance_km,
+        goal_kind=plan.goal_kind or "race",
+        target_time_seconds=plan.target_time_seconds,
+        target_pace_per_km=plan.target_pace_per_km,
+        age=plan.age,
+        height_cm=plan.height_cm,
+        weight_kg=plan.weight_kg,
+        weekly_km=plan.weekly_km,
+        weekly_runs=plan.weekly_runs,
+        injuries=plan.injuries,
+        extra_notes=plan.extra_notes,
+        training_days=plan.training_days,
+        long_run_day=plan.long_run_day,
+        duration_weeks=plan.duration_weeks,
+        surface=plan.surface,
+        start_date=plan.start_date,
+        race_date=plan.race_date,
+        strength=StrengthPreferences(
+            enabled=plan.strength_enabled,
+            location=plan.strength_location,
+            type=plan.strength_type,
+            days=plan.strength_days,
+            equipment=plan.strength_equipment,
+        ) if plan.strength_enabled else None,
+    )
+
+
 def _create_sessions_from_json(plan: Plan, plan_json: dict) -> list[WorkoutSession]:
     sessions = []
     actual_start = plan.start_date or date.today()
     week1_monday = actual_start - timedelta(days=actual_start.weekday())
-
-    # Find the race week number and day so we can enforce post-race workout types
-    race_week_num: int | None = None
-    race_day_num: int | None = None
-    if plan.race_date:
-        for week in plan_json.get("weeks", []):
-            for workout in week.get("workouts", []):
-                if workout.get("workout_type") == "race":
-                    race_week_num = week["week_number"]
-                    race_day_num = workout.get("day_number")
-                    break
 
     for week in plan_json.get("weeks", []):
         wnum = week["week_number"]
@@ -56,13 +78,10 @@ def _create_sessions_from_json(plan: Plan, plan_json: dict) -> list[WorkoutSessi
             if workout_type == "race" and plan.race_date:
                 scheduled = plan.race_date
 
-            # Drop everything scheduled after the race date
-            if plan.race_date and scheduled > plan.race_date:
-                continue
-
-            # Guard: any session after the race in the same week must be recovery/rest
-            if (race_week_num is not None and race_day_num is not None
-                    and wnum == race_week_num and day_num > race_day_num
+            # After the race the plan winds down — it never trains hard again.
+            # Covers both the tail of the race week and the post-race recovery
+            # week, which is kept so the athlete can see it.
+            if (plan.race_date and scheduled > plan.race_date
                     and workout_type not in _POST_RACE_TYPES):
                 workout_type = "recovery"
 
@@ -199,32 +218,7 @@ async def update_plan(
             setattr(plan, field, value)
 
     # Build a PlanCreate-like object for AI generation using merged values
-    merged = PlanCreate(
-        name=plan.name,
-        goal=plan.goal,
-        target_time_seconds=plan.target_time_seconds,
-        target_pace_per_km=plan.target_pace_per_km,
-        age=plan.age,
-        height_cm=plan.height_cm,
-        weight_kg=plan.weight_kg,
-        weekly_km=plan.weekly_km,
-        weekly_runs=plan.weekly_runs,
-        injuries=plan.injuries,
-        extra_notes=plan.extra_notes,
-        training_days=plan.training_days,
-        long_run_day=plan.long_run_day,
-        duration_weeks=plan.duration_weeks,
-        surface=plan.surface,
-        start_date=plan.start_date,
-        race_date=plan.race_date,
-        strength=StrengthPreferences(
-            enabled=plan.strength_enabled,
-            location=plan.strength_location,
-            type=plan.strength_type,
-            days=plan.strength_days,
-            equipment=plan.strength_equipment,
-        ) if plan.strength_enabled else None,
-    )
+    merged = _plan_to_create(plan)
 
     # Fetch optional Garmin context
     garmin_summary = None

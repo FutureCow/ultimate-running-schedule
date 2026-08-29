@@ -7,6 +7,9 @@ export interface User {
 
 export type UserTier = "base" | "tempo" | "elite";
 
+/** Tone of the AI analysis after a run. On a plan, undefined = follow the profile. */
+export type FeedbackTone = "scientific" | "encouraging";
+
 export interface UserProfile {
   name?: string | null;
   avatar_url?: string | null;
@@ -17,6 +20,7 @@ export interface UserProfile {
   weekly_runs?: number | null;
   injuries?: string | null;
   max_hr?: number | null;
+  feedback_tone?: FeedbackTone;
   is_admin?: boolean;
   tier?: UserTier;
   email?: string;
@@ -95,7 +99,6 @@ export interface WorkoutSession {
   garmin_pushed_at?: string | null;
   completed_at?: string | null;
   garmin_activity_id?: string | null;
-  ai_feedback?: string | null;
 }
 
 export interface PaceZones {
@@ -134,6 +137,9 @@ export interface Plan {
   user_id: number;
   name: string;
   goal: string;
+  custom_distance_km?: number | null;
+  goal_kind?: GoalKind;
+  feedback_tone?: FeedbackTone | null;
   target_time_seconds?: number | null;
   target_pace_per_km?: string | null;
   age?: number | null;
@@ -200,11 +206,17 @@ export interface ActivityDetail {
   session_title?: string | null;
 }
 
-export type GoalType = "5k" | "10k" | "half_marathon" | "marathon";
+export type GoalType = "5k" | "10k" | "half_marathon" | "marathon" | "custom";
+
+/** "race" tapers toward a race day; "fitness" just builds up to the distance. */
+export type GoalKind = "race" | "fitness";
 
 export interface PlanFormData {
   name: string;
   goal: GoalType;
+  custom_distance_km?: number;
+  goal_kind?: GoalKind;
+  feedback_tone?: FeedbackTone;
   target_time_seconds?: number;
   target_pace_per_km?: string;
   age?: number;

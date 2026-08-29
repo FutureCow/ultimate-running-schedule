@@ -7,6 +7,7 @@ from typing import Optional
 import anthropic
 
 from app.config import settings
+from app.schemas.common import DEFAULT_FEEDBACK_TONE, FEEDBACK_TONES
 from app.schemas.plan import PlanCreate, StrengthPreferences
 
 logger = logging.getLogger(__name__)
@@ -24,7 +25,7 @@ _SCHEMA = """{
     "weekly_structure","coaching_notes"},
   "weeks":[{"week_number","theme","total_km","workouts":[{
     "day_number":1-7,
-    "workout_type":"easy_run|long_run|tempo|interval|recovery|rest|strength",
+    "workout_type":"easy_run|long_run|tempo|interval|recovery|race|rest|strength",
     "title","description","distance_km","duration_minutes",
     "target_paces":{"warmup","main","cooldown",
       "strides":{"reps":4-8,"distance_m":80-100,"pace","rest_seconds":60-90}|null},
@@ -44,6 +45,39 @@ def _extract_json(text: str) -> str:
     return text[s : e + 1] if s != -1 and e > s else text
 
 
+MARATHON_KM = 42.2
+
+
+def _format_km(distance: float) -> str:
+    """18.5 → '18.5', 25.0 → '25'."""
+    return f"{distance:g}"
+
+
+def _goal_label(plan: PlanCreate) -> str:
+    goal_labels = {
+        "5k": "5 km", "10k": "10 km",
+        "half_marathon": "Half Marathon (21.1 km)", "marathon": "Marathon (42.2 km)",
+    }
+    if plan.goal == "custom" and plan.custom_distance_km:
+        return f"{_format_km(plan.custom_distance_km)} km"
+    return goal_labels.get(plan.goal, plan.goal)
+
+
+def _ultra_block(plan: PlanCreate, goal_label: str) -> str:
+    """Extra guidance for distances past the marathon, where VDOT alone is not enough."""
+    if plan.goal != "custom" or (plan.custom_distance_km or 0) <= MARATHON_KM:
+        return ""
+    return f"""
+## Ultra-distance guidance
+{goal_label} is past the marathon: treat VDOT paces as a guide, not a rule.
+Build back-to-back long runs on consecutive days rather than one very long run.
+Measure the long efforts in time on feet, not kilometres.
+Keep overall intensity lower — more easy volume, fewer hard interval sessions.
+Rehearse fuelling and hydration on every long run.
+Plan deliberate walk/run sections on climbs and late in the longest efforts.
+"""
+
+
 def _build_prompt(plan: PlanCreate, garmin: Optional[dict], lang: str) -> str:
     d = plan.duration_weeks
     race_day = plan.race_date.isoweekday() if plan.race_date else 7
@@ -53,10 +87,15 @@ def _build_prompt(plan: PlanCreate, garmin: Optional[dict], lang: str) -> str:
         h, r = divmod(plan.target_time_seconds, 3600)
         m, s = divmod(r, 60)
         target = f"{h}h{m:02d}m{s:02d}s" if h else f"{m}:{s:02d}"
+    elif plan.target_pace_per_km:
+        target = f"{plan.target_pace_per_km}/km"
+    elif plan.goal_kind == "fitness":
+        # No race to peak for — covering the distance is the goal
+        target = "Complete the distance comfortably"
     else:
-        target = f"{plan.target_pace_per_km}/km" if plan.target_pace_per_km else "Personal best"
+        target = "Personal best"
 
-    goal_labels = {"5k": "5 km", "10k": "10 km", "half_marathon": "Half Marathon (21.1 km)", "marathon": "Marathon (42.2 km)"}
+    goal_label = _goal_label(plan)
 
     if garmin:
         g = garmin.get("summary", garmin)
@@ -88,21 +127,37 @@ def _build_prompt(plan: PlanCreate, garmin: Optional[dict], lang: str) -> str:
         strength_str = "\nDo NOT include any strength workouts. Running workouts only.\n"
 
     taper1 = max(1, d - 1)
+
+    if plan.goal_kind == "fitness":
+        # No race — the athlete just wants to be able to cover the distance
+        schedule_str = (
+            f"## Target & schedule\n"
+            f"No race. Week {d} is the target week: by the end of it the athlete must be "
+            f"able to cover {goal_label} comfortably in a single run.\n"
+            f"Grow the long run progressively toward that distance — no taper, "
+            f"no race-day session, no time goal to peak for.\n"
+            f'Week {d + 1}: easy consolidation only — short easy runs, theme = "Consolidation".'
+        )
+    else:
+        schedule_str = (
+            f"## Race & schedule\n"
+            f"Race: {race_str} (week {d}, day {race_day}, 1=Mon…7=Sun).\n"
+            f"Taper weeks {taper1}–{d}: reduced volume, nothing hard within 3 days of race.\n"
+            f"Week {d}: race on day {race_day}; workouts AFTER it must be 'recovery' or 'rest'.\n"
+            f'Week {d + 1}: post-race recovery only — easy short runs, theme = "Post-race recovery".'
+        )
+
     return f"""Create a {d + 1}-week running plan ({d} training + 1 recovery) in {lang}.
 
 ## Athlete
-Goal: {goal_labels.get(plan.goal, plan.goal)} | Target: {target}
+Goal: {goal_label} | Target: {target}
 Age {plan.age or '?'}, {plan.height_cm or '?'} cm, {plan.weight_kg or '?'} kg
 Fitness: {plan.weekly_km or '?'} km/wk over {plan.weekly_runs or '?'} runs
 Injuries: {plan.injuries or 'none'}. Notes: {plan.extra_notes or 'none'}.
 Training days: {', '.join(plan.training_days) if plan.training_days else 'flexible'}. Long run: {plan.long_run_day or 'Sunday'}. Surface: {plan.surface or 'road'}.
 
-## Race & schedule
-Race: {race_str} (week {d}, day {race_day}, 1=Mon…7=Sun).
-Taper weeks {taper1}–{d}: reduced volume, nothing hard within 3 days of race.
-Week {d}: race on day {race_day}; workouts AFTER it must be 'recovery' or 'rest'.
-Week {d + 1}: post-race recovery only — easy short runs, theme = "Post-race recovery".
-
+{schedule_str}
+{_ultra_block(plan, goal_label)}
 ## Recent activity
 {garmin_str}
 {strength_str}
@@ -225,6 +280,43 @@ Return ONLY the JSON object."""
         raise ValueError(f"Invalid JSON from Claude: {e}. Got: {raw[:200]!r}") from e
 
 
+def resolve_feedback_tone(plan_tone: str | None, user_tone: str | None) -> str:
+    """The plan's setting wins; without one, fall back to the athlete's profile."""
+    for tone in (plan_tone, user_tone):
+        if tone in FEEDBACK_TONES:
+            return tone
+    return DEFAULT_FEEDBACK_TONE
+
+
+def _feedback_instructions(tone: str, lang_instruction: str) -> tuple[str, str, int]:
+    """Return (system prompt, task instructions, max_tokens) for a feedback tone."""
+    if tone == "encouraging":
+        system = (
+            f"You are a warm, experienced running coach writing to a beginner in {lang_instruction}. "
+            "Return plain prose — no headers, no bullet points, no markdown. "
+            "Be encouraging but never invent praise the data does not support: every compliment must "
+            "point at a real number from this run. If something genuinely went badly, say so plainly "
+            "and frame it as the next thing to practise, not as a failure."
+        )
+        task = f"""Write a post-run note to a beginner in {lang_instruction}. Write exactly 2 paragraphs, each 2–3 sentences. No headers, no bullet points, no markdown.
+
+Paragraph 1 — What went well: name the specific things this run did right and quote the numbers that show it. Explain what those numbers mean in everyday language — no jargon, and no training-zone terminology unless you explain it in the same sentence.
+Paragraph 2 — One small next step: give exactly one concrete, achievable thing to try on the next run, and say why it helps. One thing only — do not list several."""
+        return system, task, 400
+
+    system = (
+        f"You are an elite running coach and sports scientist writing in {lang_instruction}. "
+        "Return plain prose — no headers, no bullet points, no markdown. "
+        "Ground every claim in the numbers you are given; no filler."
+    )
+    task = f"""You are an elite running coach writing a post-workout analysis in {lang_instruction}. Write exactly 3 paragraphs, each 2–3 sentences. No headers, no bullet points, no markdown.
+
+Paragraph 1 — Training load & heart rate: Interpret the HR data scientifically (training zones, cardiac drift, effort relative to max HR). Reference relevant exercise physiology where appropriate.
+Paragraph 2 — Pace & cadence: Assess pace consistency, cadence efficiency, and what the numbers reveal about running economy.
+Paragraph 3 — Recovery: Give specific, evidence-based recovery advice tailored to this session's intensity and duration."""
+    return system, task, 900
+
+
 def _stream_stats(values: list) -> dict | None:
     """Compute min/max/avg and optional HR-zone distribution from a numeric stream."""
     clean = [v for v in values if v is not None]
@@ -266,8 +358,11 @@ async def generate_run_feedback(
     streams: dict | None = None,
     user_age: int | None = None,
     user_max_hr: int | None = None,
+    tone: str = DEFAULT_FEEDBACK_TONE,
 ) -> str:
-    """Generate a concise scientific run analysis for an Elite user after a completed workout.
+    """Generate a run analysis for an Elite user after a completed workout.
+
+    `tone` is "scientific" (the default) or "encouraging"; see _feedback_instructions.
 
     `activity` may be a flat dict (from _parse_activity) or a nested detail dict with
     a 'summary' key (from fetch_activity_detail). `streams` may contain time-series
@@ -360,20 +455,17 @@ async def generate_run_feedback(
         )
 
     lang_instruction = "Dutch (Nederlands)" if language == "nl" else "English"
+    system, task, max_tokens = _feedback_instructions(tone, lang_instruction)
 
-    prompt = f"""You are an elite running coach writing a post-workout analysis in {lang_instruction}. Write exactly 3 paragraphs, each 2–3 sentences. No headers, no bullet points, no markdown.
-
-Paragraph 1 — Training load & heart rate: Interpret the HR data scientifically (training zones, cardiac drift, effort relative to max HR). Reference relevant exercise physiology where appropriate.
-Paragraph 2 — Pace & cadence: Assess pace consistency, cadence efficiency, and what the numbers reveal about running economy.
-Paragraph 3 — Recovery: Give specific, evidence-based recovery advice tailored to this session's intensity and duration.
+    prompt = f"""{task}
 
 Workout data:
 {chr(10).join(stats_lines)}"""
 
     message = await client.messages.create(
         model=settings.CLAUDE_MODEL,
-        max_tokens=600,
-        system=f"Sports scientist. {lang_instruction}. One sentence, max 25 words. Numbers only, no fluff.",
+        max_tokens=max_tokens,
+        system=system,
         messages=[{"role": "user", "content": prompt}],
     )
 

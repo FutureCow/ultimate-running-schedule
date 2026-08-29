@@ -35,6 +35,14 @@ class Plan(Base):
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     goal: Mapped[str] = mapped_column(String(50), nullable=False)
+    # Set only when goal == "custom" — the free distance the athlete picked
+    custom_distance_km: Mapped[float | None] = mapped_column(Float, nullable=True)
+    # "race" (taper + race day) or "fitness" (build up to the distance, no race)
+    goal_kind: Mapped[str] = mapped_column(
+        String(20), default="race", server_default="race", nullable=False
+    )
+    # NULL means "follow the user's profile default"
+    feedback_tone: Mapped[str | None] = mapped_column(String(20), nullable=True)
     target_time_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
     target_pace_per_km: Mapped[str | None] = mapped_column(String(20), nullable=True)
     age: Mapped[int | None] = mapped_column(Integer, nullable=True)

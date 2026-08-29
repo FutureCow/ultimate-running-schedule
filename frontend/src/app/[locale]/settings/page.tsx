@@ -141,6 +141,7 @@ export default function SettingsPage() {
       weekly_runs: profile.weekly_runs ?? undefined,
       injuries: profile.injuries ?? undefined,
       max_hr: profile.max_hr ?? undefined,
+      feedback_tone: profile.feedback_tone ?? undefined,
     }),
     onSuccess: () => {
       setProfileSaved(true); setProfileError("");
@@ -349,6 +350,28 @@ export default function SettingsPage() {
                   onChange={(e) => setProfile((p) => ({ ...p, max_hr: e.target.value ? Number(e.target.value) : null }))}
                 />
                 <p className="mt-1 text-xs text-slate-500">Wordt gebruikt voor nauwkeurige hartslagzones in de AI-analyse. Meet je max-HR tijdens een zware inspanning of race.</p>
+              </div>
+
+              <div>
+                <label className="label">{tp("feedbackTone")}</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {(["scientific", "encouraging"] as const).map((tone) => (
+                    <button
+                      key={tone}
+                      type="button"
+                      onClick={() => setProfile((p) => ({ ...p, feedback_tone: tone }))}
+                      className={`rounded-xl border p-3 text-left transition-all duration-200 ${
+                        (profile.feedback_tone ?? "scientific") === tone
+                          ? "border-brand-500 bg-brand-500/10 text-white"
+                          : "border-slate-700 bg-surface-elevated text-slate-400 hover:border-slate-600"
+                      }`}
+                    >
+                      <p className="font-semibold text-sm">{tp(`feedbackTones.${tone}.label`)}</p>
+                      <p className="text-[11px] opacity-70">{tp(`feedbackTones.${tone}.desc`)}</p>
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-1 text-xs text-slate-500">{tp("feedbackToneHint")}</p>
               </div>
 
               <div>

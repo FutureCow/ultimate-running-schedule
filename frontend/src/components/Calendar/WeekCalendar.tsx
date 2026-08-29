@@ -24,6 +24,17 @@ export function WeekCalendar({ plan }: Props) {
 
   const weeks = plan.plan_json?.weeks || [];
 
+  // A plan runs one week longer than duration_weeks — the last one is the
+  // post-race recovery week. Derive the count from the weeks that actually
+  // exist instead of trusting duration_weeks.
+  const totalWeeks = useMemo(() => {
+    const numbers = [
+      ...plan.sessions.map((s) => s.week_number),
+      ...weeks.map((w) => w.week_number),
+    ].filter((n) => Number.isFinite(n));
+    return numbers.length > 0 ? Math.max(plan.duration_weeks, ...numbers) : plan.duration_weeks;
+  }, [plan.sessions, plan.plan_json, plan.duration_weeks]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Compute the current week by finding the latest week whose first session has
   // already started. Falls back to start_date / created_at calculation when no
   // session dates are available.
@@ -63,8 +74,8 @@ export function WeekCalendar({ plan }: Props) {
     const fallback = plan.start_date || plan.created_at?.split("T")[0];
     if (!fallback) return 1;
     const weeksPassed = Math.floor((todayMs - toMs(fallback)) / (7 * 24 * 60 * 60 * 1000));
-    return Math.max(1, Math.min(plan.duration_weeks, weeksPassed + 1));
-  }, [plan.start_date, plan.created_at, plan.sessions, plan.duration_weeks]);
+    return Math.max(1, Math.min(totalWeeks, weeksPassed + 1));
+  }, [plan.start_date, plan.created_at, plan.sessions, totalWeeks]);
 
   // manualWeek is set when the user explicitly navigates; null = follow activeWeek
   const [manualWeek, setManualWeek] = useState<number | null>(null);
@@ -103,7 +114,6 @@ export function WeekCalendar({ plan }: Props) {
 
   const week = weeks.find((w) => w.week_number === currentWeek);
   const sessions = plan.sessions.filter((s) => s.week_number === currentWeek);
-  const totalWeeks = plan.duration_weeks;
 
   const sessionsByDay: Record<number, WorkoutSession[]> = {};
   for (let d = 1; d <= 7; d++) {

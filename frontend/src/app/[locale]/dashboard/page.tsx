@@ -8,6 +8,7 @@ import { Link } from "@/i18n/navigation";
 import { Plus, TrendingUp, Calendar, Target, Zap, ChevronRight } from "lucide-react";
 import { plansApi, garminApi } from "@/lib/api";
 import { Plan } from "@/types";
+import { goalLabel } from "@/lib/goal";
 import { format, parseISO } from "date-fns";
 import { nl, enUS } from "date-fns/locale";
 
@@ -63,7 +64,7 @@ export default function DashboardPage() {
                   </div>
                   <h2 className="text-xl font-bold text-white">{activePlan.name}</h2>
                   <p className="text-sm text-slate-400 mt-0.5">
-                    {tGoals(activePlan.goal as any)} · {activePlan.duration_weeks} {t("stats.weeks").toLowerCase()}
+                    {goalLabel(tGoals, activePlan.goal, activePlan.custom_distance_km, locale)} · {activePlan.duration_weeks} {t("stats.weeks").toLowerCase()}
                     {activePlan.start_date && ` · Start ${format(parseISO(activePlan.start_date), "d MMM", { locale: dateFnsLocale })}`}
                   </p>
                 </div>
@@ -117,7 +118,7 @@ export default function DashboardPage() {
                       <div>
                         <p className="font-semibold text-white text-sm">{plan.name}</p>
                         <p className="text-xs text-slate-500">
-                          {tGoals(plan.goal as any)} · {plan.duration_weeks} {t("stats.weeks").toLowerCase()} ·{" "}
+                          {goalLabel(tGoals, plan.goal, plan.custom_distance_km, locale)} · {plan.duration_weeks} {t("stats.weeks").toLowerCase()} ·{" "}
                           {format(parseISO(plan.created_at), "d MMM yyyy", { locale: dateFnsLocale })}
                         </p>
                       </div>

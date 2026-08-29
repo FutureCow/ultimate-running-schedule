@@ -1,5 +1,5 @@
 import logging
-from datetime import timedelta, date
+from datetime import datetime, timedelta, date, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -19,23 +19,6 @@ router = APIRouter(prefix="/sessions", tags=["sessions"])
 class SessionMove(BaseModel):
     day_number: int   # 1–7
     week_number: int | None = None  # if omitted, keeps current week
-
-
-class BulkFilter(BaseModel):
-    day_number: int | None = None        # 1–7, filter by day
-    workout_type: str | None = None      # e.g. "easy_run"
-    only_future: bool = True             # skip already-completed sessions
-
-
-class BulkUpdate(BaseModel):
-    day_number: int | None = None        # move to this day
-    target_pace_key: str | None = None   # e.g. "main", "warmup"
-    target_pace_value: str | None = None # e.g. "6:50-7:00"
-
-
-class BulkEditPayload(BaseModel):
-    filter: BulkFilter
-    update: BulkUpdate
 
 
 @router.patch("/{session_id}", response_model=WorkoutSessionResponse)
@@ -63,7 +46,8 @@ async def move_session(
     old_garmin_id = session.garmin_workout_id if session.garmin_workout_id else None
 
     if payload.week_number is not None:
-        if not 1 <= payload.week_number <= plan.duration_weeks:
+        # duration_weeks + 1 — the last week is the post-race recovery week
+        if not 1 <= payload.week_number <= plan.duration_weeks + 1:
             raise HTTPException(status_code=422, detail="week_number out of plan range")
         session.week_number = payload.week_number
 
@@ -133,7 +117,8 @@ async def update_session_details(
             raise HTTPException(status_code=422, detail="Datum valt voor de planstart")
         new_week = delta.days // 7 + 1
         new_day = delta.days % 7 + 1
-        if new_week > plan.duration_weeks:
+        # duration_weeks + 1 — the last week is the post-race recovery week
+        if new_week > plan.duration_weeks + 1:
             raise HTTPException(status_code=422, detail="Datum valt na het einde van het plan")
         date_changed = payload.scheduled_date != session.scheduled_date
         session.week_number = new_week
@@ -205,6 +190,36 @@ async def reset_session(
 
     await db.commit()
     await db.refresh(session)
+    return session
+
+
+@router.post("/{session_id}/complete", response_model=WorkoutSessionResponse)
+async def complete_session(
+    session_id: int,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Mark a session as completed by hand.
+
+    Garmin sync matches activities to sessions on date, so a run done without a
+    watch — or on a different day than planned — never gets marked. This lets
+    the athlete tick it off themselves.
+    """
+    result = await db.execute(
+        select(WorkoutSession)
+        .join(Plan, Plan.id == WorkoutSession.plan_id)
+        .where(WorkoutSession.id == session_id, Plan.user_id == user.id)
+    )
+    session = result.scalar_one_or_none()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    # Never overwrite a Garmin-matched completion time with "now"
+    if not session.completed_at:
+        session.completed_at = datetime.now(timezone.utc)
+        await db.commit()
+        await db.refresh(session)
+
     return session
 
 

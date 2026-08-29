@@ -3,15 +3,13 @@ import logging
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from pydantic import BaseModel
-from slowapi import Limiter
-from slowapi.util import get_remote_address
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
 logger = logging.getLogger(__name__)
 
-limiter = Limiter(key_func=get_remote_address)
-from sqlalchemy import select
 from app.database import get_db
+from app.rate_limit import limiter
 from app.models.user import User
 from app.models.plan import Plan, WorkoutSession
 from app.routers.deps import get_current_user
@@ -118,20 +116,27 @@ async def _generate_feedback_background(
     user_age: int | None,
     user_max_hr: int | None,
     language: str,
+    user_feedback_tone: str | None = None,
 ) -> None:
     """Fetch full stream data and generate AI feedback for a plan-linked session."""
     from app.database import AsyncSessionLocal
     from app.services import claude_service
-    from app.models.plan import WorkoutSession
+    from app.models.plan import Plan, WorkoutSession
 
     async with AsyncSessionLocal() as db:
         try:
             data = await garmin_service.fetch_activity_detail(db, user_id, activity_id)
             session = await db.get(WorkoutSession, session_id)
             if session and not session.ai_feedback:
+                # Load the plan explicitly — session.plan would lazy-load and
+                # raise MissingGreenlet in async context
+                plan = await db.get(Plan, session.plan_id)
+                tone = claude_service.resolve_feedback_tone(
+                    plan.feedback_tone if plan else None, user_feedback_tone
+                )
                 session.ai_feedback = await claude_service.generate_run_feedback(
                     data, session.title or activity_id, language=language,
-                    user_age=user_age, user_max_hr=user_max_hr,
+                    user_age=user_age, user_max_hr=user_max_hr, tone=tone,
                 )
                 await db.commit()
         except Exception as exc:
@@ -159,7 +164,7 @@ async def sync_activities(
                 background_tasks.add_task(
                     _generate_feedback_background,
                     session_id, activity_id, user.id,
-                    user.age, user.max_hr, "nl",
+                    user.age, user.max_hr, "nl", user.feedback_tone,
                 )
 
         return GarminSyncResponse(
@@ -227,9 +232,13 @@ async def get_activity_detail(
         needs_feedback = session and user.tier == "elite" and not session.ai_feedback
         if needs_feedback:
             try:
+                plan = await db.get(Plan, session.plan_id)
+                tone = claude_service.resolve_feedback_tone(
+                    plan.feedback_tone if plan else None, user.feedback_tone
+                )
                 session.ai_feedback = await claude_service.generate_run_feedback(
                     data, session.title, language="nl",
-                    user_age=user.age, user_max_hr=user.max_hr
+                    user_age=user.age, user_max_hr=user.max_hr, tone=tone,
                 )
                 await db.commit()
             except Exception as exc:

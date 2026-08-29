@@ -72,6 +72,7 @@ export const profileApi = {
   update: (data: Partial<{
     name: string; age: number; height_cm: number; weight_kg: number;
     weekly_km: number; weekly_runs: number; injuries: string; max_hr: number;
+    feedback_tone: "scientific" | "encouraging";
   }>) => api.patch("/auth/profile", data),
   uploadAvatar: (file: File) => {
     const form = new FormData();

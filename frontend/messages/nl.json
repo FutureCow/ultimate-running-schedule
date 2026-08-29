@@ -173,11 +173,33 @@
         "nl": { "label": "Nederlands", "desc": "Trainingen en beschrijvingen in het Nederlands" },
         "en": { "label": "English",    "desc": "Workouts and descriptions in English" }
       },
-      "goals": {
+        "feedbackToneLabel": "Toon van de activiteitsanalyse",
+      "feedbackToneHint": "Geldt voor de AI-analyse die na elke gesynchroniseerde training verschijnt (Elite).",
+      "feedbackTones": {
+        "scientific":  { "label": "Wetenschappelijk", "desc": "Hartslagzones, fysiologie en onderbouwd hersteladvies" },
+        "encouraging": { "label": "Aanmoedigend",     "desc": "Wat er goed ging in gewone taal, plus één klein aandachtspunt" }
+      },
+      "customDistanceLabel": "Afstand in kilometers",
+      "customDistancePlaceholder": "bijv. 18,5",
+      "customDistanceHint": "1 tot 100 km",
+      "customDistanceRequired": "Vul een afstand tussen 1 en 100 km in",
+      "ultraWarning": "Boven de marathon: het plan krijgt een ultra-opbouw met back-to-back lange duurlopen en nadruk op tijd op de benen in plaats van tempo.",
+      "goalKindLabel": "Wat wil je met deze afstand?",
+      "goalKinds": {
+        "race":    { "label": "Wedstrijd",    "desc": "Met taper naar een wedstrijddag toe" },
+        "fitness": { "label": "Kunnen lopen", "desc": "Opbouwen tot je de afstand comfortabel loopt, zonder wedstrijd" }
+      },
+      "modeTargetDate": "Streefdatum",
+      "targetDateLabel": "Streefdatum",
+      "targetDateHint": "Het aantal weken wordt automatisch berekend op basis van start- en streefdatum.",
+      "targetDateSuggestion": "Streefdatum op basis van duur:",
+      "weeksCalculatedFitness": "{weeks} weken training (excl. 1 consolidatieweek erna)",
+    "goals": {
         "5k":            { "label": "5 km",          "desc": "Eerste 5K of sneller worden" },
         "10k":           { "label": "10 km",          "desc": "Klassieke afstand verbeteren" },
         "half_marathon": { "label": "Halve Marathon", "desc": "21,1 km uitdaging" },
-        "marathon":      { "label": "Marathon",       "desc": "42,2 km – de ultieme test" }
+        "marathon":      { "label": "Marathon",       "desc": "42,2 km – de ultieme test" },
+        "custom":        { "label": "Eigen afstand",  "desc": "Vul zelf een aantal km in" }
       }
     },
     "profile": {
@@ -389,6 +411,12 @@
     "profile": {
       "title": "Atletenprofiel",
       "subtitle": "Wordt automatisch ingevuld bij een nieuw plan",
+      "feedbackTone": "Toon van de activiteitsanalyse",
+      "feedbackToneHint": "Je standaard. Bij een nieuw plan kun je hiervan afwijken.",
+      "feedbackTones": {
+        "scientific":  { "label": "Wetenschappelijk", "desc": "Hartslagzones en fysiologie" },
+        "encouraging": { "label": "Aanmoedigend",     "desc": "Wat goed ging, plus één klein aandachtspunt" }
+      },
       "age": "Leeftijd",
       "height": "Lengte (cm)",
       "weight": "Gewicht (kg)",
@@ -551,6 +579,7 @@
     "5k":            "5 km",
     "10k":           "10 km",
     "half_marathon": "Halve Marathon",
-    "marathon":      "Marathon"
+    "marathon":      "Marathon",
+    "custom":        "Eigen afstand"
   }
 }
