@@ -13,6 +13,7 @@ export function StepReview({ values }: { values: Partial<FormSchema> }) {
   const tGoals = useTranslations("goals");
   const goalLocale = useLocale();
   const tDays = useTranslations("days");
+  const tPrefs = useTranslations("form.prefs");
 
   const rows = [
     { label: t("rows.name"),         value: values.name },
@@ -42,7 +43,7 @@ export function StepReview({ values }: { values: Partial<FormSchema> }) {
       label: t("rows.longRunDay"),
       value: values.long_run_day ? tDays(`full.${DAYS_EN.indexOf(values.long_run_day)}`) : "—",
     },
-    { label: t("rows.surface"),       value: values.surface || "—" },
+    { label: t("rows.surface"),       value: values.surface ? tPrefs(`surfaces.${values.surface}`) : "—" },
     { label: t("rows.startDate"),     value: values.start_date || "—" },
     { label: t("rows.raceDate"),      value: values.race_date || "—" },
     { label: t("rows.planLanguage"),  value: values.plan_language === "en" ? "🇬🇧 English" : "🇳🇱 Nederlands" },
