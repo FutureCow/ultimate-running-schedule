@@ -71,7 +71,7 @@ plans (1) → (M) workout_sessions
 
 ### AI Plan Generation Flow
 1. User submits athletic profile (age, weight, goal race, current fitness, preferences) via multi-step form
-2. Backend calls Claude (model set by `CLAUDE_MODEL`, default `claude-sonnet-4-6`) with a structured JSON schema prompt; optional Garmin activity summary is appended as context
+2. Backend calls Claude (`CLAUDE_PLAN_MODEL`, default `claude-opus-5`, streamed) with a structured JSON schema prompt; optional Garmin activity summary is appended as context
 3. Claude returns strict JSON (not markdown) parsed into `WorkoutSession` rows
 4. Plan language (NL/EN) is configurable; the AI prompt instructs Claude to respond in the selected language
 
@@ -90,6 +90,8 @@ plans (1) → (M) workout_sessions
 | `SECRET_KEY` | JWT signing key (≥32 chars, `openssl rand -hex 32`) |
 | `ANTHROPIC_API_KEY` | Claude API key |
 | `ANTHROPIC_BASE_URL` | Optional proxy (e.g. CLIProxyAPI at `http://localhost:8317`) |
+| `CLAUDE_MODEL` | Model for the short calls — feedback, pace zones, strength (default `claude-sonnet-4-6`) |
+| `CLAUDE_PLAN_MODEL` | Model for full plan generation (default `claude-opus-5`) |
 | `GARMIN_ENCRYPTION_KEY` | Fernet key for encrypting Garmin credentials |
 | `ALLOWED_ORIGINS` | Comma-separated CORS origins |
 | `APP_ENV` | `development` or `production` |
@@ -107,3 +109,4 @@ plans (1) → (M) workout_sessions
 - **i18n**: Locale is in the URL path; translations are in `frontend/messages/nl.json` and `en.json`; use `next-intl` hooks (`useTranslations`) in components
 - **Garmin credentials**: Never stored or logged in plain text; always use Fernet encryption/decryption via `garmin_service.py`
 - **Claude output**: Always instruct Claude to return strict JSON (schema defined in `claude_service.py`); do not rely on markdown parsing
+- **Reading a response**: never index `message.content[0]` — thinking models put a thinking block first, and a refusal returns no content at all. Use `_response_text()` in `claude_service.py`

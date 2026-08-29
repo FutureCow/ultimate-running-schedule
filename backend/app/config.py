@@ -18,7 +18,12 @@ class Settings(BaseSettings):
     # Anthropic
     ANTHROPIC_API_KEY: str = ""
     ANTHROPIC_BASE_URL: str = ""  # Optioneel: bijv. http://192.168.1.81:8317 voor CLIProxyAPI
-    CLAUDE_MODEL: str = "claude-sonnet-4-6"  # Sonnet is snel genoeg en veel sneller dan Opus
+    # Korte calls: runfeedback, pacezones, krachtsessies, plancorrectie.
+    # Sonnet is hier snel genoeg en merkbaar sneller dan Opus.
+    CLAUDE_MODEL: str = "claude-sonnet-4-6"
+    # Planopbouw: het hele meerweekse schema in één keer. Hier telt
+    # redeneerkwaliteit zwaarder dan snelheid.
+    CLAUDE_PLAN_MODEL: str = "claude-opus-5"
 
     # Garmin credential encryption (Fernet key)
     GARMIN_ENCRYPTION_KEY: str = ""

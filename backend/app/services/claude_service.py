@@ -36,6 +36,29 @@ Paces: "MM:SS – MM:SS" per km. Strength: distance_km=null, target_paces={"main
 description: 1 sentence for runs; numbered 6-8 exercise list (sets×reps, rest, cue) for strength."""
 
 
+class RefusedError(ValueError):
+    """Claude's safety classifiers declined the request (HTTP 200, not an error)."""
+
+
+def _response_text(message) -> str:
+    """The first text block of a response.
+
+    Never index content[0] directly: from Opus 5 onward adaptive thinking is on
+    by default, so the first block is usually a thinking block with no .text.
+    A refusal arrives as a normal 200 with stop_reason "refusal" and no answer
+    at all, which would otherwise surface as a confusing AttributeError.
+    """
+    if getattr(message, "stop_reason", None) == "refusal":
+        details = getattr(message, "stop_details", None)
+        category = getattr(details, "category", None) or "onbekend"
+        raise RefusedError(f"Claude weigerde dit verzoek (categorie: {category})")
+
+    for block in getattr(message, "content", None) or []:
+        if getattr(block, "type", None) == "text":
+            return block.text
+    return ""
+
+
 def _extract_json(text: str) -> str:
     """Return the JSON object from text, tolerant of preamble or code fences."""
     fenced = re.search(r"```(?:json)?\s*(\{[\s\S]*\})\s*```", text)
@@ -76,6 +99,103 @@ Keep overall intensity lower — more easy volume, fewer hard interval sessions.
 Rehearse fuelling and hydration on every long run.
 Plan deliberate walk/run sections on climbs and late in the longest efforts.
 """
+
+
+LONG_RUN_TYPE = "long_run"
+
+
+def _long_run_violations(plan_json: dict) -> list[tuple[int | None, str]]:
+    """(week_number, message) for every week whose long run is not the longest."""
+    violations: list[tuple[int | None, str]] = []
+    for week in plan_json.get("weeks", []):
+        runs = [
+            w for w in week.get("workouts", [])
+            if isinstance(w.get("distance_km"), (int, float))
+        ]
+        long_runs = [w for w in runs if w.get("workout_type") == LONG_RUN_TYPE]
+        if not long_runs:
+            continue  # recovery and consolidation weeks have no long run
+        longest_allowed = max(w["distance_km"] for w in long_runs)
+        offenders = [
+            w for w in runs
+            if w.get("workout_type") != LONG_RUN_TYPE and w["distance_km"] > longest_allowed
+        ]
+        if offenders:
+            listed = ", ".join(
+                f"{w.get('workout_type', '?')} on day {w.get('day_number', '?')} "
+                f"is {w['distance_km']} km"
+                for w in offenders
+            )
+            violations.append((
+                week.get("week_number"),
+                f"Week {week.get('week_number', '?')}: long run is "
+                f"{longest_allowed} km but {listed}.",
+            ))
+    return violations
+
+
+def find_long_run_violations(plan_json: dict) -> list[str]:
+    """Weeks where some other run is longer than the designated long run.
+
+    The prompt states the long run is the longest run of its week, but a model
+    can still drift — a 6.5 km "easy run" next to a 5.5 km "long run" reads as
+    a broken plan to the athlete. Returns one line per offending week, phrased
+    for feeding straight back to Claude.
+    """
+    return [message for _, message in _long_run_violations(plan_json)]
+
+
+def _merge_corrected_weeks(plan_json: dict, corrected: list[dict]) -> dict:
+    """Replace weeks by week_number, ignoring weeks the plan does not have."""
+    import copy
+
+    merged = copy.deepcopy(plan_json)
+    by_number = {w.get("week_number"): w for w in corrected}
+    merged["weeks"] = [
+        by_number.get(week.get("week_number"), week) for week in merged.get("weeks", [])
+    ]
+    return merged
+
+
+async def _correct_long_runs(client, plan_json: dict, violations: list[str], lang: str) -> dict:
+    """Ask Claude to rewrite only the offending weeks. Returns the plan unchanged on failure."""
+    offending = {number for number, _ in _long_run_violations(plan_json) if number is not None}
+    weeks = [w for w in plan_json.get("weeks", []) if w.get("week_number") in offending]
+    if not weeks:
+        return plan_json
+
+    prompt = f"""These weeks of a running plan break one rule: the long run must be the longest run of its week.
+
+{chr(10).join(violations)}
+
+Here are those weeks:
+{json.dumps({"weeks": weeks}, ensure_ascii=False)}
+
+Rewrite ONLY these weeks so the long_run is the longest run in each. Keep the same
+days, the same workout types and roughly the same weekly total; adjust distances and
+durations, and update every title and description in {lang} so the text matches the
+new numbers.
+
+Return ONLY a JSON object of the same shape: {{"weeks":[...]}}"""
+
+    try:
+        message = await client.messages.create(
+            model=settings.CLAUDE_MODEL,
+            max_tokens=4000,
+            system="You are an elite running coach. Return ONLY a JSON object — no preamble, no markdown.",
+            messages=[{"role": "user", "content": prompt}],
+        )
+        corrected = json.loads(_extract_json(_response_text(message))).get("weeks", [])
+    except Exception as exc:
+        logger.warning("Long-run correction failed, keeping original plan: %s", exc)
+        return plan_json
+
+    fixed = _merge_corrected_weeks(plan_json, corrected)
+    remaining = find_long_run_violations(fixed)
+    if remaining:
+        # One corrective pass only; a still-broken plan beats no plan
+        logger.warning("Long-run correction incomplete: %s", remaining)
+    return fixed
 
 
 def _build_prompt(plan: PlanCreate, garmin: Optional[dict], lang: str) -> str:
@@ -155,6 +275,7 @@ Age {plan.age or '?'}, {plan.height_cm or '?'} cm, {plan.weight_kg or '?'} kg
 Fitness: {plan.weekly_km or '?'} km/wk over {plan.weekly_runs or '?'} runs
 Injuries: {plan.injuries or 'none'}. Notes: {plan.extra_notes or 'none'}.
 Training days: {', '.join(plan.training_days) if plan.training_days else 'flexible'}. Long run: {plan.long_run_day or 'Sunday'}. Surface: {plan.surface or 'road'}.
+The long run is the single longest run of its week — no other run may be longer — and it grows week over week toward the goal distance.
 
 {schedule_str}
 {_ultra_block(plan, goal_label)}
@@ -179,27 +300,35 @@ async def generate_plan(
 
     lang = "Dutch" if language == "nl" else "English"
 
-    message = await client.messages.create(
-        model=settings.CLAUDE_MODEL,
-        max_tokens=16000,
+    # Streamed: a full plan is a long generation, and on a thinking model the
+    # thinking shares max_tokens with the answer. Streaming avoids the HTTP
+    # timeout that a non-streaming call of this size runs into.
+    async with client.messages.stream(
+        model=settings.CLAUDE_PLAN_MODEL,
+        max_tokens=32000,
         system=SYSTEM_PROMPT.format(language=lang),
         messages=[{"role": "user", "content": _build_prompt(plan, garmin_summary, lang)}],
-    )
+    ) as stream:
+        message = await stream.get_final_message()
 
     logger.info("Claude: stop_reason=%s usage=%s", message.stop_reason, message.usage)
 
-    if not message.content:
-        raise ValueError(f"Empty Claude response (stop_reason={message.stop_reason})")
-
-    raw = _extract_json(message.content[0].text)
+    raw = _extract_json(_response_text(message))
     if not raw:
         raise ValueError(f"Claude returned empty content (stop_reason={message.stop_reason})")
 
     try:
-        return json.loads(raw)
+        plan_json = json.loads(raw)
     except json.JSONDecodeError as e:
         logger.error("JSON parse failed. raw[:500]=%s", raw[:500])
         raise ValueError(f"Invalid JSON from Claude: {e}. Got: {raw[:200]!r}") from e
+
+    violations = find_long_run_violations(plan_json)
+    if violations:
+        logger.info("Long run shorter than another run, correcting: %s", violations)
+        plan_json = await _correct_long_runs(client, plan_json, violations, lang)
+
+    return plan_json
 
 
 async def generate_strength_sessions(
@@ -268,10 +397,7 @@ Return ONLY the JSON object."""
 
     logger.info("Strength-only Claude: stop_reason=%s usage=%s", message.stop_reason, message.usage)
 
-    if not message.content:
-        raise ValueError(f"Empty Claude response (stop_reason={message.stop_reason})")
-
-    raw = _extract_json(message.content[0].text)
+    raw = _extract_json(_response_text(message))
     try:
         data = json.loads(raw)
         return data.get("sessions", [])
@@ -469,7 +595,7 @@ Workout data:
         messages=[{"role": "user", "content": prompt}],
     )
 
-    return message.content[0].text.strip() if message.content else ""
+    return _response_text(message).strip()
 
 
 async def recalibrate_paces(
@@ -521,7 +647,7 @@ Return ONLY a JSON object in this exact format (use "min:ss-min:ss/km" notation)
         messages=[{"role": "user", "content": prompt}],
     )
 
-    raw = _extract_json(message.content[0].text) if message.content else "{}"
+    raw = _extract_json(_response_text(message)) or "{}"
     try:
         return json.loads(raw)
     except json.JSONDecodeError:
