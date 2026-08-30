@@ -443,6 +443,60 @@ Paragraph 3 — Recovery: Give specific, evidence-based recovery advice tailored
     return system, task, 900
 
 
+_INTERPRETATION_GUIDANCE = """Interpreting the data — read every number against this run's own context, not against a
+universal ideal:
+- Cadence: judge it against the pace that was actually run, never a fixed target. Cadence
+  rises with speed; roughly 155-170 spm is normal and efficient at easy paces around
+  7:00/km, while 180 spm is a racing-pace figure and not a goal for every run. Taller
+  runners sit lower. Only raise cadence as something to work on if it is genuinely low for
+  this pace, and name the pace you are judging it against.
+- Heart rate: on an easy run, most of the time sitting in the low zones is the point of
+  the session, not a shortfall. Flag HR only when it disagrees with what the session was
+  meant to be — high HR on an easy run, or low HR on a hard one.
+- Pace: compare it to the pace prescribed for this workout, not to a generic standard.
+  Running an easy run slower than planned is usually fine; running it faster is the more
+  common mistake and worth mentioning.
+- Elevation: a hilly run's pace is not comparable to a flat one. Say so rather than
+  reading the slower pace as a decline in fitness.
+- Missing numbers mean nothing was measured. Never infer anything from an absent metric.
+"""
+
+
+def _context_lines(athlete: dict | None, planned: dict | None) -> list[str]:
+    """Athlete and planned-session facts that change how the numbers should be read."""
+    lines: list[str] = []
+
+    a = athlete or {}
+    if a.get("height_cm"):
+        lines.append(f"- Athlete height: {a['height_cm']} cm")
+    if a.get("weight_kg"):
+        lines.append(f"- Athlete weight: {a['weight_kg']} kg")
+    if a.get("weekly_km"):
+        volume = f"- Usual weekly volume: {a['weekly_km']} km"
+        if a.get("weekly_runs"):
+            volume += f" over {a['weekly_runs']} runs"
+        lines.append(volume)
+
+    pl = planned or {}
+    if pl.get("workout_type"):
+        lines.append(f"- Planned workout type: {pl['workout_type']}")
+    if pl.get("distance_km"):
+        lines.append(f"- Planned distance: {pl['distance_km']} km")
+    main_pace = (pl.get("target_paces") or {}).get("main")
+    if main_pace and main_pace.upper() != "N/A":
+        lines.append(f"- Prescribed pace for this session: {main_pace} /km")
+
+    return lines
+
+
+def _feedback_prompt(task: str, stats_lines: list[str]) -> str:
+    return f"""{task}
+
+{_INTERPRETATION_GUIDANCE}
+Workout data:
+{chr(10).join(stats_lines)}"""
+
+
 def _stream_stats(values: list) -> dict | None:
     """Compute min/max/avg and optional HR-zone distribution from a numeric stream."""
     clean = [v for v in values if v is not None]
@@ -482,9 +536,9 @@ async def generate_run_feedback(
     session_title: str,
     language: str = "nl",
     streams: dict | None = None,
-    user_age: int | None = None,
-    user_max_hr: int | None = None,
     tone: str = DEFAULT_FEEDBACK_TONE,
+    athlete: dict | None = None,
+    planned: dict | None = None,
 ) -> str:
     """Generate a run analysis for an Elite user after a completed workout.
 
@@ -493,7 +547,13 @@ async def generate_run_feedback(
     `activity` may be a flat dict (from _parse_activity) or a nested detail dict with
     a 'summary' key (from fetch_activity_detail). `streams` may contain time-series
     lists for heart_rate, cadence, pace, and altitude.
+
+    `athlete` carries age, max_hr, height_cm, weight_kg and weekly volume; `planned`
+    carries what the session was supposed to be. Both change how the measurements
+    should be read — see _INTERPRETATION_GUIDANCE.
     """
+    user_age = (athlete or {}).get("age")
+    user_max_hr = (athlete or {}).get("max_hr")
     client = anthropic.AsyncAnthropic(
         api_key=settings.ANTHROPIC_API_KEY,
         base_url=settings.ANTHROPIC_BASE_URL or None,
@@ -583,10 +643,7 @@ async def generate_run_feedback(
     lang_instruction = "Dutch (Nederlands)" if language == "nl" else "English"
     system, task, max_tokens = _feedback_instructions(tone, lang_instruction)
 
-    prompt = f"""{task}
-
-Workout data:
-{chr(10).join(stats_lines)}"""
+    prompt = _feedback_prompt(task, stats_lines + _context_lines(athlete, planned))
 
     message = await client.messages.create(
         model=settings.CLAUDE_MODEL,

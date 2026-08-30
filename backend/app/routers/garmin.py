@@ -109,12 +109,36 @@ async def auto_sync_if_stale(
         return {"synced": False, "reason": "error", "detail": str(e)}
 
 
+def _athlete_facts(user: User) -> dict:
+    """Athlete context that changes how a run's numbers should be read."""
+    return {
+        "age": user.age,
+        "max_hr": user.max_hr,
+        "height_cm": user.height_cm,
+        "weight_kg": user.weight_kg,
+        "weekly_km": user.weekly_km,
+        "weekly_runs": user.weekly_runs,
+    }
+
+
+def _planned_facts(session) -> dict:
+    """What the session was supposed to be.
+
+    distance_km is deliberately left out: Garmin sync overwrites it with the
+    distance actually run, so by the time feedback is generated it is no longer
+    the planned figure.
+    """
+    return {
+        "workout_type": session.workout_type,
+        "target_paces": session.target_paces,
+    }
+
+
 async def _generate_feedback_background(
     session_id: int,
     activity_id: str,
     user_id: int,
-    user_age: int | None,
-    user_max_hr: int | None,
+    athlete: dict,
     language: str,
     user_feedback_tone: str | None = None,
 ) -> None:
@@ -136,7 +160,7 @@ async def _generate_feedback_background(
                 )
                 session.ai_feedback = await claude_service.generate_run_feedback(
                     data, session.title or activity_id, language=language,
-                    user_age=user_age, user_max_hr=user_max_hr, tone=tone,
+                    tone=tone, athlete=athlete, planned=_planned_facts(session),
                 )
                 await db.commit()
         except Exception as exc:
@@ -164,7 +188,7 @@ async def sync_activities(
                 background_tasks.add_task(
                     _generate_feedback_background,
                     session_id, activity_id, user.id,
-                    user.age, user.max_hr, "nl", user.feedback_tone,
+                    _athlete_facts(user), "nl", user.feedback_tone,
                 )
 
         return GarminSyncResponse(
@@ -237,8 +261,8 @@ async def get_activity_detail(
                     plan.feedback_tone if plan else None, user.feedback_tone
                 )
                 session.ai_feedback = await claude_service.generate_run_feedback(
-                    data, session.title, language="nl",
-                    user_age=user.age, user_max_hr=user.max_hr, tone=tone,
+                    data, session.title, language="nl", tone=tone,
+                    athlete=_athlete_facts(user), planned=_planned_facts(session),
                 )
                 await db.commit()
             except Exception as exc:
