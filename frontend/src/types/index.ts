@@ -99,6 +99,12 @@ export interface WorkoutSession {
   garmin_pushed_at?: string | null;
   completed_at?: string | null;
   garmin_activity_id?: string | null;
+  /** What was actually run; null until a Garmin activity is matched. The
+   *  fields above stay the plan. */
+  actual_distance_km?: number | null;
+  actual_duration_minutes?: number | null;
+  actual_pace_per_km?: string | null;
+  actual_avg_heart_rate?: number | null;
 }
 
 export interface PaceZones {

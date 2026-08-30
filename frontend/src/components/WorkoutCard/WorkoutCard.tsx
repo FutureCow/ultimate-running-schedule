@@ -106,14 +106,28 @@ export function WorkoutCard({ session, onPushToGarmin, isPushing, onMove, isMovi
                 </>
               ) : (
                 <>
-                  {session.distance_km && (
-                    <Stat icon={<Ruler className="w-3.5 h-3.5" />} value={`${session.distance_km} km`} />
+                  {(session.distance_km || session.actual_distance_km) && (
+                    <Stat
+                      icon={<Ruler className="w-3.5 h-3.5" />}
+                      value={plannedVsActual(session.distance_km, session.actual_distance_km, "km")}
+                    />
                   )}
-                  {session.duration_minutes && (
-                    <Stat icon={<Clock className="w-3.5 h-3.5" />} value={`${session.duration_minutes} min`} />
+                  {(session.duration_minutes || session.actual_duration_minutes) && (
+                    <Stat
+                      icon={<Clock className="w-3.5 h-3.5" />}
+                      value={plannedVsActual(session.duration_minutes, session.actual_duration_minutes, "min")}
+                    />
                   )}
                   {session.target_paces?.main && session.target_paces.main !== "N/A" && (
                     <Stat icon={<Watch className="w-3.5 h-3.5" />} value={session.target_paces.main} mono highlight />
+                  )}
+                  {session.actual_pace_per_km && (
+                    <Stat
+                      icon={<Zap className="w-3.5 h-3.5" />}
+                      value={`${session.actual_pace_per_km} /km`}
+                      mono
+                      highlight
+                    />
                   )}
                 </>
               )}
@@ -397,6 +411,16 @@ export function WorkoutCard({ session, onPushToGarmin, isPushing, onMove, isMovi
     )}
   </>
   );
+}
+
+/** "8 km" when only planned, "8 → 8.2 km" once the run is matched. */
+function plannedVsActual(
+  planned: number | null | undefined,
+  actual: number | null | undefined,
+  unit: string,
+): string {
+  if (planned && actual) return `${planned} → ${actual} ${unit}`;
+  return `${actual ?? planned} ${unit}`;
 }
 
 function Stat({ icon, value, mono, highlight }: {
