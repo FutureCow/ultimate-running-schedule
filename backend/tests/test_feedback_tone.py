@@ -101,3 +101,18 @@ def test_a_profile_rejects_an_unknown_tone():
 
 def test_a_profile_accepts_a_known_tone():
     assert UserProfileUpdate(feedback_tone="encouraging").feedback_tone == "encouraging"
+
+
+def test_the_encouraging_next_step_turns_into_recovery_after_a_hard_session():
+    """Beginners under-recover most; the one step should go there when it matters."""
+    _, task, _ = encouraging()
+
+    assert "recovery" in task.lower()
+
+
+def test_the_encouraging_analysis_still_asks_for_only_one_thing():
+    """Recovery must share the step, not turn it into a list."""
+    _, task, _ = encouraging()
+
+    assert "one thing only" in task.lower()
+    assert "2 paragraphs" in task

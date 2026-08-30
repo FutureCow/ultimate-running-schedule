@@ -427,7 +427,7 @@ def _feedback_instructions(tone: str, lang_instruction: str) -> tuple[str, str, 
         task = f"""Write a post-run note to a beginner in {lang_instruction}. Write exactly 2 paragraphs, each 2–3 sentences. No headers, no bullet points, no markdown.
 
 Paragraph 1 — What went well: name the specific things this run did right and quote the numbers that show it. Explain what those numbers mean in everyday language — no jargon, and no training-zone terminology unless you explain it in the same sentence.
-Paragraph 2 — One small next step: give exactly one concrete, achievable thing to try on the next run, and say why it helps. One thing only — do not list several."""
+Paragraph 2 — One small next step: give exactly one concrete, achievable thing to work on, and say why it helps. If this session was long or hard for this runner, make that one thing about recovery — how to take the next day or two, when to run again, what to watch out for. Otherwise make it something to try on the next run. One thing only — do not list several."""
         return system, task, 400
 
     system = (
