@@ -37,6 +37,13 @@ String? _mainPace(WorkoutSession s) {
   return str.isEmpty ? null : str;
 }
 
+/// '8 km' when only planned, '8 → 8.2 km' once the run is matched.
+String? _plannedVsActual(num? planned, num? actual, String unit) {
+  if (planned != null && actual != null) return '$planned → $actual $unit';
+  final value = actual ?? planned;
+  return value == null ? null : '$value $unit';
+}
+
 class SessionCard extends StatelessWidget {
   final WorkoutSession session;
   final VoidCallback? onTap;
@@ -99,12 +106,18 @@ class SessionCard extends StatelessWidget {
                       style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis),
-                  if (session.distanceKm != null || session.durationMinutes != null || _mainPace(session) != null)
+                  if (session.distanceKm != null ||
+                      session.actualDistanceKm != null ||
+                      session.durationMinutes != null ||
+                      _mainPace(session) != null)
                     Text(
                       [
-                        if (session.distanceKm != null) '${session.distanceKm} km',
-                        if (session.durationMinutes != null) '${session.durationMinutes} min',
+                        if (_plannedVsActual(session.distanceKm, session.actualDistanceKm, 'km') != null)
+                          _plannedVsActual(session.distanceKm, session.actualDistanceKm, 'km')!,
+                        if (_plannedVsActual(session.durationMinutes, session.actualDurationMinutes, 'min') != null)
+                          _plannedVsActual(session.durationMinutes, session.actualDurationMinutes, 'min')!,
                         if (_mainPace(session) != null) '${_mainPace(session)} /km',
+                        if (session.actualPacePerKm != null) '${session.actualPacePerKm} /km gelopen',
                       ].join(' · '),
                       style: const TextStyle(color: Color(0xFF64748b), fontSize: 12),
                     ),

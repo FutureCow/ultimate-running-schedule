@@ -93,6 +93,11 @@ class WorkoutSession {
   final String workoutType;
   final double? distanceKm;
   final int? durationMinutes;
+  /// What was actually run; null until a Garmin activity is matched.
+  /// distanceKm and durationMinutes above always stay the plan.
+  final double? actualDistanceKm;
+  final int? actualDurationMinutes;
+  final String? actualPacePerKm;
   final String? notes;
   final bool isCompleted;
   final DateTime? scheduledDate;
@@ -111,6 +116,9 @@ class WorkoutSession {
     required this.workoutType,
     this.distanceKm,
     this.durationMinutes,
+    this.actualDistanceKm,
+    this.actualDurationMinutes,
+    this.actualPacePerKm,
     this.notes,
     required this.isCompleted,
     this.scheduledDate,
@@ -130,6 +138,9 @@ class WorkoutSession {
         workoutType: j['workout_type'] as String? ?? 'easy',
         distanceKm: (j['distance_km'] as num?)?.toDouble(),
         durationMinutes: (j['duration_minutes'] as num?)?.toInt(),
+        actualDistanceKm: (j['actual_distance_km'] as num?)?.toDouble(),
+        actualDurationMinutes: (j['actual_duration_minutes'] as num?)?.toInt(),
+        actualPacePerKm: j['actual_pace_per_km'] as String?,
         notes: j['description'] as String? ?? j['notes'] as String?,
         isCompleted: j['completed_at'] != null || j['is_completed'] == true,
         scheduledDate: j['scheduled_date'] != null
