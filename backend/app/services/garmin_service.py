@@ -341,6 +341,21 @@ async def fetch_activities(db: AsyncSession, user_id: int, months: int = 3, user
     }
 
 
+def attach_actuals(sessions, activities_by_id: dict) -> None:
+    """Hang what was actually run on each session, without touching the plan.
+
+    `activities_by_id` maps activity_id -> GarminActivity. Sessions with no
+    match get None everywhere, so a card can tell "not run yet" from "run".
+    """
+    for session in sessions:
+        act = activities_by_id.get(session.garmin_activity_id or "")
+        duration = getattr(act, "duration_seconds", None) if act else None
+        session.actual_distance_km = getattr(act, "distance_km", None) if act else None
+        session.actual_duration_minutes = round(duration / 60) if duration else None
+        session.actual_pace_per_km = getattr(act, "avg_pace_per_km", None) if act else None
+        session.actual_avg_heart_rate = getattr(act, "avg_heart_rate", None) if act else None
+
+
 async def _upsert_garmin_activities(db: AsyncSession, user_id: int, activities: list[dict]) -> None:
     from app.models.garmin_activity import GarminActivity
     from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -438,10 +453,9 @@ async def _match_activities_to_sessions(db: AsyncSession, user_id: int, activiti
             except Exception:
                 session.completed_at = now
             session.garmin_activity_id = act["activity_id"]
-            if act.get("duration_seconds"):
-                session.duration_minutes = round(act["duration_seconds"] / 60)
-            if act.get("distance_km"):
-                session.distance_km = act["distance_km"]
+            # distance_km and duration_minutes stay as planned. What was actually
+            # run lives in garmin_activities and is read back through
+            # attach_actuals(), so the plan is never destroyed by a sync.
             matched += 1
             newly_matched_ids.append((session.id, act["activity_id"]))
 

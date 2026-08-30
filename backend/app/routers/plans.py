@@ -18,6 +18,33 @@ router = APIRouter(prefix="/plans", tags=["plans"])
 _POST_RACE_TYPES = {"easy_run", "recovery", "rest"}
 
 
+async def _with_actuals(db: AsyncSession, user_id: int, plans):
+    """Attach what was actually run to every session of the given plan(s)."""
+    from app.models.garmin_activity import GarminActivity
+
+    many = isinstance(plans, (list, tuple))
+    plan_list = list(plans) if many else [plans]
+
+    activity_ids = {
+        s.garmin_activity_id
+        for plan in plan_list for s in plan.sessions if s.garmin_activity_id
+    }
+    activities_by_id = {}
+    if activity_ids:
+        rows = await db.execute(
+            select(GarminActivity).where(
+                GarminActivity.user_id == user_id,
+                GarminActivity.activity_id.in_(activity_ids),
+            )
+        )
+        activities_by_id = {a.activity_id: a for a in rows.scalars().all()}
+
+    for plan in plan_list:
+        garmin_service.attach_actuals(plan.sessions, activities_by_id)
+
+    return plans
+
+
 def _plan_to_create(plan: Plan) -> PlanCreate:
     """Rebuild the AI input from a stored plan, for regeneration on edit.
 
@@ -172,7 +199,7 @@ async def create_plan(
 
     # Reload fully with selectin-loaded sessions
     result = await db.execute(select(Plan).where(Plan.id == plan.id))
-    return result.scalar_one()
+    return await _with_actuals(db, user.id, result.scalar_one())
 
 
 @router.get("", response_model=list[PlanResponse])
@@ -181,7 +208,7 @@ async def list_plans(
     user: User = Depends(get_current_user),
 ):
     result = await db.execute(select(Plan).where(Plan.user_id == user.id).order_by(Plan.created_at.desc()))
-    return result.scalars().all()
+    return await _with_actuals(db, user.id, list(result.scalars().all()))
 
 
 @router.get("/{public_id}", response_model=PlanResponse)
@@ -194,7 +221,7 @@ async def get_plan(
     plan = result.scalar_one_or_none()
     if not plan:
         raise HTTPException(status_code=404, detail="Plan not found")
-    return plan
+    return await _with_actuals(db, user.id, plan)
 
 
 @router.put("/{public_id}", response_model=PlanResponse)
@@ -247,7 +274,7 @@ async def update_plan(
     await db.commit()
 
     result = await db.execute(select(Plan).where(Plan.public_id == public_id))
-    return result.scalar_one()
+    return await _with_actuals(db, user.id, result.scalar_one())
 
 
 def _pace_secs(pace_str: str) -> int | None:
@@ -472,7 +499,7 @@ async def regenerate_plan(
     await db.commit()
 
     result = await db.execute(select(Plan).where(Plan.public_id == public_id))
-    return result.scalar_one()
+    return await _with_actuals(db, user.id, result.scalar_one())
 
 
 @router.post("/{public_id}/reset", response_model=PlanResponse)
@@ -523,7 +550,7 @@ async def reset_plan(
 
     await db.commit()
     result = await db.execute(select(Plan).where(Plan.public_id == public_id))
-    return result.scalar_one()
+    return await _with_actuals(db, user.id, result.scalar_one())
 
 
 class RecalculateDatesPayload(BaseModel):
@@ -558,7 +585,7 @@ async def recalculate_session_dates(
     await db.commit()
 
     result = await db.execute(select(Plan).where(Plan.public_id == public_id))
-    return result.scalar_one()
+    return await _with_actuals(db, user.id, result.scalar_one())
 
 
 @router.post("/{public_id}/add-strength", response_model=PlanResponse)
@@ -626,7 +653,7 @@ async def add_strength_to_plan(
     await db.commit()
 
     result = await db.execute(select(Plan).where(Plan.public_id == public_id))
-    return result.scalar_one()
+    return await _with_actuals(db, user.id, result.scalar_one())
 
 
 class BulkFilter(BaseModel):

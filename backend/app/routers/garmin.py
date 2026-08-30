@@ -122,14 +122,10 @@ def _athlete_facts(user: User) -> dict:
 
 
 def _planned_facts(session) -> dict:
-    """What the session was supposed to be.
-
-    distance_km is deliberately left out: Garmin sync overwrites it with the
-    distance actually run, so by the time feedback is generated it is no longer
-    the planned figure.
-    """
+    """What the session was supposed to be — sync no longer overwrites it."""
     return {
         "workout_type": session.workout_type,
+        "distance_km": session.distance_km,
         "target_paces": session.target_paces,
     }
 

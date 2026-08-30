@@ -73,6 +73,12 @@ class WorkoutSessionResponse(BaseModel):
     garmin_pushed_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
     garmin_activity_id: Optional[str] = None
+    # What was actually run, read from the matched Garmin activity. None until
+    # the session is matched; distance_km above always stays the planned figure.
+    actual_distance_km: Optional[float] = None
+    actual_duration_minutes: Optional[int] = None
+    actual_pace_per_km: Optional[str] = None
+    actual_avg_heart_rate: Optional[int] = None
 
 
 class PlanCreate(BaseModel):
