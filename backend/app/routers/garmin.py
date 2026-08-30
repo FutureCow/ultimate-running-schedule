@@ -249,26 +249,30 @@ async def get_activity_detail(
         session = session_result.scalar_one_or_none()
 
         # Fallback: generate feedback on-demand if background task hasn't run yet
+        tone = None
+        if session:
+            plan = await db.get(Plan, session.plan_id)
+            tone = claude_service.resolve_feedback_tone(
+                plan.feedback_tone if plan else None, user.feedback_tone
+            )
+
         needs_feedback = session and user.tier == "elite" and not session.ai_feedback
         if needs_feedback:
             try:
-                plan = await db.get(Plan, session.plan_id)
-                tone = claude_service.resolve_feedback_tone(
-                    plan.feedback_tone if plan else None, user.feedback_tone
-                )
                 session.ai_feedback = await claude_service.generate_run_feedback(
                     data, session.title, language="nl", tone=tone,
                     athlete=_athlete_facts(user), planned=_planned_facts(session),
                 )
                 await db.commit()
             except Exception as exc:
-                import logging
-                logging.getLogger(__name__).warning(
+                logger.warning(
                     "AI feedback generation failed for activity %s: %s", activity_id, exc
                 )
 
         data["ai_feedback"] = session.ai_feedback if session else None
         data["session_title"] = session.title if session else None
+        # Clients label the analysis with the tone it was written in
+        data["feedback_tone"] = tone
         return data
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))

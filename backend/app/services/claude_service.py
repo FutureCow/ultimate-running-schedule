@@ -40,23 +40,42 @@ class RefusedError(ValueError):
     """Claude's safety classifiers declined the request (HTTP 200, not an error)."""
 
 
+class TruncatedError(ValueError):
+    """The answer ran into max_tokens and stopped mid-sentence."""
+
+
 def _response_text(message) -> str:
-    """The first text block of a response.
+    """All text blocks of a response, joined.
 
     Never index content[0] directly: from Opus 5 onward adaptive thinking is on
-    by default, so the first block is usually a thinking block with no .text.
-    A refusal arrives as a normal 200 with stop_reason "refusal" and no answer
-    at all, which would otherwise surface as a confusing AttributeError.
+    by default, so the first block is usually a thinking block with no .text,
+    and the answer itself can arrive in more than one block.
+
+    Two stop reasons need to raise rather than return half an answer. A refusal
+    is a normal 200 with no answer at all. A max_tokens stop means the text is
+    cut off mid-sentence — on a thinking model the reasoning shares the budget,
+    so a limit sized for a non-thinking model runs out. Callers store what they
+    get and never regenerate, so returning the fragment makes it permanent.
     """
-    if getattr(message, "stop_reason", None) == "refusal":
+    stop_reason = getattr(message, "stop_reason", None)
+    if stop_reason == "refusal":
         details = getattr(message, "stop_details", None)
         category = getattr(details, "category", None) or "onbekend"
         raise RefusedError(f"Claude weigerde dit verzoek (categorie: {category})")
 
-    for block in getattr(message, "content", None) or []:
-        if getattr(block, "type", None) == "text":
-            return block.text
-    return ""
+    parts = [
+        block.text
+        for block in getattr(message, "content", None) or []
+        if getattr(block, "type", None) == "text"
+    ]
+    text = "".join(parts)
+
+    if stop_reason == "max_tokens":
+        raise TruncatedError(
+            f"Antwoord afgekapt op max_tokens (kreeg {len(text)} tekens). "
+            "Verhoog max_tokens; op een thinking-model deelt het denken dit budget."
+        )
+    return text
 
 
 def _extract_json(text: str) -> str:
@@ -428,7 +447,7 @@ def _feedback_instructions(tone: str, lang_instruction: str) -> tuple[str, str, 
 
 Paragraph 1 — What went well: name the specific things this run did right and quote the numbers that show it. Explain what those numbers mean in everyday language — no jargon, and no training-zone terminology unless you explain it in the same sentence.
 Paragraph 2 — One small next step: give exactly one concrete, achievable thing to work on, and say why it helps. If this session was long or hard for this runner, make that one thing about recovery — how to take the next day or two, when to run again, what to watch out for. Otherwise make it something to try on the next run. One thing only — do not list several."""
-        return system, task, 400
+        return system, task, 2000
 
     system = (
         f"You are an elite running coach and sports scientist writing in {lang_instruction}. "
@@ -440,7 +459,7 @@ Paragraph 2 — One small next step: give exactly one concrete, achievable thing
 Paragraph 1 — Training load & heart rate: Interpret the HR data scientifically (training zones, cardiac drift, effort relative to max HR). Reference relevant exercise physiology where appropriate.
 Paragraph 2 — Pace & cadence: Assess pace consistency, cadence efficiency, and what the numbers reveal about running economy.
 Paragraph 3 — Recovery: Give specific, evidence-based recovery advice tailored to this session's intensity and duration."""
-    return system, task, 900
+    return system, task, 4000
 
 
 _INTERPRETATION_GUIDANCE = """Interpreting the data — read every number against this run's own context, not against a

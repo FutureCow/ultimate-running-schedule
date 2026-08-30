@@ -210,13 +210,16 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Row(
+                      Row(
                         children: [
-                          Icon(Icons.psychology,
+                          const Icon(Icons.psychology,
                               color: Color(0xFF6366f1), size: 18),
-                          SizedBox(width: 8),
-                          Text('Wetenschappelijke analyse',
-                              style: TextStyle(
+                          const SizedBox(width: 8),
+                          Text(
+                              d.feedbackTone == 'encouraging'
+                                  ? 'Jouw analyse'
+                                  : 'Wetenschappelijke analyse',
+                              style: const TextStyle(
                                   color: Colors.white,
                                   fontWeight: FontWeight.bold,
                                   fontSize: 14)),

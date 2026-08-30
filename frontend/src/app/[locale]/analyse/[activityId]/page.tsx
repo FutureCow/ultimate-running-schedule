@@ -447,7 +447,11 @@ export default function ActivityDetailPage() {
                 <div className="card space-y-3">
                   <div className="flex items-center gap-2">
                     <Brain className="w-4 h-4 text-brand-400" />
-                    <p className="text-sm font-semibold text-white">Wetenschappelijke analyse</p>
+                    <p className="text-sm font-semibold text-white">
+                      {data.feedback_tone === "encouraging"
+                        ? "Jouw analyse"
+                        : "Wetenschappelijke analyse"}
+                    </p>
                   </div>
                   <p className="text-sm text-slate-300 leading-relaxed whitespace-pre-line">
                     {data.ai_feedback}

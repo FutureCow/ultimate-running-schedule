@@ -210,6 +210,7 @@ export interface ActivityDetail {
   streams: ActivityStreams;
   ai_feedback?: string | null;
   session_title?: string | null;
+  feedback_tone?: FeedbackTone | null;
 }
 
 export type GoalType = "5k" | "10k" | "half_marathon" | "marathon" | "custom";

@@ -7,7 +7,7 @@ normal 200 with stop_reason "refusal" and no usable content.
 import pytest
 from anthropic.types import Message, TextBlock, ThinkingBlock, Usage
 
-from app.services.claude_service import RefusedError, _response_text
+from app.services.claude_service import RefusedError, TruncatedError, _response_text
 
 
 def message(*blocks, stop_reason: str = "end_turn", stop_details=None) -> Message:
@@ -70,5 +70,18 @@ def test_a_refusal_without_details_still_raises_clearly():
         _response_text(message(stop_reason="refusal"))
 
 
-def test_other_stop_reasons_are_not_refusals():
-    assert _response_text(message(text("cut off"), stop_reason="max_tokens")) == "cut off"
+def test_raises_when_the_answer_was_cut_off():
+    """A truncated note gets stored forever; better to fail and retry later."""
+    with pytest.raises(TruncatedError):
+        _response_text(message(text("Je hebt de hele lange duur"), stop_reason="max_tokens"))
+
+
+def test_an_ordinary_stop_reason_is_neither_refusal_nor_truncation():
+    assert _response_text(message(text("done"), stop_reason="end_turn")) == "done"
+
+
+def test_joins_several_text_blocks():
+    """Thinking models can split the answer; returning only the first loses the rest."""
+    joined = _response_text(message(thinking(), text("Eerste deel."), text(" Tweede deel.")))
+
+    assert joined == "Eerste deel. Tweede deel."

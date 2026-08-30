@@ -45,6 +45,8 @@ class ActivityDetail {
   final ActivityStreams streams;
   final List<GpsPoint> gpsTrack;
   final String? aiFeedback;
+  /// 'scientific' or 'encouraging' — which voice the analysis was written in
+  final String? feedbackTone;
   final String? sessionTitle;
 
   const ActivityDetail({
@@ -52,6 +54,7 @@ class ActivityDetail {
     required this.streams,
     required this.gpsTrack,
     this.aiFeedback,
+    this.feedbackTone,
     this.sessionTitle,
   });
 
@@ -62,6 +65,7 @@ class ActivityDetail {
             .map((p) => GpsPoint.fromJson(p))
             .toList(),
         aiFeedback: j['ai_feedback'],
+        feedbackTone: j['feedback_tone'] as String?,
         sessionTitle: j['session_title'],
       );
 }
