@@ -280,6 +280,33 @@ async def get_activity_detail(
         raise HTTPException(status_code=502, detail=f"Garmin activity detail failed: {str(e)}")
 
 
+@router.delete("/activity/{activity_id}/feedback", status_code=204)
+async def delete_activity_feedback(
+    activity_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Drop the stored analysis so the next view writes a fresh one.
+
+    Feedback is generated once and then skipped while it exists, so a bad or
+    truncated note would otherwise stay forever.
+    """
+    result = await db.execute(
+        select(WorkoutSession)
+        .join(WorkoutSession.plan)
+        .where(
+            WorkoutSession.garmin_activity_id == activity_id,
+            Plan.user_id == user.id,
+        )
+    )
+    session = result.scalar_one_or_none()
+    if not session:
+        raise HTTPException(status_code=404, detail="Geen gekoppelde training gevonden")
+
+    session.ai_feedback = None
+    await db.commit()
+
+
 @router.post("/push/sessions")
 async def push_sessions(
     payload: GarminPushRequest,

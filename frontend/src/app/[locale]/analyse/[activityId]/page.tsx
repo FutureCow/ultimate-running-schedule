@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Maximize2, X, Heart, Activity, Ruler, Clock, TrendingUp, Zap } from "lucide-react";
@@ -11,7 +11,7 @@ import { Link } from "@/i18n/navigation";
 import { garminApi } from "@/lib/api";
 import { ActivityDetail } from "@/types";
 import { Navbar } from "@/components/ui/Navbar";
-import { Brain } from "lucide-react";
+import { Brain, RefreshCw } from "lucide-react";
 import {
   ResponsiveContainer, ComposedChart, Line, Area,
   XAxis, YAxis, CartesianGrid, Tooltip,
@@ -350,6 +350,13 @@ export default function ActivityDetailPage() {
   const t = useTranslations("analyse");
   const [fullscreen, setFullscreen] = useState<{ key: ChartKey; overlay: ChartKey | null } | null>(null);
 
+  const queryClient = useQueryClient();
+  // Clearing the note makes the next fetch write a fresh one
+  const regenerate = useMutation({
+    mutationFn: () => garminApi.deleteFeedback(activityId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["activity", activityId] }),
+  });
+
   const { data, isLoading, error } = useQuery<ActivityDetail>({
     queryKey: ["activity", activityId],
     queryFn: () => garminApi.getActivity(activityId).then((r) => r.data),
@@ -452,6 +459,14 @@ export default function ActivityDetailPage() {
                         ? "Jouw analyse"
                         : "Wetenschappelijke analyse"}
                     </p>
+                    <button
+                      onClick={() => regenerate.mutate()}
+                      disabled={regenerate.isPending}
+                      title="Analyse opnieuw maken"
+                      className="ml-auto text-slate-500 hover:text-slate-300 disabled:opacity-40"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${regenerate.isPending ? "animate-spin" : ""}`} />
+                    </button>
                   </div>
                   <p className="text-sm text-slate-300 leading-relaxed whitespace-pre-line">
                     {data.ai_feedback}

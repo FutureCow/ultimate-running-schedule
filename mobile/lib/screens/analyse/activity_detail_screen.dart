@@ -46,6 +46,7 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
   final _api = ApiService();
   ActivityDetail? _detail;
   bool _loading = true;
+  bool _regenerating = false;
 
   @override
   void initState() {
@@ -62,6 +63,23 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
     } catch (_) {
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  /// Clearing the note makes the next fetch write a fresh one.
+  Future<void> _regenerateFeedback() async {
+    setState(() => _regenerating = true);
+    try {
+      await _api.deleteActivityFeedback(widget.activityId);
+      await _load();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Analyse opnieuw maken mislukt: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _regenerating = false);
     }
   }
 
@@ -223,6 +241,23 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
                                   color: Colors.white,
                                   fontWeight: FontWeight.bold,
                                   fontSize: 14)),
+                          // Only your own analysis can be regenerated
+                          if (widget.friendId == null) ...[
+                            const Spacer(),
+                            IconButton(
+                              onPressed: _regenerating ? null : _regenerateFeedback,
+                              tooltip: 'Analyse opnieuw maken',
+                              iconSize: 18,
+                              visualDensity: VisualDensity.compact,
+                              icon: _regenerating
+                                  ? const SizedBox(
+                                      width: 14,
+                                      height: 14,
+                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                    )
+                                  : const Icon(Icons.refresh, color: Color(0xFF64748b)),
+                            ),
+                          ],
                         ],
                       ),
                       const SizedBox(height: 10),

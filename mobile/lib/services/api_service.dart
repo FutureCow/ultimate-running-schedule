@@ -143,6 +143,8 @@ class ApiService {
   Future<Response> autoSync() => _dio.post('/garmin/auto-sync');
   Future<Response> getActivities() => _dio.get('/garmin/activities');
   Future<Response> getActivity(String id) => _dio.get('/garmin/activity/$id');
+  Future<Response> deleteActivityFeedback(String id) =>
+      _dio.delete('/garmin/activity/$id/feedback');
   Future<Response> syncGarmin() => _dio.post('/garmin/sync');
   Future<Response> previewRegeneratePlan(String publicId) =>
       _dio.post('/plans/$publicId/regenerate/preview');
