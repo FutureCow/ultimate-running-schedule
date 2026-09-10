@@ -95,14 +95,13 @@ async def auto_sync_if_stale(
 
     try:
         result = await garmin_service.fetch_activities(db, user.id, months=3, user_tier=user.tier)
-        avg_weekly_km = result["summary"].get("avg_weekly_km")
-        if avg_weekly_km is not None:
-            user.weekly_km = avg_weekly_km
-            await db.commit()
+        _update_volume_profile(user, result["summary"])
+        await db.commit()
         return {
             "synced": True,
             "activity_count": len(result["activities"]),
-            "avg_weekly_km": avg_weekly_km,
+            "avg_weekly_km": result["summary"].get("avg_weekly_km"),
+            "recent_weekly_km": result["summary"].get("recent_weekly_km"),
             "last_sync_at": now.isoformat(),
         }
     except Exception as e:
@@ -128,6 +127,19 @@ def _planned_facts(session) -> dict:
         "distance_km": session.distance_km,
         "target_paces": session.target_paces,
     }
+
+
+def _update_volume_profile(user: User, summary: dict) -> None:
+    """Store what the athlete is running now on the profile.
+
+    The field is labelled "current weekly distance", so it holds the last four
+    weeks rather than the quarter average. Left alone when there is nothing
+    recent, so a holiday or an injury break does not wipe the profile — the
+    prompt still reports the true recent figure either way.
+    """
+    if summary.get("recent_weekly_runs"):
+        user.weekly_km = summary.get("recent_weekly_km")
+        user.weekly_runs = round(summary["recent_weekly_runs"])
 
 
 async def _generate_feedback_background(
@@ -174,10 +186,8 @@ async def sync_activities(
 ):
     try:
         result = await garmin_service.fetch_activities(db, user.id, months, user_tier=user.tier)
-        avg_weekly_km = result["summary"].get("avg_weekly_km")
-        if avg_weekly_km is not None:
-            user.weekly_km = avg_weekly_km
-            await db.commit()
+        _update_volume_profile(user, result["summary"])
+        await db.commit()
 
         if user.tier == "elite":
             for session_id, activity_id in result.get("newly_matched_ids", []):

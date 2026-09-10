@@ -246,6 +246,13 @@ def _build_prompt(plan: PlanCreate, garmin: Optional[dict], lang: str) -> str:
         garmin_str = (f"Last 3 mo: {g.get('total_runs','?')} runs, {g.get('total_km','?')} km, "
                       f"{g.get('avg_weekly_km','?')} km/wk, avg pace {g.get('avg_pace_per_km','?')} "
                       f"({dr.get('from','')}–{dr.get('to','')}).")
+        if g.get("recent_weekly_km") is not None:
+            garmin_str += (
+                f"\nLast 4 weeks: {g['recent_weekly_km']} km/wk over "
+                f"{g.get('recent_weekly_runs','?')} runs/wk — this is current form. "
+                "Where it sits well above or below the 3-month average, the athlete is "
+                "building up or coming back; plan from the recent figure, not the average."
+            )
     else:
         garmin_str = "No Garmin data — use self-reported fitness."
 

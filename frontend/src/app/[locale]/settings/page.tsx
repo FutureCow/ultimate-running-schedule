@@ -339,6 +339,7 @@ export default function SettingsPage() {
                     value={profile.weekly_runs ?? ""}
                     onChange={(e) => setProfile((p) => ({ ...p, weekly_runs: e.target.value ? Number(e.target.value) : null }))}
                   />
+                  <p className="text-[10px] text-slate-600 mt-1">{tp("weeklyKmGarminHint")}</p>
                 </div>
               </div>
 

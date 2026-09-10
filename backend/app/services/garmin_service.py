@@ -276,6 +276,47 @@ def _parse_activity(act: dict) -> dict:
     }
 
 
+RECENT_FORM_DAYS = 28
+_WEEKS_PER_MONTH = 4.3
+
+
+def _volume_summary(activities: list[dict], months: int, today: date | None = None) -> dict:
+    """Weekly volume over the whole window, and over the last four weeks.
+
+    The window average is a stable baseline but lags badly — someone building
+    from 15 to 30 km a week still reads as 20 for months. The recent figure is
+    what the athlete is actually doing now; the gap between the two is the
+    signal that a build-up is under way.
+    """
+    today = today or date.today()
+    cutoff = today - timedelta(days=RECENT_FORM_DAYS)
+
+    total_km = recent_km = 0.0
+    total_runs = recent_runs = 0
+
+    for act in activities:
+        km = act.get("distance_km") or 0
+        total_km += km
+        total_runs += 1
+        try:
+            when = date.fromisoformat((act.get("start_time") or "")[:10])
+        except ValueError:
+            continue  # undated activity still counts toward the window total
+        if when >= cutoff:
+            recent_km += km
+            recent_runs += 1
+
+    window_weeks = months * _WEEKS_PER_MONTH
+    recent_weeks = RECENT_FORM_DAYS / 7
+
+    return {
+        "avg_weekly_km": round(total_km / window_weeks, 1) if activities else 0.0,
+        "avg_weekly_runs": round(total_runs / window_weeks, 1) if activities else 0.0,
+        "recent_weekly_km": round(recent_km / recent_weeks, 1),
+        "recent_weekly_runs": round(recent_runs / recent_weeks, 2),
+    }
+
+
 async def fetch_activities(db: AsyncSession, user_id: int, months: int = 3, user_tier: str = "elite") -> dict:
     cred = await get_credentials(db, user_id)
     if not cred:
@@ -319,7 +360,7 @@ async def fetch_activities(db: AsyncSession, user_id: int, months: int = 3, user
 
     total_km = sum(a["distance_km"] for a in activities)
     avg_paces = [a["average_pace_per_km"] for a in activities if a["average_pace_per_km"]]
-    weekly_km = total_km / (months * 4.3) if activities else 0
+    volume = _volume_summary(activities, months=months)
 
     # Cache activities in DB
     await _upsert_garmin_activities(db, user_id, activities)
@@ -333,7 +374,10 @@ async def fetch_activities(db: AsyncSession, user_id: int, months: int = 3, user
         "summary": {
             "total_runs": len(activities),
             "total_km": round(total_km, 1),
-            "avg_weekly_km": round(weekly_km, 1),
+            "avg_weekly_km": volume["avg_weekly_km"],
+            "avg_weekly_runs": volume["avg_weekly_runs"],
+            "recent_weekly_km": volume["recent_weekly_km"],
+            "recent_weekly_runs": volume["recent_weekly_runs"],
             "avg_pace_per_km": avg_paces[0] if avg_paces else None,
             "date_range": {"from": start_date.isoformat(), "to": end_date.isoformat()},
             "matched_sessions": matched,
