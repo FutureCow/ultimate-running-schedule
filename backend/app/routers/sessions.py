@@ -183,6 +183,8 @@ async def reset_session(
     session.intervals        = copy.deepcopy(original.get("intervals"))
     session.distance_km      = original.get("distance_km")
     session.duration_minutes = original.get("duration_minutes")
+    session.warmup_km        = original.get("warmup_km")
+    session.cooldown_km      = original.get("cooldown_km")
     session.title            = original.get("title", session.title)
     session.description      = original.get("description", session.description)
     flag_modified(session, "target_paces")

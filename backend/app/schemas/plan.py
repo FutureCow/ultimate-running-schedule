@@ -67,6 +67,9 @@ class WorkoutSessionResponse(BaseModel):
     description: Optional[str] = None
     distance_km: Optional[float] = None
     duration_minutes: Optional[int] = None
+    # Easy running either side of the work, included in distance_km
+    warmup_km: Optional[float] = None
+    cooldown_km: Optional[float] = None
     target_paces: Optional[dict] = None
     intervals: Optional[list] = None
     garmin_workout_id: Optional[str] = None

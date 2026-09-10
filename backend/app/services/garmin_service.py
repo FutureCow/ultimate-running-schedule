@@ -734,56 +734,109 @@ def _step(order: int, step_type_id: int, step_type_key: str,
     return step
 
 
+_DEFAULT_WARMUP_M = 1000
+_DEFAULT_COOLDOWN_M = 500
+# Below this a session is not worth splitting into warm-up / work / cool-down
+_MIN_MAIN_BLOCK_M = 500
+
+
+def _work_blocks(intervals: list) -> list[dict]:
+    """Flatten the interval structure into one entry per repetition.
+
+    A block is measured by distance when the plan gives one and by time when it
+    only gives duration_seconds — "two blocks of 6 minutes" must not silently
+    become a distance.
+    """
+    blocks = []
+    for entry in intervals or []:
+        distance_m = entry.get("distance_m")
+        duration_s = entry.get("duration_seconds")
+        if distance_m:
+            condition, value, label = "distance", distance_m, f"Blok {distance_m} m"
+        elif duration_s:
+            condition, value, label = "time", duration_s, f"Blok {round(duration_s / 60)} min"
+        else:
+            condition, value, label = "distance", 400, "Blok 400 m"
+        for _ in range(entry.get("reps", 1)):
+            blocks.append({
+                "condition": condition,
+                "value": value,
+                "label": label,
+                "pace": entry.get("pace", ""),
+                "rest_seconds": entry.get("rest_seconds", 90),
+            })
+    return blocks
+
+
 def _build_workout_payload(session: WorkoutSession) -> dict:
-    """Build a Garmin Connect workout dict with proper pace targets per step."""
+    """Build a Garmin Connect workout: one step per part of the session.
+
+    The pushed workout mirrors the plan — easy kilometres in, each work block
+    on its own with the jog between them, easy kilometres out. Warm-up and
+    cool-down come out of the planned distance rather than on top of it, so a
+    steady run adds up to what the plan says.
+    """
     paces = session.target_paces or {}
-    steps = []
+    steps: list[dict] = []
     order = 1
 
-    # Warmup (1 km at warmup pace)
-    if paces.get("warmup"):
-        steps.append(_step(order, 1, "warmup", "distance", 1000,
-                           "Warming-up", pace_range=paces.get("warmup")))
+    warmup_pace = paces.get("warmup")
+    cooldown_pace = paces.get("cooldown")
+    warmup_m = int((session.warmup_km or 0) * 1000) or _DEFAULT_WARMUP_M
+    cooldown_m = int((session.cooldown_km or 0) * 1000) or _DEFAULT_COOLDOWN_M
+
+    blocks = _work_blocks(session.intervals)
+
+    if not blocks:
+        # Steady run: the easy running either side is part of the total, not extra
+        total_m = int((session.distance_km or 5) * 1000)
+        lead_m = warmup_m if warmup_pace else 0
+        tail_m = cooldown_m if cooldown_pace else 0
+        main_m = total_m - lead_m - tail_m
+        if main_m < _MIN_MAIN_BLOCK_M:
+            lead_m = tail_m = 0
+            main_m = total_m
+        warmup_pace = warmup_pace if lead_m else None
+        cooldown_pace = cooldown_pace if tail_m else None
+        warmup_m, cooldown_m = lead_m, tail_m
+
+    if warmup_pace:
+        steps.append(_step(order, 1, "warmup", "distance", warmup_m,
+                           "Warming-up", pace_range=warmup_pace))
         order += 1
 
-    if session.workout_type == WorkoutType.INTERVAL and session.intervals:
-        for iv in session.intervals:
-            reps = iv.get("reps", 1)
-            dist_m = iv.get("distance_m") or 400
-            rest_sec = iv.get("rest_seconds", 90)
-            iv_pace = iv.get("pace", "")
-            for _ in range(reps):
-                steps.append(_step(order, 3, "interval", "distance", dist_m,
-                                   f"Interval {dist_m}m", pace_range=iv_pace))
-                order += 1
-                # Recovery: time-based, no pace target
-                steps.append(_step(order, 4, "recovery", "time", rest_sec, "Rust"))
+    if blocks:
+        for index, block in enumerate(blocks):
+            steps.append(_step(order, 3, "interval", block["condition"], block["value"],
+                               block["label"], pace_range=block["pace"]))
+            order += 1
+            # A jog between the blocks, not one trailing into the cool-down
+            if index < len(blocks) - 1:
+                steps.append(_step(order, 4, "recovery", "time", block["rest_seconds"], "Rust"))
                 order += 1
     else:
-        dist_m = int((session.distance_km or 5) * 1000)
-        steps.append(_step(order, 3, "interval", "distance", dist_m,
+        steps.append(_step(order, 3, "interval", "distance", main_m,
                            session.description or "", pace_range=paces.get("main")))
         order += 1
 
     # Strides (short fast accelerations stored in target_paces["strides"])
     strides = paces.get("strides")
-    if strides and session.workout_type != WorkoutType.INTERVAL:
+    if strides and not blocks:
         reps = strides.get("reps", 4)
-        dist_m = strides.get("distance_m", 100)
+        stride_m = strides.get("distance_m", 100)
         rest_sec = strides.get("rest_seconds", 90)
         stride_pace = strides.get("pace", "")
         for i in range(reps):
-            steps.append(_step(order, 3, "interval", "distance", dist_m,
+            steps.append(_step(order, 3, "interval", "distance", stride_m,
                                f"Stride {i + 1}", pace_range=stride_pace))
             order += 1
             if i < reps - 1:
                 steps.append(_step(order, 4, "recovery", "time", rest_sec, "Herstel"))
                 order += 1
 
-    # Cooldown (500 m at cooldown pace)
-    if paces.get("cooldown"):
-        steps.append(_step(order, 2, "cooldown", "distance", 500,
-                           "Cooling-down", pace_range=paces.get("cooldown")))
+    if cooldown_pace:
+        steps.append(_step(order, 2, "cooldown", "distance", cooldown_m,
+                           "Cooling-down", pace_range=cooldown_pace))
 
     return {
         "sportType": _SPORT_RUNNING,

@@ -92,6 +92,9 @@ class WorkoutSession(Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     distance_km: Mapped[float | None] = mapped_column(Float, nullable=True)
     duration_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Length of the easy running either side of the work; None falls back to a default
+    warmup_km: Mapped[float | None] = mapped_column(Float, nullable=True)
+    cooldown_km: Mapped[float | None] = mapped_column(Float, nullable=True)
     # Pace ranges as JSON: {"warmup": "6:00-6:30", "main": "5:10-5:20", "cooldown": "6:00-6:30"}
     target_paces: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     # Interval structure: [{"reps": 6, "distance_m": 400, "pace": "4:30-4:40", "rest_seconds": 90}]

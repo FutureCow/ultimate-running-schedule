@@ -27,12 +27,16 @@ _SCHEMA = """{
     "day_number":1-7,
     "workout_type":"easy_run|long_run|tempo|interval|recovery|race|rest|strength",
     "title","description","distance_km","duration_minutes",
+    "warmup_km","cooldown_km",
     "target_paces":{"warmup","main","cooldown",
       "strides":{"reps":4-8,"distance_m":80-100,"pace","rest_seconds":60-90}|null},
     "intervals":[{"reps","distance_m","duration_seconds","pace","rest_seconds"}]|null
   }]}]
 }
 Paces: "MM:SS – MM:SS" per km. Strength: distance_km=null, target_paces={"main":"N/A"}.
+warmup_km/cooldown_km: the easy running either side of the work, null when there is none.
+distance_km is the whole session including them. description, intervals and these
+numbers must describe the SAME session — never say "6 minutes" and then give a distance.
 description: 1 sentence for runs; numbered 6-8 exercise list (sets×reps, rest, cue) for strength."""
 
 
