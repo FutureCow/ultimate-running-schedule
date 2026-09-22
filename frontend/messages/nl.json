@@ -384,7 +384,7 @@
     "weekTitle": "Week {current} / {total}",
     "pushWeek": "Push week naar Garmin",
     "weekOnGarmin": "Week {week} op Garmin",
-    "restDay": "Rustdag"
+    "noSessions": "Geen trainingen deze week"
   },
   "paceZones": {
     "title": "Tempo Zones",

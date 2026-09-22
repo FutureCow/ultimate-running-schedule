@@ -115,10 +115,13 @@ export function WeekCalendar({ plan }: Props) {
   const week = weeks.find((w) => w.week_number === currentWeek);
   const sessions = plan.sessions.filter((s) => s.week_number === currentWeek);
 
+  // Rest days need no row — an empty day speaks for itself
   const sessionsByDay: Record<number, WorkoutSession[]> = {};
   for (let d = 1; d <= 7; d++) {
-    sessionsByDay[d] = sessions.filter((s) => s.day_number === d);
+    sessionsByDay[d] = sessions.filter((s) => s.day_number === d && s.workout_type !== "rest");
   }
+  const activeDays = Array.from({ length: 7 }, (_, i) => i + 1)
+    .filter((d) => sessionsByDay[d].length > 0);
 
   async function handlePushSession(sessionId: number) {
     setPushingSession(sessionId);
@@ -213,8 +216,11 @@ export function WeekCalendar({ plan }: Props) {
           transition={{ duration: 0.2 }}
           className="space-y-2"
         >
-          {Array.from({ length: 7 }, (_, idx) => {
-            const dayNum = idx + 1;
+          {activeDays.length === 0 && (
+            <p className="text-xs text-slate-600 py-4 text-center">{t("noSessions")}</p>
+          )}
+          {activeDays.map((dayNum) => {
+            const idx = dayNum - 1;
             const dayLabel = tDays(`abbr.${idx}`);
             const daySessions = sessionsByDay[dayNum] || [];
             const firstSession = daySessions[0];
@@ -230,8 +236,7 @@ export function WeekCalendar({ plan }: Props) {
                 </div>
 
                 <div className="flex-1 space-y-2 min-w-0">
-                  {daySessions.length > 0 ? (
-                    daySessions.map((s) => (
+                  {daySessions.map((s) => (
                       <WorkoutCard
                         key={s.id}
                         session={s}
@@ -255,12 +260,7 @@ export function WeekCalendar({ plan }: Props) {
                         }}
                         isResetting={resetMutation.isPending && resetMutation.variables === s.id}
                       />
-                    ))
-                  ) : (
-                    <div className="flex items-center rounded-2xl border border-dashed border-slate-700/30 px-4 py-3">
-                      <span className="text-xs text-slate-700">{t("restDay")}</span>
-                    </div>
-                  )}
+                  ))}
                 </div>
               </div>
             );

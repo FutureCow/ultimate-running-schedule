@@ -311,8 +311,9 @@ class _PlanScreenState extends State<PlanScreen> {
                           },
                           itemBuilder: (_, idx) {
                             final week = _weeks[idx];
+                            // Rest days are not worth a card — an empty day speaks for itself
                             final sessions = _plan!.sessions
-                                .where((s) => s.weekNumber == week)
+                                .where((s) => s.weekNumber == week && s.workoutType != 'rest')
                                 .toList()
                               ..sort((a, b) => a.dayNumber.compareTo(b.dayNumber));
                             return RefreshIndicator(
