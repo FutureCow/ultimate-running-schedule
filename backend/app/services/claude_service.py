@@ -457,6 +457,7 @@ def _feedback_instructions(tone: str, lang_instruction: str) -> tuple[str, str, 
         task = f"""Write a post-run note to a beginner in {lang_instruction}. Write exactly 2 paragraphs, each 2–3 sentences. No headers, no bullet points, no markdown.
 
 Paragraph 1 — What went well: name the specific things this run did right and quote the numbers that show it. Explain what those numbers mean in everyday language — no jargon, and no training-zone terminology unless you explain it in the same sentence.
+Do not build the note around heart rate: mention it only when it contradicts the pace.
 Paragraph 2 — One small next step: give exactly one concrete, achievable thing to work on, and say why it helps. If this session was long or hard for this runner, make that one thing about recovery — how to take the next day or two, when to run again, what to watch out for. Otherwise make it something to try on the next run. One thing only — do not list several."""
         return system, task, 2000
 
@@ -467,7 +468,7 @@ Paragraph 2 — One small next step: give exactly one concrete, achievable thing
     )
     task = f"""You are an elite running coach writing a post-workout analysis in {lang_instruction}. Write exactly 3 paragraphs, each 2–3 sentences. No headers, no bullet points, no markdown.
 
-Paragraph 1 — Training load & heart rate: Interpret the HR data scientifically (training zones, cardiac drift, effort relative to max HR). Reference relevant exercise physiology where appropriate.
+Paragraph 1 — Training load & heart rate: Interpret the HR data scientifically (training zones, cardiac drift, effort relative to max HR). Where the max HR is an estimate rather than athlete-set, say what the numbers suggest instead of asserting a zone. Reference relevant exercise physiology where appropriate.
 Paragraph 2 — Pace & cadence: Assess pace consistency, cadence efficiency, and what the numbers reveal about running economy.
 Paragraph 3 — Recovery: Give specific, evidence-based recovery advice tailored to this session's intensity and duration."""
     return system, task, 4000
@@ -480,12 +481,19 @@ universal ideal:
   7:00/km, while 180 spm is a racing-pace figure and not a goal for every run. Taller
   runners sit lower. Only raise cadence as something to work on if it is genuinely low for
   this pace, and name the pace you are judging it against.
-- Heart rate: on an easy run, most of the time sitting in the low zones is the point of
-  the session, not a shortfall. Flag HR only when it disagrees with what the session was
-  meant to be — high HR on an easy run, or low HR on a hard one.
-- Pace: compare it to the pace prescribed for this workout, not to a generic standard.
-  Running an easy run slower than planned is usually fine; running it faster is the more
-  common mistake and worth mentioning.
+- Pace: the prescribed pace is the verdict on execution. It is a known quantity, so judge
+  first whether the session was run as prescribed, and compare against that rather than a
+  generic standard. Inside the prescribed range means it was executed correctly: say so,
+  and do not take it back with another number. Running an easy run slower than planned is
+  usually fine; running it faster is the more common mistake and worth mentioning.
+- Heart rate: evidence, not the verdict. Raise it when it contradicts the pace — on pace
+  but far above this athlete's usual effort, or well off pace with the heart rate
+  explaining why. Never tell an athlete who hit the prescribed pace that they went too
+  hard. A max HR shown as "220-<age>" is an estimate, not a measurement, and every zone
+  percentage built on it inherits that uncertainty: report what it suggests, never as
+  fact. A max HR shown as "athlete-set" may be used directly. And some runners simply run
+  at a high percentage of their maximum — a high heart rate at an easy pace is a trait,
+  not a fault; if the pace was right, the session was easy whatever the percentage says.
 - Elevation: a hilly run's pace is not comparable to a flat one. Say so rather than
   reading the slower pace as a decline in fitness.
 - Missing numbers mean nothing was measured. Never infer anything from an absent metric.

@@ -72,6 +72,11 @@ def prompt(tone: str = "scientific") -> str:
     return _feedback_prompt(task, ["- Distance: 8 km"])
 
 
+def flat(tone: str = "scientific") -> str:
+    """Lowercased with whitespace collapsed, so assertions survive re-wrapping."""
+    return " ".join(prompt(tone).split()).lower()
+
+
 def test_the_prompt_ties_cadence_to_the_pace_that_was_run():
     text = prompt().lower()
 
@@ -94,3 +99,30 @@ def test_both_tones_get_the_same_guidance():
 
 def test_the_prompt_still_carries_the_workout_data():
     assert "- Distance: 8 km" in prompt()
+
+
+# ── Pace is the verdict, heart rate is evidence ──────────────────────────────
+
+def test_the_prescribed_pace_is_the_verdict_on_execution():
+    assert "prescribed pace is the verdict" in flat()
+
+
+def test_a_session_run_on_pace_is_never_called_too_hard():
+    """Three of four real analyses scolded the athlete for a correctly paced run."""
+    assert "never tell an athlete who hit the prescribed pace" in flat()
+
+
+def test_an_estimated_max_hr_may_not_be_stated_as_fact():
+    text = flat()
+
+    assert "estimate, not a measurement" in text
+    assert "athlete-set" in text
+
+
+def test_a_high_heart_rate_at_easy_pace_is_called_a_trait():
+    """Some runners simply run high; that is not a fault to correct every week."""
+    assert "trait, not a fault" in flat()
+
+
+def test_the_old_flag_high_hr_on_easy_runs_rule_is_gone():
+    assert "high hr on an easy run" not in prompt().lower()

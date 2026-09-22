@@ -116,3 +116,25 @@ def test_the_encouraging_analysis_still_asks_for_only_one_thing():
 
     assert "one thing only" in task.lower()
     assert "2 paragraphs" in task
+
+
+# ── Heart rate per tone ──────────────────────────────────────────────────────
+
+def test_the_encouraging_note_is_not_built_around_heart_rate():
+    _, task, _ = encouraging()
+
+    assert "do not build the note around heart rate" in task.lower()
+
+
+def test_the_scientific_analysis_still_leads_with_heart_rate():
+    """Demoting HR everywhere would gut the first paragraph of this variant."""
+    _, task, _ = scientific()
+
+    assert "Training load & heart rate" in task
+    assert "training zones" in task
+
+
+def test_the_scientific_analysis_hedges_an_estimated_max():
+    _, task, _ = scientific()
+
+    assert "estimate" in task.lower()
