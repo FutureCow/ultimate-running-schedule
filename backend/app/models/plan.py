@@ -66,6 +66,9 @@ class Plan(Base):
     strength_equipment: Mapped[list | None] = mapped_column(JSON, nullable=True)      # ["dumbbells","resistance_bands",...]
     # Full AI-generated plan stored as JSON
     plan_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    # Snapshot of the plan this one follows on from — kept here so it survives
+    # the previous plan being deleted and goes along when this one is regenerated
+    previous_summary: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     garmin_synced: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(

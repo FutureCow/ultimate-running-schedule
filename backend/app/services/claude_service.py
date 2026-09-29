@@ -9,6 +9,7 @@ import anthropic
 from app.config import settings
 from app.schemas.common import DEFAULT_FEEDBACK_TONE, FEEDBACK_TONES
 from app.schemas.plan import PlanCreate, StrengthPreferences
+from app.services.follow_up import previous_plan_lines
 
 logger = logging.getLogger(__name__)
 
@@ -308,7 +309,7 @@ Training days: {', '.join(plan.training_days) if plan.training_days else 'flexib
 The long run is the single longest run of its week — no other run may be longer — and it grows week over week toward the goal distance.
 
 {schedule_str}
-{_ultra_block(plan, goal_label)}
+{_ultra_block(plan, goal_label)}{previous_plan_lines(plan.previous_summary) if plan.previous_summary else ""}
 ## Recent activity
 {garmin_str}
 {strength_str}

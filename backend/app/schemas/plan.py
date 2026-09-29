@@ -108,6 +108,11 @@ class PlanCreate(BaseModel):
     race_date: Optional[date] = None
     language: str = "nl"
     strength: Optional[StrengthPreferences] = None
+    # Follow-up plan: which plan to build on, and an optional corrected race time
+    previous_plan_id: Optional[str] = None
+    previous_race_time_seconds: Optional[int] = None
+    # Set by the server from previous_plan_id; anything a client sends is overwritten
+    previous_summary: Optional[dict] = None
 
     @model_validator(mode="after")
     def _validate_custom_distance(self):
@@ -178,6 +183,7 @@ class PlanResponse(BaseModel):
     start_date: Optional[date] = None
     race_date: Optional[date] = None
     plan_json: Optional[Any] = None
+    previous_summary: Optional[dict] = None
     garmin_synced: bool
     strength_enabled: bool = False
     strength_location: Optional[str] = None

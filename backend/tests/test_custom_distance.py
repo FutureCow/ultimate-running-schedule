@@ -119,15 +119,9 @@ def test_every_plan_create_field_maps_onto_a_plan_column():
 
     payload = plan(goal_kind="fitness")
 
-    # Mirror what create_plan does with the payload
-    plan_data = payload.model_dump()
-    plan_data.pop("language", None)
-    strength = plan_data.pop("strength", None) or {}
-    plan_data["strength_enabled"] = strength.get("enabled", False)
-    plan_data["strength_location"] = strength.get("location")
-    plan_data["strength_type"] = strength.get("type")
-    plan_data["strength_days"] = strength.get("days")
-    plan_data["strength_equipment"] = strength.get("equipment")
+    from app.routers.plans import _plan_columns
+
+    plan_data = _plan_columns(payload)
 
     stored = Plan(user_id=1, **plan_data)
 

@@ -11,6 +11,7 @@ from app.models.plan import Plan, WorkoutSession
 from app.routers.deps import get_current_user, require_tier
 from app.schemas.plan import PlanCreate, PlanUpdate, PlanResponse, StrengthPreferences
 from app.services import claude_service, garmin_service
+from app.services.follow_up import summarise_plan
 
 router = APIRouter(prefix="/plans", tags=["plans"])
 
@@ -43,6 +44,83 @@ async def _with_actuals(db: AsyncSession, user_id: int, plans):
         garmin_service.attach_actuals(plan.sessions, activities_by_id)
 
     return plans
+
+
+def _tier_decision(tier: str, has_plan: bool, is_follow_up: bool) -> tuple[bool, bool]:
+    """(allowed, replace_previous) for creating a plan.
+
+    Base and Tempo keep one plan. A follow-up takes the place of the plan it
+    builds on, so they can progress too; an unrelated second plan still needs
+    an upgrade. Elite keeps every plan.
+    """
+    if tier not in ("base", "tempo") or not has_plan:
+        return True, False
+    return (True, True) if is_follow_up else (False, False)
+
+
+def _apply_race_override(summary: dict, race_time_seconds: int | None) -> dict:
+    """A race time entered by the athlete wins over the matched activity,
+    which may include a warm-up or cool-down."""
+    if not race_time_seconds:
+        return summary
+    measured = summary.get("race") or {}
+    summary["race"] = {
+        "distance_km": measured.get("distance_km") or summary.get("goal_km"),
+        "time_seconds": race_time_seconds,
+    }
+    return summary
+
+
+# Fields a create request carries that are not columns on Plan
+_REQUEST_ONLY = ("language", "previous_plan_id", "previous_race_time_seconds")
+
+
+def _plan_columns(payload: PlanCreate) -> dict:
+    """The create payload as Plan column values."""
+    data = payload.model_dump()
+    for field in _REQUEST_ONLY:
+        data.pop(field, None)
+    strength = data.pop("strength", None) or {}
+    data["strength_enabled"] = strength.get("enabled", False)
+    data["strength_location"] = strength.get("location")
+    data["strength_type"] = strength.get("type")
+    data["strength_days"] = strength.get("days")
+    data["strength_equipment"] = strength.get("equipment")
+    return data
+
+
+async def _activities_for(db: AsyncSession, user_id: int, plan: Plan) -> dict:
+    from app.models.garmin_activity import GarminActivity
+
+    ids = {s.garmin_activity_id for s in plan.sessions if s.garmin_activity_id}
+    if not ids:
+        return {}
+    rows = await db.execute(
+        select(GarminActivity).where(
+            GarminActivity.user_id == user_id, GarminActivity.activity_id.in_(ids)
+        )
+    )
+    return {a.activity_id: a for a in rows.scalars().all()}
+
+
+async def _delete_plan_and_garmin_workouts(db: AsyncSession, user_id: int, plan: Plan) -> None:
+    """Remove a plan, taking its pushed workouts off Garmin first.
+
+    Once the sessions are gone the workout ids are lost and the workouts sit on
+    the watch with no way to clean them up. Garmin failures are logged, not
+    fatal — the plan still goes.
+    """
+    import logging
+
+    for s in plan.sessions:
+        if s.garmin_workout_id:
+            try:
+                await garmin_service.delete_workout_from_garmin(db, user_id, s.garmin_workout_id)
+            except Exception as exc:
+                logging.getLogger(__name__).warning(
+                    "Garmin cleanup failed for workout %s: %s", s.garmin_workout_id, exc
+                )
+    await db.delete(plan)
 
 
 def _plan_to_create(plan: Plan) -> PlanCreate:
@@ -78,6 +156,7 @@ def _plan_to_create(plan: Plan) -> PlanCreate:
             days=plan.strength_days,
             equipment=plan.strength_equipment,
         ) if plan.strength_enabled else None,
+        previous_summary=plan.previous_summary,
     )
 
 
@@ -139,15 +218,29 @@ async def create_plan(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    # Tier gate: base and tempo may only have 1 plan; elite is unlimited
-    if user.tier in ("base", "tempo"):
-        existing = await db.execute(select(Plan).where(Plan.user_id == user.id))
-        if existing.scalars().first():
-            needed = "elite" if user.tier == "tempo" else "tempo"
-            raise HTTPException(
-                status_code=403,
-                detail=f"UPGRADE_REQUIRED:{needed}:Je kunt met je huidige abonnement maar 1 plan aanmaken",
-            )
+    # A follow-up builds on one of the athlete's own plans
+    previous = None
+    if payload.previous_plan_id:
+        found = await db.execute(select(Plan).where(
+            Plan.public_id == payload.previous_plan_id, Plan.user_id == user.id))
+        previous = found.scalar_one_or_none()
+        if not previous:
+            raise HTTPException(status_code=404, detail="Vorig plan niet gevonden")
+        summary = summarise_plan(previous, await _activities_for(db, user.id, previous))
+        payload.previous_summary = _apply_race_override(summary, payload.previous_race_time_seconds)
+    else:
+        payload.previous_summary = None  # never trust one sent by the client
+
+    # Tier gate: base and tempo keep one plan; a follow-up takes its place
+    existing = await db.execute(select(Plan.id).where(Plan.user_id == user.id))
+    allowed, replace_previous = _tier_decision(
+        user.tier, existing.first() is not None, previous is not None)
+    if not allowed:
+        needed = "elite" if user.tier == "tempo" else "tempo"
+        raise HTTPException(
+            status_code=403,
+            detail=f"UPGRADE_REQUIRED:{needed}:Je kunt met je huidige abonnement maar 1 plan aanmaken",
+        )
 
     # Tier gate: strength training is Elite only
     has_strength = payload.strength and payload.strength.enabled
@@ -160,40 +253,24 @@ async def create_plan(
     # Optionally fetch Garmin summary for AI context
     garmin_summary = None
     try:
-        sync_result = await garmin_service.fetch_activities(db, user.id, months=3)
-        garmin_summary = sync_result
+        garmin_summary = await garmin_service.fetch_activities(db, user.id, months=3)
     except Exception:
         pass  # Proceed without Garmin data
 
-    # Generate plan via Claude
+    # Generate first: if this fails, the previous plan is still untouched
     try:
         plan_json = await claude_service.generate_plan(payload, garmin_summary, language=payload.language)
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"AI plan generation failed: {str(e)}")
 
-    plan_data = payload.model_dump()
-    plan_data.pop("language", None)  # language is not a DB column
-
-    # Flatten nested strength preferences into individual DB columns
-    strength = plan_data.pop("strength", None) or {}
-    plan_data["strength_enabled"] = strength.get("enabled", False)
-    plan_data["strength_location"] = strength.get("location")
-    plan_data["strength_type"] = strength.get("type")
-    plan_data["strength_days"] = strength.get("days")
-    plan_data["strength_equipment"] = strength.get("equipment")
-
-    # Persist plan
     try:
-        plan = Plan(
-            user_id=user.id,
-            **plan_data,
-            plan_json=plan_json,
-        )
+        plan = Plan(user_id=user.id, **_plan_columns(payload), plan_json=plan_json)
         db.add(plan)
         await db.flush()  # get plan.id
 
-        sessions = _create_sessions_from_json(plan, plan_json)
-        db.add_all(sessions)
+        db.add_all(_create_sessions_from_json(plan, plan_json))
+        if replace_previous:
+            await _delete_plan_and_garmin_workouts(db, user.id, previous)
         await db.commit()
     except Exception as e:
         await db.rollback()
@@ -202,6 +279,20 @@ async def create_plan(
     # Reload fully with selectin-loaded sessions
     result = await db.execute(select(Plan).where(Plan.id == plan.id))
     return await _with_actuals(db, user.id, result.scalar_one())
+
+
+@router.get("/{public_id}/follow-up-summary")
+async def follow_up_summary(
+    public_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """What a follow-up plan would build on, for the wizard to show and prefill."""
+    result = await db.execute(select(Plan).where(Plan.public_id == public_id, Plan.user_id == user.id))
+    plan = result.scalar_one_or_none()
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found")
+    return summarise_plan(plan, await _activities_for(db, user.id, plan))
 
 
 @router.get("", response_model=list[PlanResponse])
@@ -745,5 +836,5 @@ async def delete_plan(
     plan = result.scalar_one_or_none()
     if not plan:
         raise HTTPException(status_code=404, detail="Plan not found")
-    await db.delete(plan)
+    await _delete_plan_and_garmin_workouts(db, user.id, plan)
     await db.commit()
