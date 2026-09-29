@@ -190,6 +190,16 @@ export interface FollowUpSummary {
   longest_run_km?: number | null;
   build_weekly_km?: number | null;
   race?: { distance_km: number; time_seconds: number } | null;
+  suggestions?: GoalSuggestion[];
+}
+
+/** A goal the follow-up could aim for, predicted from the previous result. */
+export interface GoalSuggestion {
+  kind: "faster" | "repeat" | "step_up";
+  goal: GoalType;
+  custom_distance_km?: number | null;
+  goal_kind: GoalKind;
+  target_time_seconds?: number | null;
 }
 
 export interface GarminStatus {

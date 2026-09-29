@@ -155,6 +155,9 @@
       "zonesRecalibrated": "Pace zones recalibrated during the plan",
       "raceTime": "Race time",
       "raceOver": "over",
+      "suggestionsTitle": "What could you work towards?",
+      "suggestionsHint": "Predicted from your result and how your previous plan went — a direction, not a promise. Click to fill in the goal and target time.",
+      "suggest": {"faster": "Faster: {goal} in {time}", "repeat": "Again: {goal} in {time}", "stepUpRace": "Step up: {goal} in {time}", "stepUpFitness": "Step up: finish a {goal}"},
       "raceTimeHint": "Taken from Garmin or your previous goal — adjust the time or distance if your warm-up or cool-down was included, or you raced a different distance than planned.",
       "raceTimePlaceholder": "e.g. 58:40",
       "replaceWarning": "Your subscription includes one plan: this follow-up replaces your current plan. Pushed workouts are removed from Garmin."

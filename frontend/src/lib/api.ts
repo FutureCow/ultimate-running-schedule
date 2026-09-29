@@ -129,7 +129,10 @@ export const plansApi = {
     target_pace_delta_seconds?: number | null;
   }) => api.patch(`/plans/${publicId}/sessions/bulk`, { filter, update }),
   reset: (publicId: string) => api.post(`/plans/${publicId}/reset`),
-  followUpSummary: (publicId: string) => api.get(`/plans/${publicId}/follow-up-summary`),
+  followUpSummary: (publicId: string, raceTimeSeconds?: number, raceDistanceKm?: number) =>
+    api.get(`/plans/${publicId}/follow-up-summary`, {
+      params: { race_time_seconds: raceTimeSeconds, race_distance_km: raceDistanceKm },
+    }),
 };
 
 // Sessions

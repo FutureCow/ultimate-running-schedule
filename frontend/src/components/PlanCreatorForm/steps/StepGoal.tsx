@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { UseFormRegister, UseFormWatch, UseFormSetValue, FieldErrors } from "react-hook-form";
 import { FormSchema } from "../PlanCreatorForm";
-import { CUSTOM_GOAL, MAX_CUSTOM_DISTANCE_KM, MIN_CUSTOM_DISTANCE_KM, isUltra } from "@/lib/goal";
+import { CUSTOM_GOAL, MAX_CUSTOM_DISTANCE_KM, MIN_CUSTOM_DISTANCE_KM, clockToSeconds, isUltra } from "@/lib/goal";
 
 const GOAL_KEYS = ["5k", "10k", "half_marathon", "marathon"] as const;
 const GOAL_KINDS = ["race", "fitness"] as const;
@@ -186,14 +186,19 @@ export function StepGoal({ register, watch, setValue, errors, targetTimeDisplay 
         <div>
           <label className="label">{t("targetTime")}</label>
           <input
+            // Remount when a suggestion fills the time in, so the field shows it
+            key={targetTimeDisplay ?? ""}
             type="text"
             placeholder={t("targetTimePlaceholder")}
             className="input"
             defaultValue={targetTimeDisplay}
             onChange={(e) => {
-              const [m, s] = e.target.value.split(":").map(Number);
-              if (!isNaN(m) && !isNaN(s)) setValue("target_time_seconds", m * 60 + s);
-              else if (!isNaN(m)) setValue("target_time_seconds", m * 60);
+              // "56:55", "2:12:40", or bare minutes; "2:12:40" used to read as 2 min 12 s
+              const text = e.target.value.trim();
+              const clock = clockToSeconds(text);
+              if (clock !== undefined) setValue("target_time_seconds", clock);
+              else if (text && !isNaN(Number(text))) setValue("target_time_seconds", Number(text) * 60);
+              else setValue("target_time_seconds", undefined);
             }}
           />
           <p className="text-[10px] text-slate-600 mt-1">{t("targetTimeHint")}</p>

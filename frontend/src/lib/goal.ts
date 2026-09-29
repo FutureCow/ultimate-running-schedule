@@ -29,6 +29,13 @@ export function goalLabel(
   return t(goal);
 }
 
+/** "58:40" or "2:12:40" -> seconds; anything else -> undefined. */
+export function clockToSeconds(text: string): number | undefined {
+  const parts = text.trim().split(":").map(Number);
+  if (parts.length < 2 || parts.length > 3 || parts.some((n) => isNaN(n))) return undefined;
+  return parts.reduce((total, n) => total * 60 + n, 0);
+}
+
 export function isUltra(km: number | null | undefined): boolean {
   return km != null && km > MARATHON_KM;
 }

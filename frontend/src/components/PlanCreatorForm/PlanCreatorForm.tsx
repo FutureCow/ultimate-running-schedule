@@ -10,7 +10,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { ArrowLeft, ArrowRight, Zap, CheckCircle2, AlertCircle, RefreshCw } from "lucide-react";
 import { plansApi, profileApi } from "@/lib/api";
-import { FollowUpSummary, Plan, PlanFormData, UserProfile } from "@/types";
+import { FollowUpSummary, GoalSuggestion, Plan, PlanFormData, UserProfile } from "@/types";
+import { clockToSeconds, goalLabel } from "@/lib/goal";
 import { StepGoal } from "./steps/StepGoal";
 import { StepAthleteProfile } from "./steps/StepAthleteProfile";
 import { StepTrainingPrefs } from "./steps/StepTrainingPrefs";
@@ -61,13 +62,6 @@ function secondsToDisplay(seconds?: number | null): string | undefined {
   const s = seconds % 60;
   if (h > 0) return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
   return `${m}:${String(s).padStart(2, "0")}`;
-}
-
-/** "58:40" or "1:05:30" -> seconds; anything else -> undefined. */
-function clockToSeconds(text: string): number | undefined {
-  const parts = text.trim().split(":").map(Number);
-  if (parts.length < 2 || parts.length > 3 || parts.some((n) => isNaN(n))) return undefined;
-  return parts.reduce((total, n) => total * 60 + n, 0);
 }
 
 interface Props {
@@ -163,6 +157,35 @@ export function PlanCreatorForm({ editPlan, followUpFrom: followUpProp }: Props)
   const [raceTimeText, setRaceTimeText] = useState("");
   const [raceDistanceText, setRaceDistanceText] = useState("");
   const [replacesPlan, setReplacesPlan] = useState(false);
+  const [suggestions, setSuggestions] = useState<GoalSuggestion[]>([]);
+  const [suggestedTime, setSuggestedTime] = useState<string | undefined>();
+  const tGoalNames = useTranslations("goals");
+
+  // Suggestions follow the race result the athlete says is right
+  function refreshSuggestions() {
+    if (!followUpFrom) return;
+    plansApi.followUpSummary(
+      followUpFrom,
+      clockToSeconds(raceTimeText),
+      Number(raceDistanceText.replace(",", ".")) || undefined,
+    ).then(({ data }) => setSuggestions(data.suggestions ?? [])).catch(() => {});
+  }
+
+  function applySuggestion(s: GoalSuggestion) {
+    setValue("goal", s.goal as FormSchema["goal"]);
+    setValue("custom_distance_km", s.custom_distance_km ?? undefined);
+    setValue("goal_kind", s.goal_kind);
+    setValue("target_time_seconds", s.target_time_seconds ?? undefined);
+    setSuggestedTime(secondsToDisplay(s.target_time_seconds) ?? "");
+  }
+
+  function suggestionLabel(s: GoalSuggestion) {
+    const goal = goalLabel(tGoalNames, s.goal, s.custom_distance_km, locale);
+    const time = secondsToDisplay(s.target_time_seconds);
+    if (s.kind === "faster") return tFollow("suggest.faster", { goal, time: time ?? "" });
+    if (s.kind === "repeat") return tFollow("suggest.repeat", { goal, time: time ?? "" });
+    return time ? tFollow("suggest.stepUpRace", { goal, time }) : tFollow("suggest.stepUpFitness", { goal });
+  }
 
   useEffect(() => {
     if (!followUpFrom || isEditMode) return;
@@ -192,6 +215,7 @@ export function PlanCreatorForm({ editPlan, followUpFrom: followUpProp }: Props)
         });
       }
       setFollowUp(summary);
+      setSuggestions(summary.suggestions ?? []);
       if (summary.race?.time_seconds) setRaceTimeText(secondsToDisplay(summary.race.time_seconds) ?? "");
       // Same order the server uses: the measured race, else the previous goal distance
       const distance = summary.race?.distance_km ?? summary.goal_km;
@@ -266,7 +290,7 @@ export function PlanCreatorForm({ editPlan, followUpFrom: followUpProp }: Props)
     }
   }
 
-  const targetTimeDisplay = secondsToDisplay(editPlan?.target_time_seconds);
+  const targetTimeDisplay = suggestedTime ?? secondsToDisplay(editPlan?.target_time_seconds);
   const stepProps = { register, watch, setValue, getValues, errors };
 
   const STEPS = Array.from({ length: TOTAL_STEPS }, (_, i) => i + 1);
@@ -349,6 +373,7 @@ export function PlanCreatorForm({ editPlan, followUpFrom: followUpProp }: Props)
                       placeholder={tFollow("raceTimePlaceholder")}
                       value={raceTimeText}
                       onChange={(e) => setRaceTimeText(e.target.value)}
+                      onBlur={refreshSuggestions}
                     />
                     <span>{tFollow("raceOver")}</span>
                     <input
@@ -357,11 +382,30 @@ export function PlanCreatorForm({ editPlan, followUpFrom: followUpProp }: Props)
                       className="input max-w-[6rem]"
                       value={raceDistanceText}
                       onChange={(e) => setRaceDistanceText(e.target.value)}
+                      onBlur={refreshSuggestions}
                     />
                     <span>km</span>
                   </div>
                   <p className="text-[10px] text-slate-600 mt-1">{tFollow("raceTimeHint")}</p>
                 </div>
+                {suggestions.length > 0 && (
+                  <div>
+                    <p className="label">{tFollow("suggestionsTitle")}</p>
+                    <div className="flex flex-wrap gap-2">
+                      {suggestions.map((s) => (
+                        <button
+                          key={s.kind}
+                          type="button"
+                          onClick={() => applySuggestion(s)}
+                          className="rounded-lg border border-brand-700/50 bg-brand-500/10 px-3 py-1.5 text-xs text-brand-300 hover:bg-brand-500/20"
+                        >
+                          {suggestionLabel(s)}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-[10px] text-slate-600 mt-1">{tFollow("suggestionsHint")}</p>
+                  </div>
+                )}
                 {replacesPlan && (
                   <p className="text-[11px] text-amber-400 leading-relaxed">{tFollow("replaceWarning")}</p>
                 )}
