@@ -11,7 +11,7 @@ from app.models.plan import Plan, WorkoutSession
 from app.routers.deps import get_current_user, require_tier
 from app.schemas.plan import PlanCreate, PlanUpdate, PlanResponse, StrengthPreferences
 from app.services import claude_service, garmin_service
-from app.services.follow_up import summarise_plan
+from app.services.follow_up import suggest_goals, summarise_plan
 
 router = APIRouter(prefix="/plans", tags=["plans"])
 
@@ -289,15 +289,23 @@ async def create_plan(
 @router.get("/{public_id}/follow-up-summary")
 async def follow_up_summary(
     public_id: str,
+    race_time_seconds: Optional[int] = None,
+    race_distance_km: Optional[float] = None,
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    """What a follow-up plan would build on, for the wizard to show and prefill."""
+    """What a follow-up plan would build on, and goals it could aim for.
+
+    The wizard passes a corrected race time or distance back in, so the
+    suggested goals follow the result the athlete says is right.
+    """
     result = await db.execute(select(Plan).where(Plan.public_id == public_id, Plan.user_id == user.id))
     plan = result.scalar_one_or_none()
     if not plan:
         raise HTTPException(status_code=404, detail="Plan not found")
-    return summarise_plan(plan, await _activities_for(db, user.id, plan))
+    summary = summarise_plan(plan, await _activities_for(db, user.id, plan))
+    summary = _apply_race_override(summary, race_time_seconds, race_distance_km)
+    return {**summary, "suggestions": suggest_goals(summary)}
 
 
 @router.get("", response_model=list[PlanResponse])

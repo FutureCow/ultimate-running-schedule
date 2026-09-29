@@ -90,6 +90,83 @@ def summarise_plan(plan, activities_by_id: dict, today: date | None = None) -> d
     }
 
 
+# ── Where to aim next ────────────────────────────────────────────────────────
+
+_LADDER = ["5k", "10k", "half_marathon", "marathon"]
+_RIEGEL_EXPONENT = 1.06
+_SAME_GOAL_TOLERANCE = 0.03      # 10.05 km on GPS is still a 10K
+_STEP_UP_CAUTION = 1.03          # Riegel assumes endurance a step up has not built yet
+_MARATHON_CAUTION = 1.06         # and it is most optimistic over the marathon
+_READY_LONG_RUN_SHARE = 0.4      # longest run as a share of the next distance
+
+
+def riegel_seconds(time_s: float, from_km: float, to_km: float) -> int:
+    """Predicted time over to_km from a result over from_km (Riegel)."""
+    return round(time_s * (to_km / from_km) ** _RIEGEL_EXPONENT)
+
+
+def _round_5(seconds: float) -> int:
+    return int(5 * round(seconds / 5))
+
+
+def _goal_for(km: float) -> tuple[str, float | None]:
+    """The standard goal a distance amounts to, else a custom one."""
+    for key in _LADDER:
+        if abs(km - GOAL_KM[key]) / GOAL_KM[key] <= _SAME_GOAL_TOLERANCE:
+            return key, None
+    return "custom", round(km, 2)
+
+
+def suggest_goals(summary: dict) -> list[dict]:
+    """Two or three goals the next plan could aim for, from the previous one.
+
+    Faster over the same distance, by an amount that shrinks when the previous
+    plan was followed patchily — or the same time again when most of it was
+    skipped. And a step up to the next distance, raced when the long run gives
+    a base for it, otherwise just to finish. Without a race result no time is
+    suggested at all: an invented target is worse than none.
+    """
+    race = summary.get("race") or {}
+    planned = summary.get("sessions_planned") or 0
+    completion = (summary.get("sessions_done") or 0) / planned if planned else 1.0
+    longest = summary.get("longest_run_km") or 0
+
+    suggestions: list[dict] = []
+    has_result = bool(race.get("time_seconds") and race.get("distance_km"))
+    current_km = race.get("distance_km") if has_result else summary.get("goal_km")
+    if not current_km:
+        return []
+
+    if has_result:
+        goal, custom_km = _goal_for(race["distance_km"])
+        if completion >= 0.6:
+            gain = 0.03 if completion >= 0.8 else 0.015
+            suggestions.append({
+                "kind": "faster", "goal": goal, "custom_distance_km": custom_km,
+                "goal_kind": "race", "target_time_seconds": _round_5(race["time_seconds"] * (1 - gain)),
+            })
+        else:
+            suggestions.append({
+                "kind": "repeat", "goal": goal, "custom_distance_km": custom_km,
+                "goal_kind": "race", "target_time_seconds": race["time_seconds"],
+            })
+
+    next_up = next((k for k in _LADDER if GOAL_KM[k] > current_km * 1.1), None)
+    if next_up:
+        target_km = GOAL_KM[next_up]
+        ready = has_result and completion >= 0.6 and longest >= _READY_LONG_RUN_SHARE * target_km
+        time = None
+        if ready:
+            caution = _MARATHON_CAUTION if next_up == "marathon" else _STEP_UP_CAUTION
+            time = _round_5(riegel_seconds(race["time_seconds"], race["distance_km"], target_km) * caution)
+        suggestions.append({
+            "kind": "step_up", "goal": next_up, "custom_distance_km": None,
+            "goal_kind": "race" if ready else "fitness", "target_time_seconds": time,
+        })
+
+    return suggestions
+
+
 def previous_plan_lines(summary: dict) -> str:
     """The summary as a prompt block that tells the plan to build on it."""
     goal = f"{summary['goal_km']:g} km" if summary.get("goal_km") else summary.get("goal", "?")
