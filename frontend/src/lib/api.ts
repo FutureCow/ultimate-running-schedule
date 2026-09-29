@@ -19,29 +19,45 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Auto-refresh on 401
+// Endpoints where a failed check means "wrong password", not "session gone" —
+// sending the visitor back to the login page from there would wipe the error.
+const AUTH_ENDPOINTS = ["/auth/login", "/auth/register", "/auth/forgot-password", "/auth/reset-password"];
+
+function sendToLogin() {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem("access_token");
+  localStorage.removeItem("refresh_token");
+  const locale = window.location.pathname.split("/")[1] || "nl";
+  window.location.href = `/${locale}/login`;
+}
+
+// Refresh the session when it has expired, or send the visitor to log in.
+// FastAPI answers a missing token with 403 "Not authenticated" rather than 401,
+// so both count. Any other 403 — an upgrade prompt, say — is left alone.
 api.interceptors.response.use(
   (res) => res,
   async (error: AxiosError) => {
     const original = error.config as any;
-    if (error.response?.status === 401 && !original._retry) {
+    const status = error.response?.status;
+    const detail = (error.response?.data as any)?.detail;
+    const sessionGone = status === 401 || (status === 403 && detail === "Not authenticated");
+    const isAuthEndpoint = AUTH_ENDPOINTS.some((path) => original?.url?.startsWith(path));
+
+    if (sessionGone && !isAuthEndpoint && !original._retry) {
       original._retry = true;
       const refresh = typeof window !== "undefined" ? localStorage.getItem("refresh_token") : null;
-      if (refresh) {
-        try {
-          const { data } = await axios.post(`${BASE_URL}/auth/refresh`, { refresh_token: refresh });
-          localStorage.setItem("access_token", data.access_token);
-          localStorage.setItem("refresh_token", data.refresh_token);
-          original.headers.Authorization = `Bearer ${data.access_token}`;
-          return api(original);
-        } catch {
-          if (typeof window !== "undefined") {
-            localStorage.removeItem("access_token");
-            localStorage.removeItem("refresh_token");
-            const locale = window.location.pathname.split("/")[1] || "nl";
-            window.location.href = `/${locale}/login`;
-          }
-        }
+      if (!refresh) {
+        sendToLogin();
+        return Promise.reject(error);
+      }
+      try {
+        const { data } = await axios.post(`${BASE_URL}/auth/refresh`, { refresh_token: refresh });
+        localStorage.setItem("access_token", data.access_token);
+        localStorage.setItem("refresh_token", data.refresh_token);
+        original.headers.Authorization = `Bearer ${data.access_token}`;
+        return api(original);
+      } catch {
+        sendToLogin();
       }
     }
     return Promise.reject(error);
