@@ -494,10 +494,172 @@ universal ideal:
   fact. A max HR shown as "athlete-set" may be used directly. And some runners simply run
   at a high percentage of their maximum — a high heart rate at an easy pace is a trait,
   not a fault; if the pace was right, the session was easy whatever the percentage says.
+- Sessions with work blocks: the whole-run average pace mixes warm-up, cool-down and
+  pauses with the work, so it says nothing about execution. Judge the work on the
+  measured blocks when they are given. Never compare the whole-run average with the
+  block pace. The trace is for spotting patterns — fading in a later block, recovery in
+  the pauses, drift — not for recomputing averages.
 - Elevation: a hilly run's pace is not comparable to a flat one. Say so rather than
   reading the slower pace as a decline in fitness.
 - Missing numbers mean nothing was measured. Never infer anything from an absent metric.
 """
+
+
+def _pace_range_s(pace: str | None) -> tuple[int, int] | None:
+    """"6:05 – 6:20" -> (365, 380) seconds per km; a single pace is a range of one."""
+    if not pace:
+        return None
+    found = re.findall(r"(\d{1,2}):(\d{2})", pace)
+    if not found:
+        return None
+    seconds = [int(m) * 60 + int(s) for m, s in found]
+    return min(seconds), max(seconds)
+
+
+def _fmt_pace_s(seconds: float) -> str:
+    s = int(round(seconds))
+    return f"{s // 60}:{s % 60:02d}"
+
+
+_SMOOTH_WINDOW_S = 15   # median over this span, so a GPS spike cannot become a block
+_MIN_BLOCK_S = 60       # anything shorter is a surge, not a block
+_MAX_GAP_S = 20         # a corner or a traffic light does not end a block
+
+
+def _detect_work_blocks(time_s: list, pace: list, hr: list, threshold_s: float) -> list[dict]:
+    """Stretches of the pace trace run faster than threshold_s, one per work block.
+
+    `pace` is seconds per km with None where the athlete stood still. Returns
+    start, duration, time-weighted average pace and average heart rate per block.
+    """
+    n = min(len(time_s), len(pace))
+    if n < 2:
+        return []
+
+    half = _SMOOTH_WINDOW_S / 2
+    slow = float("inf")
+    smoothed = []
+    lo = hi = 0
+    for i in range(n):
+        t = time_s[i]
+        while time_s[lo] < t - half:
+            lo += 1
+        while hi < n and time_s[hi] <= t + half:
+            hi += 1
+        window = sorted(p if p else slow for p in pace[lo:hi])
+        smoothed.append(window[len(window) // 2])
+    working = [v <= threshold_s for v in smoothed]
+
+    runs: list[list[int]] = []
+    i = 0
+    while i < n:
+        if working[i]:
+            j = i
+            while j + 1 < n and working[j + 1]:
+                j += 1
+            if runs and time_s[i] - time_s[runs[-1][1]] <= _MAX_GAP_S:
+                runs[-1][1] = j
+            else:
+                runs.append([i, j])
+            i = j + 1
+        else:
+            i += 1
+
+    blocks = []
+    for a, b in runs:
+        duration = time_s[b] - time_s[a]
+        if duration < _MIN_BLOCK_S:
+            continue
+        metres = seconds = 0.0
+        for k in range(a, b):
+            dt = time_s[k + 1] - time_s[k]
+            if pace[k]:
+                metres += 1000 / pace[k] * dt
+                seconds += dt
+        if not metres:
+            continue
+        heart = [h for h in (hr or [])[a:b + 1] if h]
+        blocks.append({
+            "start_s": time_s[a],
+            "duration_s": duration,
+            "pace_s": seconds * 1000 / metres,
+            "hr": round(sum(heart) / len(heart)) if heart else None,
+        })
+    return blocks
+
+
+def _structure_lines(streams: dict | None, planned: dict | None) -> list[str]:
+    """For a session with work blocks: what was planned and what the trace shows.
+
+    The whole-run average mixes warm-up, cool-down and pauses with the work, so
+    on its own it misjudges every interval session. These lines give the model
+    the blocks as measured, which is what execution should be judged on.
+    """
+    planned = planned or {}
+    intervals = planned.get("intervals") or []
+    if not intervals:
+        return []
+    paces = planned.get("target_paces") or {}
+    work = _pace_range_s(intervals[0].get("pace")) or _pace_range_s(paces.get("main"))
+    if not work:
+        return []
+
+    lines = []
+    parts = []
+    for entry in intervals:
+        size = (f"{entry['distance_m']} m" if entry.get("distance_m")
+                else f"{round(entry.get('duration_seconds', 0) / 60)} min")
+        part = f"{entry.get('reps', 1)} × {size} at {entry.get('pace', '?')} /km"
+        if entry.get("rest_seconds"):
+            part += f", {entry['rest_seconds']} s rest between"
+        parts.append(part)
+    lines.append(f"- Planned work: {'; '.join(parts)}")
+
+    # Halfway between the slow end of the work pace and the fast end of the
+    # easy pace separates working from jogging, even if the blocks ran slow.
+    easy = _pace_range_s(paces.get("warmup"))
+    threshold = (work[1] + easy[0]) / 2 if easy and easy[0] > work[1] else work[1] + 30
+
+    streams = streams or {}
+    time_s, pace = streams.get("time") or [], streams.get("pace") or []
+    blocks = _detect_work_blocks(time_s, pace, streams.get("heart_rate") or [], threshold)
+    if blocks:
+        lines.append(f"- Work blocks measured from the pace trace (judge execution on these): {len(blocks)}")
+        for number, block in enumerate(blocks, 1):
+            line = (f"  block {number}: {_fmt_pace_s(block['duration_s'])} min "
+                    f"at {_fmt_pace_s(block['pace_s'])} /km")
+            if block["hr"]:
+                line += f", avg HR {block['hr']} bpm"
+            lines.append(line)
+    elif time_s and pace:
+        lines.append(f"- No sustained block faster than {_fmt_pace_s(threshold)} /km "
+                     "was found in the pace trace.")
+    lines.append("- The whole-run average pace includes warm-up, cool-down and pauses; "
+                 "it says nothing about how the blocks were run.")
+    return lines
+
+
+def _trace_lines(time_s: list, pace: list, hr: list) -> list[str]:
+    """Pace and heart rate in 30 s bins — per minute past an hour — for patterns."""
+    n = min(len(time_s), len(pace))
+    if n < 2:
+        return []
+    step = 30 if time_s[n - 1] <= 3600 else 60
+    lines = [f"Pace and heart rate every {step} s (for spotting patterns such as fading, "
+             "recovery in the pauses or drift; never compute averages from it):"]
+    k = 0
+    for start in range(0, int(time_s[n - 1]) + 1, step):
+        speeds, heart = [], []
+        while k < n and time_s[k] < start + step:
+            if pace[k]:
+                speeds.append(1000 / pace[k])
+            if hr and k < len(hr) and hr[k]:
+                heart.append(hr[k])
+            k += 1
+        shown = f"{_fmt_pace_s(1000 / (sum(speeds) / len(speeds)))} /km" if speeds else "stopped"
+        beat = f"{round(sum(heart) / len(heart))} bpm" if heart else "–"
+        lines.append(f"  {_fmt_pace_s(start)} | {shown} | {beat}")
+    return lines
 
 
 def _context_lines(athlete: dict | None, planned: dict | None) -> list[str]:
@@ -681,7 +843,13 @@ async def generate_run_feedback(
     lang_instruction = "Dutch (Nederlands)" if language == "nl" else "English"
     system, task, max_tokens = _feedback_instructions(tone, lang_instruction)
 
-    prompt = _feedback_prompt(task, stats_lines + _context_lines(athlete, planned))
+    trace = _trace_lines(
+        streams.get("time") or [], streams.get("pace") or [], streams.get("heart_rate") or []
+    )
+    prompt = _feedback_prompt(
+        task,
+        stats_lines + _context_lines(athlete, planned) + _structure_lines(streams, planned) + trace,
+    )
 
     message = await client.messages.create(
         model=settings.CLAUDE_MODEL,

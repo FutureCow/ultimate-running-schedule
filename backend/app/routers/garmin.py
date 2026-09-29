@@ -126,6 +126,8 @@ def _planned_facts(session) -> dict:
         "workout_type": session.workout_type,
         "distance_km": session.distance_km,
         "target_paces": session.target_paces,
+        # The block structure lets the analysis judge the work, not the average
+        "intervals": session.intervals,
     }
 
 
