@@ -163,6 +163,7 @@ export interface Plan {
   race_date?: string | null;
   plan_json?: PlanJson | null;
   previous_summary?: FollowUpSummary | null;
+  weekly_review?: WeeklyReview | null;
   garmin_synced: boolean;
   strength_enabled: boolean;
   strength_location?: string | null;
@@ -171,6 +172,22 @@ export interface Plan {
   created_at: string;
   updated_at: string;
   sessions: WorkoutSession[];
+}
+
+/** The weekly look back at a plan under way. */
+export interface WeeklyReview {
+  week: number;
+  generated_at: string;
+  text?: string | null;
+  tone?: FeedbackTone | null;
+  stats: {
+    reviewed_week: number;
+    weeks_to_go: number;
+    weeks: { week: number; planned_km: number; run_km: number; sessions_planned: number; sessions_done: number }[];
+    longest_run_km?: number | null;
+    longest_ahead_km?: number | null;
+    aerobic_efficiency?: { change_pct: number } | null;
+  };
 }
 
 /** What a follow-up plan builds on — measured, not planned. */

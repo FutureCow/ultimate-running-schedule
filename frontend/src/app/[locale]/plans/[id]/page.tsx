@@ -15,6 +15,7 @@ import { Plan } from "@/types";
 import { goalLabel } from "@/lib/goal";
 import { WeekCalendar } from "@/components/Calendar/WeekCalendar";
 import { PaceZonesCard } from "@/components/Calendar/PaceZonesCard";
+import { WeeklyReviewCard } from "@/components/Calendar/WeeklyReviewCard";
 import { Navbar } from "@/components/ui/Navbar";
 import { StepStrength } from "@/components/PlanCreatorForm/steps/StepStrength";
 import { FormSchema } from "@/components/PlanCreatorForm/PlanCreatorForm";
@@ -191,6 +192,8 @@ export default function PlanDetailPage() {
                 </button>
               </div>
             </div>
+
+            {plan.weekly_review && <WeeklyReviewCard review={plan.weekly_review} />}
 
             {plan.plan_json?.plan_overview?.coaching_notes && (
               <div className="flex gap-3 card bg-blue-950/30 border-blue-700/30">

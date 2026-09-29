@@ -117,6 +117,16 @@
     "weeklyStructure": "Weekly structure",
     "addStrength": "Add strength training",
     "followUp": "Create follow-up plan",
+    "review": {
+      "title": "Week {week} in review",
+      "week": "Week {week}",
+      "volume": "{run} / {planned} km",
+      "weeksToGo": "{weeks} weeks to go",
+      "longest": "Longest run {km} km",
+      "longestAhead": "{km} km still to come",
+      "efficiencyUp": "easy runs {pct}% more efficient",
+      "efficiencyDown": "easy runs {pct}% less efficient"
+    },
     "bulkEdit": "Bulk edit",
     "regenerate": "Adjust pace zones",
     "regenerateConfirm": "Adjust pace zones based on your last 6 Garmin activities? Only future sessions will be updated — the schedule stays intact.",

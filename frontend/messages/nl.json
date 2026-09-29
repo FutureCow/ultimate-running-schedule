@@ -117,6 +117,16 @@
     "weeklyStructure": "Weekstructuur",
     "addStrength": "Krachttraining toevoegen",
     "followUp": "Vervolgplan maken",
+    "review": {
+      "title": "Terugblik week {week}",
+      "week": "Week {week}",
+      "volume": "{run} / {planned} km",
+      "weeksToGo": "Nog {weeks} weken te gaan",
+      "longest": "Langste duurloop {km} km",
+      "longestAhead": "straks {km} km",
+      "efficiencyUp": "rustige runs {pct}% efficiënter",
+      "efficiencyDown": "rustige runs {pct}% minder efficiënt"
+    },
     "bulkEdit": "Bulk bewerken",
     "regenerate": "Pacezones bijstellen",
     "regenerateConfirm": "Pacezones bijstellen op basis van je laatste 6 Garmin-activiteiten? Alleen toekomstige sessies worden bijgewerkt — het schema blijft intact.",
