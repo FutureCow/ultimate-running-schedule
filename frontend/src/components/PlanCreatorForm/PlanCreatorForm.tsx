@@ -3,13 +3,14 @@
 import { useState, useEffect } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
+import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { ArrowLeft, ArrowRight, Zap, CheckCircle2, AlertCircle, RefreshCw } from "lucide-react";
 import { plansApi, profileApi } from "@/lib/api";
-import { Plan, PlanFormData, UserProfile } from "@/types";
+import { FollowUpSummary, Plan, PlanFormData, UserProfile } from "@/types";
 import { StepGoal } from "./steps/StepGoal";
 import { StepAthleteProfile } from "./steps/StepAthleteProfile";
 import { StepTrainingPrefs } from "./steps/StepTrainingPrefs";
@@ -62,13 +63,26 @@ function secondsToDisplay(seconds?: number | null): string | undefined {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
+/** "58:40" or "1:05:30" -> seconds; anything else -> undefined. */
+function clockToSeconds(text: string): number | undefined {
+  const parts = text.trim().split(":").map(Number);
+  if (parts.length < 2 || parts.length > 3 || parts.some((n) => isNaN(n))) return undefined;
+  return parts.reduce((total, n) => total * 60 + n, 0);
+}
+
 interface Props {
   editPlan?: Plan;
+  /** public_id of the plan a follow-up builds on */
+  followUpFrom?: string;
 }
 
 const TOTAL_STEPS = 5;
 
-export function PlanCreatorForm({ editPlan }: Props) {
+export function PlanCreatorForm({ editPlan, followUpFrom: followUpProp }: Props) {
+  // Read in the browser: the page is prerendered per locale, so a server-side
+  // query would always be empty
+  const searchParams = useSearchParams();
+  const followUpFrom = followUpProp ?? searchParams.get("from") ?? undefined;
   const t = useTranslations("form");
   const router = useRouter();
   const locale = useLocale();
@@ -143,6 +157,45 @@ export function PlanCreatorForm({ editPlan }: Props) {
     }).catch(() => {/* no profile yet, leave fields empty */});
   }, [isEditMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Follow-up plan: carry the previous plan's setup over and show what it achieved
+  const tFollow = useTranslations("form.followUp");
+  const [followUp, setFollowUp] = useState<FollowUpSummary | null>(null);
+  const [raceTimeText, setRaceTimeText] = useState("");
+  const [replacesPlan, setReplacesPlan] = useState(false);
+
+  useEffect(() => {
+    if (!followUpFrom || isEditMode) return;
+    Promise.all([
+      plansApi.get(followUpFrom),
+      plansApi.followUpSummary(followUpFrom),
+      profileApi.get(),
+    ]).then(([prevRes, summaryRes, profileRes]) => {
+      const prev: Plan = prevRes.data;
+      const summary: FollowUpSummary = summaryRes.data;
+      const profile: UserProfile = profileRes.data;
+      setValue("goal", prev.goal as FormSchema["goal"]);
+      if (prev.custom_distance_km) setValue("custom_distance_km", prev.custom_distance_km);
+      if (prev.goal_kind) setValue("goal_kind", prev.goal_kind);
+      if (prev.training_days) setValue("training_days", prev.training_days);
+      if (prev.long_run_day) setValue("long_run_day", prev.long_run_day);
+      if (prev.surface) setValue("surface", prev.surface);
+      if (prev.feedback_tone) setValue("feedback_tone", prev.feedback_tone);
+      setValue("duration_weeks", prev.duration_weeks);
+      if (prev.strength_enabled) {
+        setValue("strength", {
+          enabled: true,
+          location: (prev.strength_location as any) ?? "bodyweight",
+          type: (prev.strength_type as any) ?? "full_body",
+          days: prev.strength_days ?? [],
+          equipment: (prev as any).strength_equipment ?? [],
+        });
+      }
+      setFollowUp(summary);
+      if (summary.race?.time_seconds) setRaceTimeText(secondsToDisplay(summary.race.time_seconds) ?? "");
+      setReplacesPlan(profile.tier === "base" || profile.tier === "tempo");
+    }).catch(() => {/* no summary: the form still works as a fresh plan */});
+  }, [followUpFrom, isEditMode]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const values = watch();
 
   async function nextStep() {
@@ -174,6 +227,10 @@ export function PlanCreatorForm({ editPlan }: Props) {
           equipment: data.strength.equipment ?? null,
           notes: data.strength.notes ?? null,
         } : undefined,
+        ...(followUpFrom && !isEditMode ? {
+          previous_plan_id: followUpFrom,
+          previous_race_time_seconds: clockToSeconds(raceTimeText),
+        } : {}),
       };
       if (isEditMode) {
         await plansApi.update(editPlan!.public_id, payload);
@@ -262,11 +319,43 @@ export function PlanCreatorForm({ editPlan }: Props) {
             exit={{ opacity: 0, x: -20 }}
             transition={{ duration: 0.2 }}
           >
+            {step === 1 && followUp && (
+              <div className="mb-5 rounded-xl border border-brand-700/40 bg-brand-950/30 p-4 space-y-2">
+                <p className="text-sm font-semibold text-white">
+                  {tFollow("title")}: {followUp.name}
+                </p>
+                <p className="text-xs text-slate-400">
+                  {[
+                    followUp.finished
+                      ? tFollow("finished")
+                      : tFollow("stopped", { week: followUp.stopped_in_week ?? "?" }),
+                    tFollow("sessions", { done: followUp.sessions_done, planned: followUp.sessions_planned }),
+                    followUp.longest_run_km ? tFollow("longest", { km: followUp.longest_run_km }) : null,
+                    followUp.build_weekly_km ? tFollow("build", { km: followUp.build_weekly_km }) : null,
+                    followUp.zones_recalibrated ? tFollow("zonesRecalibrated") : null,
+                  ].filter(Boolean).join(" · ")}
+                </p>
+                <div>
+                  <label className="label">{tFollow("raceTime")}</label>
+                  <input
+                    type="text"
+                    className="input max-w-[10rem]"
+                    placeholder={tFollow("raceTimePlaceholder")}
+                    value={raceTimeText}
+                    onChange={(e) => setRaceTimeText(e.target.value)}
+                  />
+                  <p className="text-[10px] text-slate-600 mt-1">{tFollow("raceTimeHint")}</p>
+                </div>
+                {replacesPlan && (
+                  <p className="text-[11px] text-amber-400 leading-relaxed">{tFollow("replaceWarning")}</p>
+                )}
+              </div>
+            )}
             {step === 1 && <StepGoal {...stepProps} targetTimeDisplay={targetTimeDisplay} />}
             {step === 2 && <StepAthleteProfile {...stepProps} />}
             {step === 3 && <StepTrainingPrefs {...stepProps} />}
             {step === 4 && <StepStrength watch={watch} setValue={setValue} />}
-            {step === 5 && <StepReview values={values} />}
+            {step === 5 && <StepReview values={values} followUpName={followUp?.name} />}
           </motion.div>
         </AnimatePresence>
 

@@ -3,7 +3,7 @@
 import { useParams, useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Trash2, Info, Pencil, Dumbbell, X, Loader2, RefreshCw, Layers, Gauge, RotateCcw } from "lucide-react";
+import { ArrowLeft, ArrowRight, Trash2, Info, Pencil, Dumbbell, X, Loader2, RefreshCw, Layers, Gauge, RotateCcw } from "lucide-react";
 import { useTranslations, useLocale } from "next-intl";
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
@@ -166,6 +166,10 @@ export default function PlanDetailPage() {
                   <Dumbbell className="w-4 h-4 text-violet-400" />
                   <span className="hidden sm:inline">{t("addStrength")}</span>
                 </button>
+                <Link href={`/plans/new?from=${id}`} className="btn-secondary text-sm px-3" title={t("followUp")}>
+                  <ArrowRight className="w-4 h-4 text-brand-400" />
+                  <span className="hidden sm:inline">{t("followUp")}</span>
+                </Link>
                 <Link href={`/plans/${id}/edit`} className="btn-ghost px-3">
                   <Pencil className="w-4 h-4" />
                 </Link>

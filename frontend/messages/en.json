@@ -116,6 +116,7 @@
     "deleteConfirm": "Delete plan?",
     "weeklyStructure": "Weekly structure",
     "addStrength": "Add strength training",
+    "followUp": "Create follow-up plan",
     "bulkEdit": "Bulk edit",
     "regenerate": "Adjust pace zones",
     "regenerateConfirm": "Adjust pace zones based on your last 6 Garmin activities? Only future sessions will be updated — the schedule stays intact.",
@@ -144,6 +145,19 @@
     "generate": "Generate Plan",
     "regenerate": "Regenerate Plan",
     "generating": "AI is generating plan…",
+    "followUp": {
+      "title": "Building on",
+      "finished": "Finished",
+      "stopped": "Stopped in week {week}",
+      "sessions": "{done} of {planned} sessions done",
+      "longest": "Longest run: {km} km",
+      "build": "Weekly volume while building: {km} km",
+      "zonesRecalibrated": "Pace zones recalibrated during the plan",
+      "raceTime": "Race time",
+      "raceTimeHint": "Taken from Garmin — adjust it if your warm-up or cool-down was in the same activity.",
+      "raceTimePlaceholder": "e.g. 58:40",
+      "replaceWarning": "Your subscription includes one plan: this follow-up replaces your current plan. Pushed workouts are removed from Garmin."
+    },
     "errors": {
       "required": "Required",
       "minDays": "Select at least 2 days",
@@ -277,6 +291,7 @@
       "aiNoteText": "Claude analyses your profile and Garmin data to create a science-backed training schedule. This may take 2–3 minutes.",
       "rows": {
         "name": "Plan name",
+        "followUp": "Follow-up of",
         "goal": "Goal",
         "goalKind": "Goal type",
         "targetTime": "Target time",

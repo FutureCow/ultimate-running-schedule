@@ -129,6 +129,7 @@ export const plansApi = {
     target_pace_delta_seconds?: number | null;
   }) => api.patch(`/plans/${publicId}/sessions/bulk`, { filter, update }),
   reset: (publicId: string) => api.post(`/plans/${publicId}/reset`),
+  followUpSummary: (publicId: string) => api.get(`/plans/${publicId}/follow-up-summary`),
 };
 
 // Sessions

@@ -8,7 +8,7 @@ import { CheckCircle2 } from "lucide-react";
 
 const DAYS_EN = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
 
-export function StepReview({ values }: { values: Partial<FormSchema> }) {
+export function StepReview({ values, followUpName }: { values: Partial<FormSchema>; followUpName?: string }) {
   const t = useTranslations("form.review");
   const tGoals = useTranslations("goals");
   const goalLocale = useLocale();
@@ -18,6 +18,7 @@ export function StepReview({ values }: { values: Partial<FormSchema> }) {
 
   const rows = [
     { label: t("rows.name"),         value: values.name },
+    ...(followUpName ? [{ label: t("rows.followUp"), value: followUpName }] : []),
     { label: t("rows.goal"),         value: goalLabel(tGoals, values.goal, values.custom_distance_km, goalLocale) },
     ...(values.goal === "custom"
       ? [{ label: t("rows.goalKind"), value: tGoal(`goalKinds.${values.goal_kind ?? "race"}.label`) }]

@@ -116,6 +116,7 @@
     "deleteConfirm": "Plan verwijderen?",
     "weeklyStructure": "Weekstructuur",
     "addStrength": "Krachttraining toevoegen",
+    "followUp": "Vervolgplan maken",
     "bulkEdit": "Bulk bewerken",
     "regenerate": "Pacezones bijstellen",
     "regenerateConfirm": "Pacezones bijstellen op basis van je laatste 6 Garmin-activiteiten? Alleen toekomstige sessies worden bijgewerkt — het schema blijft intact.",
@@ -144,6 +145,19 @@
     "generate": "Genereer Plan",
     "regenerate": "Plan Regenereren",
     "generating": "AI genereert plan…",
+    "followUp": {
+      "title": "Voortbouwen op",
+      "finished": "Afgerond",
+      "stopped": "Gestopt in week {week}",
+      "sessions": "{done} van {planned} trainingen gedaan",
+      "longest": "Langste duurloop: {km} km",
+      "build": "Weekvolume in de opbouw: {km} km",
+      "zonesRecalibrated": "Tempozones tussentijds bijgesteld",
+      "raceTime": "Wedstrijdtijd",
+      "raceTimeHint": "Uit Garmin overgenomen — pas aan als je in- of uitlopen in dezelfde activiteit liep.",
+      "raceTimePlaceholder": "bijv. 58:40",
+      "replaceWarning": "Met je abonnement heb je één plan: dit vervolgplan vervangt je huidige plan. Gepushte trainingen worden van Garmin verwijderd."
+    },
     "errors": {
       "required": "Verplicht",
       "minDays": "Kies minstens 2 dagen",
@@ -277,6 +291,7 @@
       "aiNoteText": "Claude analyseert je profiel en Garmin-data en maakt een wetenschappelijk onderbouwd schema. Dit kan 2 à 3 minuten duren.",
       "rows": {
         "name": "Plannaam",
+        "followUp": "Vervolg op",
         "goal": "Doel",
         "goalKind": "Type doel",
         "targetTime": "Doeltijd",

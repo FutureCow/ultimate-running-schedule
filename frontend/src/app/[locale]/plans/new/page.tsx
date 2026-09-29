@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { useTranslations } from "next-intl";
 import { Navbar } from "@/components/ui/Navbar";
 import { PlanCreatorForm } from "@/components/PlanCreatorForm/PlanCreatorForm";
@@ -18,7 +19,10 @@ export default function NewPlanPage() {
       <Navbar />
       <main className="px-4 py-6 pb-24 lg:pb-6 max-w-3xl mx-auto">
         <NewPlanContent />
-        <PlanCreatorForm />
+        {/* The form reads ?from= in the browser, which needs a Suspense boundary */}
+        <Suspense>
+          <PlanCreatorForm />
+        </Suspense>
       </main>
     </div>
   );

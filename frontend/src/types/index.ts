@@ -162,6 +162,7 @@ export interface Plan {
   start_date?: string | null;
   race_date?: string | null;
   plan_json?: PlanJson | null;
+  previous_summary?: FollowUpSummary | null;
   garmin_synced: boolean;
   strength_enabled: boolean;
   strength_location?: string | null;
@@ -170,6 +171,25 @@ export interface Plan {
   created_at: string;
   updated_at: string;
   sessions: WorkoutSession[];
+}
+
+/** What a follow-up plan builds on — measured, not planned. */
+export interface FollowUpSummary {
+  name: string;
+  goal: string;
+  goal_km?: number | null;
+  duration_weeks: number;
+  finished: boolean;
+  stopped_in_week?: number | null;
+  estimated_vdot?: number | null;
+  pace_zones: Record<string, string>;
+  zones_recalibrated: boolean;
+  sessions_planned: number;
+  sessions_done: number;
+  skipped_by_type: Record<string, number>;
+  longest_run_km?: number | null;
+  build_weekly_km?: number | null;
+  race?: { distance_km: number; time_seconds: number } | null;
 }
 
 export interface GarminStatus {
@@ -240,4 +260,6 @@ export interface PlanFormData {
   start_date?: string;
   race_date?: string;
   strength?: StrengthPreferences;
+  previous_plan_id?: string;
+  previous_race_time_seconds?: number;
 }
