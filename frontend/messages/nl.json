@@ -117,6 +117,8 @@
     "weeklyStructure": "Weekstructuur",
     "addStrength": "Krachttraining toevoegen",
     "followUp": "Vervolgplan maken",
+    "readMore": "Lees verder",
+    "readLess": "Minder",
     "review": {
       "title": "Terugblik week {week}",
       "week": "Week {week}",

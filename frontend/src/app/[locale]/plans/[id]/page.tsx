@@ -3,7 +3,7 @@
 import { useParams, useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, ArrowRight, Trash2, Info, Pencil, Dumbbell, X, Loader2, RefreshCw, Layers, Gauge, RotateCcw } from "lucide-react";
+import { ArrowLeft, ArrowRight, Trash2, Pencil, Dumbbell, X, Loader2, RefreshCw, Layers, Gauge, RotateCcw } from "lucide-react";
 import { useTranslations, useLocale } from "next-intl";
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
@@ -16,6 +16,7 @@ import { goalLabel } from "@/lib/goal";
 import { WeekCalendar } from "@/components/Calendar/WeekCalendar";
 import { PaceZonesCard } from "@/components/Calendar/PaceZonesCard";
 import { WeeklyReviewCard } from "@/components/Calendar/WeeklyReviewCard";
+import { CoachingNotes } from "@/components/Calendar/CoachingNotes";
 import { Navbar } from "@/components/ui/Navbar";
 import { StepStrength } from "@/components/PlanCreatorForm/steps/StepStrength";
 import { FormSchema } from "@/components/PlanCreatorForm/PlanCreatorForm";
@@ -193,15 +194,10 @@ export default function PlanDetailPage() {
               </div>
             </div>
 
-            {plan.weekly_review && <WeeklyReviewCard review={plan.weekly_review} />}
+            {plan.weekly_review && <WeeklyReviewCard planId={plan.id} review={plan.weekly_review} />}
 
             {plan.plan_json?.plan_overview?.coaching_notes && (
-              <div className="flex gap-3 card bg-blue-950/30 border-blue-700/30">
-                <Info className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
-                <p className="text-sm text-slate-300 leading-relaxed">
-                  {plan.plan_json.plan_overview.coaching_notes}
-                </p>
-              </div>
+              <CoachingNotes text={plan.plan_json.plan_overview.coaching_notes} />
             )}
 
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-6">

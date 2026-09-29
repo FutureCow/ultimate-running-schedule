@@ -117,6 +117,8 @@
     "weeklyStructure": "Weekly structure",
     "addStrength": "Add strength training",
     "followUp": "Create follow-up plan",
+    "readMore": "Read more",
+    "readLess": "Show less",
     "review": {
       "title": "Week {week} in review",
       "week": "Week {week}",

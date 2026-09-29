@@ -302,7 +302,8 @@ class _PlanScreenState extends State<PlanScreen> {
                 : Column(
                     children: [
                       if (_plan!.weeklyReview != null)
-                        WeeklyReviewCard(review: _plan!.weeklyReview!),
+                        WeeklyReviewCard(
+                            planId: _plan!.id, review: _plan!.weeklyReview!),
                       _buildWeekSelector(),
                       Expanded(
                         child: PageView.builder(
