@@ -154,7 +154,8 @@
       "build": "Weekvolume in de opbouw: {km} km",
       "zonesRecalibrated": "Tempozones tussentijds bijgesteld",
       "raceTime": "Wedstrijdtijd",
-      "raceTimeHint": "Uit Garmin overgenomen — pas aan als je in- of uitlopen in dezelfde activiteit liep.",
+      "raceOver": "over",
+      "raceTimeHint": "Uit Garmin of je vorige doel overgenomen — pas tijd of afstand aan als je in- of uitlopen meeliep, of een andere afstand liep dan gepland.",
       "raceTimePlaceholder": "bijv. 58:40",
       "replaceWarning": "Met je abonnement heb je één plan: dit vervolgplan vervangt je huidige plan. Gepushte trainingen worden van Garmin verwijderd."
     },

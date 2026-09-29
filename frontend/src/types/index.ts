@@ -262,4 +262,5 @@ export interface PlanFormData {
   strength?: StrengthPreferences;
   previous_plan_id?: string;
   previous_race_time_seconds?: number;
+  previous_race_distance_km?: number;
 }

@@ -104,3 +104,28 @@ def test_regenerating_a_follow_up_keeps_its_history():
     )
 
     assert _plan_to_create(stored).previous_summary == SUMMARY
+
+
+# ── Race distance ────────────────────────────────────────────────────────────
+
+def test_an_entered_distance_replaces_the_measured_one():
+    """Planned a 10K, ran a half marathon instead."""
+    summary = _apply_race_override(dict(SUMMARY), 6300, 21.1)
+
+    assert summary["race"] == {"distance_km": 21.1, "time_seconds": 6300}
+
+
+def test_an_entered_distance_alone_keeps_the_measured_time():
+    summary = _apply_race_override(dict(SUMMARY), None, 10.0)
+
+    assert summary["race"] == {"distance_km": 10.0, "time_seconds": 3520}
+
+
+def test_a_distance_without_any_time_adds_no_race():
+    summary = _apply_race_override({**SUMMARY, "race": None}, None, 10.0)
+
+    assert summary["race"] is None
+
+
+def test_the_race_distance_is_not_a_column():
+    assert "previous_race_distance_km" not in _plan_columns(payload(previous_race_distance_km=21.1))

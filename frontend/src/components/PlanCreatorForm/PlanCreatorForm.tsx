@@ -161,6 +161,7 @@ export function PlanCreatorForm({ editPlan, followUpFrom: followUpProp }: Props)
   const tFollow = useTranslations("form.followUp");
   const [followUp, setFollowUp] = useState<FollowUpSummary | null>(null);
   const [raceTimeText, setRaceTimeText] = useState("");
+  const [raceDistanceText, setRaceDistanceText] = useState("");
   const [replacesPlan, setReplacesPlan] = useState(false);
 
   useEffect(() => {
@@ -192,6 +193,9 @@ export function PlanCreatorForm({ editPlan, followUpFrom: followUpProp }: Props)
       }
       setFollowUp(summary);
       if (summary.race?.time_seconds) setRaceTimeText(secondsToDisplay(summary.race.time_seconds) ?? "");
+      // Same order the server uses: the measured race, else the previous goal distance
+      const distance = summary.race?.distance_km ?? summary.goal_km;
+      if (distance) setRaceDistanceText(String(Math.round(distance * 100) / 100).replace(".", locale === "nl" ? "," : "."));
       setReplacesPlan(profile.tier === "base" || profile.tier === "tempo");
     }).catch(() => {/* no summary: the form still works as a fresh plan */});
   }, [followUpFrom, isEditMode]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -230,6 +234,7 @@ export function PlanCreatorForm({ editPlan, followUpFrom: followUpProp }: Props)
         ...(followUpFrom && !isEditMode ? {
           previous_plan_id: followUpFrom,
           previous_race_time_seconds: clockToSeconds(raceTimeText),
+          previous_race_distance_km: Number(raceDistanceText.replace(",", ".")) || undefined,
         } : {}),
       };
       if (isEditMode) {
@@ -337,13 +342,24 @@ export function PlanCreatorForm({ editPlan, followUpFrom: followUpProp }: Props)
                 </p>
                 <div>
                   <label className="label">{tFollow("raceTime")}</label>
-                  <input
-                    type="text"
-                    className="input max-w-[10rem]"
-                    placeholder={tFollow("raceTimePlaceholder")}
-                    value={raceTimeText}
-                    onChange={(e) => setRaceTimeText(e.target.value)}
-                  />
+                  <div className="flex items-center gap-2 text-sm text-slate-400">
+                    <input
+                      type="text"
+                      className="input max-w-[8rem]"
+                      placeholder={tFollow("raceTimePlaceholder")}
+                      value={raceTimeText}
+                      onChange={(e) => setRaceTimeText(e.target.value)}
+                    />
+                    <span>{tFollow("raceOver")}</span>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      className="input max-w-[6rem]"
+                      value={raceDistanceText}
+                      onChange={(e) => setRaceDistanceText(e.target.value)}
+                    />
+                    <span>km</span>
+                  </div>
                   <p className="text-[10px] text-slate-600 mt-1">{tFollow("raceTimeHint")}</p>
                 </div>
                 {replacesPlan && (

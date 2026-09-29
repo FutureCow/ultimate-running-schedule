@@ -154,7 +154,8 @@
       "build": "Weekly volume while building: {km} km",
       "zonesRecalibrated": "Pace zones recalibrated during the plan",
       "raceTime": "Race time",
-      "raceTimeHint": "Taken from Garmin — adjust it if your warm-up or cool-down was in the same activity.",
+      "raceOver": "over",
+      "raceTimeHint": "Taken from Garmin or your previous goal — adjust the time or distance if your warm-up or cool-down was included, or you raced a different distance than planned.",
       "raceTimePlaceholder": "e.g. 58:40",
       "replaceWarning": "Your subscription includes one plan: this follow-up replaces your current plan. Pushed workouts are removed from Garmin."
     },

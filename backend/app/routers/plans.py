@@ -58,21 +58,25 @@ def _tier_decision(tier: str, has_plan: bool, is_follow_up: bool) -> tuple[bool,
     return (True, True) if is_follow_up else (False, False)
 
 
-def _apply_race_override(summary: dict, race_time_seconds: int | None) -> dict:
-    """A race time entered by the athlete wins over the matched activity,
-    which may include a warm-up or cool-down."""
-    if not race_time_seconds:
-        return summary
+def _apply_race_override(
+    summary: dict, race_time_seconds: int | None, race_distance_km: float | None = None
+) -> dict:
+    """A race time or distance entered by the athlete wins over the matched
+    activity, which may include a warm-up — or over the plan's goal distance
+    when the race actually run was a different one."""
     measured = summary.get("race") or {}
+    time = race_time_seconds or measured.get("time_seconds")
+    if not time:
+        return summary  # a distance alone says nothing about level
     summary["race"] = {
-        "distance_km": measured.get("distance_km") or summary.get("goal_km"),
-        "time_seconds": race_time_seconds,
+        "distance_km": race_distance_km or measured.get("distance_km") or summary.get("goal_km"),
+        "time_seconds": time,
     }
     return summary
 
 
 # Fields a create request carries that are not columns on Plan
-_REQUEST_ONLY = ("language", "previous_plan_id", "previous_race_time_seconds")
+_REQUEST_ONLY = ("language", "previous_plan_id", "previous_race_time_seconds", "previous_race_distance_km")
 
 
 def _plan_columns(payload: PlanCreate) -> dict:
@@ -227,7 +231,8 @@ async def create_plan(
         if not previous:
             raise HTTPException(status_code=404, detail="Vorig plan niet gevonden")
         summary = summarise_plan(previous, await _activities_for(db, user.id, previous))
-        payload.previous_summary = _apply_race_override(summary, payload.previous_race_time_seconds)
+        payload.previous_summary = _apply_race_override(
+            summary, payload.previous_race_time_seconds, payload.previous_race_distance_km)
     else:
         payload.previous_summary = None  # never trust one sent by the client
 

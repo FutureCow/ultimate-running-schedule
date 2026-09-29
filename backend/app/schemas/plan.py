@@ -111,6 +111,7 @@ class PlanCreate(BaseModel):
     # Follow-up plan: which plan to build on, and an optional corrected race time
     previous_plan_id: Optional[str] = None
     previous_race_time_seconds: Optional[int] = None
+    previous_race_distance_km: Optional[float] = None
     # Set by the server from previous_plan_id; anything a client sends is overwritten
     previous_summary: Optional[dict] = None
 
