@@ -1,0 +1,114 @@
+import 'package:flutter/material.dart';
+
+/// The weekly look back at a plan under way, folded by default so it does not
+/// push the week's sessions off the screen. Collapsed it shows the title and
+/// the key numbers; expanded, volume per week and — for Elite — the narrative.
+class WeeklyReviewCard extends StatelessWidget {
+  final Map<String, dynamic> review;
+
+  const WeeklyReviewCard({super.key, required this.review});
+
+  static String _km(num value) =>
+      value.toStringAsFixed(1).replaceAll(RegExp(r'\.0$'), '').replaceAll('.', ',');
+
+  @override
+  Widget build(BuildContext context) {
+    final stats = (review['stats'] as Map?)?.cast<String, dynamic>() ?? {};
+    final weeks = ((stats['weeks'] as List?) ?? [])
+        .map((w) => (w as Map).cast<String, dynamic>())
+        .toList();
+    final text = review['text'] as String?;
+    final peak = weeks.fold<double>(1, (m, w) {
+      final planned = (w['planned_km'] as num?)?.toDouble() ?? 0;
+      final run = (w['run_km'] as num?)?.toDouble() ?? 0;
+      return [m, planned, run].reduce((a, b) => a > b ? a : b);
+    });
+
+    final facts = <String>[
+      'Nog ${stats['weeks_to_go'] ?? '?'} weken',
+      if (stats['longest_run_km'] != null) 'langste duurloop ${_km(stats['longest_run_km'])} km',
+      if (stats['longest_ahead_km'] != null) 'straks ${_km(stats['longest_ahead_km'])} km',
+    ];
+    final eff = (stats['aerobic_efficiency'] as Map?)?.cast<String, dynamic>();
+    if (eff != null) {
+      final pct = (eff['change_pct'] as num).toDouble();
+      facts.add(pct >= 0
+          ? 'rustige runs ${_km(pct)}% efficiënter'
+          : 'rustige runs ${_km(-pct)}% minder efficiënt');
+    }
+
+    return Card(
+      color: const Color(0xFF1e293b),
+      margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          leading: const Icon(Icons.auto_awesome, color: Color(0xFF6366f1), size: 20),
+          title: Text('Terugblik week ${review['week']}',
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+          subtitle: Text(facts.join(' · '),
+              style: const TextStyle(color: Color(0xFF94a3b8), fontSize: 11)),
+          iconColor: const Color(0xFF94a3b8),
+          collapsedIconColor: const Color(0xFF94a3b8),
+          childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+          children: [
+            for (final w in weeks) _WeekBar(week: w, peak: peak),
+            if (text != null && text.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Text(text,
+                  style: const TextStyle(color: Color(0xFFcbd5e1), fontSize: 13, height: 1.45)),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _WeekBar extends StatelessWidget {
+  final Map<String, dynamic> week;
+  final double peak;
+
+  const _WeekBar({required this.week, required this.peak});
+
+  @override
+  Widget build(BuildContext context) {
+    final planned = (week['planned_km'] as num?)?.toDouble() ?? 0;
+    final run = (week['run_km'] as num?)?.toDouble() ?? 0;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 54,
+            child: Text('Week ${week['week']}',
+                style: const TextStyle(color: Color(0xFF64748b), fontSize: 11)),
+          ),
+          Expanded(
+            child: LayoutBuilder(
+              builder: (_, box) => Stack(children: [
+                Container(height: 8, decoration: _bar(const Color(0xFF334155))),
+                Container(height: 8, width: box.maxWidth * planned / peak,
+                    decoration: _bar(const Color(0xFF475569))),
+                Container(height: 8, width: box.maxWidth * run / peak,
+                    decoration: _bar(const Color(0xFF22c55e))),
+              ]),
+            ),
+          ),
+          SizedBox(
+            width: 92,
+            child: Text(
+              '${WeeklyReviewCard._km(run)}/${WeeklyReviewCard._km(planned)} km  '
+              '${week['sessions_done']}/${week['sessions_planned']}',
+              textAlign: TextAlign.right,
+              style: const TextStyle(color: Color(0xFFcbd5e1), fontSize: 11),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static BoxDecoration _bar(Color color) =>
+      BoxDecoration(color: color, borderRadius: BorderRadius.circular(4));
+}

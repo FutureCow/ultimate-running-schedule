@@ -5,6 +5,7 @@ import '../../models/plan.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/api_service.dart';
 import '../../widgets/session_card.dart';
+import '../../widgets/weekly_review_card.dart';
 
 class PlanScreen extends StatefulWidget {
   const PlanScreen({super.key});
@@ -300,6 +301,8 @@ class _PlanScreenState extends State<PlanScreen> {
                     style: TextStyle(color: Colors.white)))
                 : Column(
                     children: [
+                      if (_plan!.weeklyReview != null)
+                        WeeklyReviewCard(review: _plan!.weeklyReview!),
                       _buildWeekSelector(),
                       Expanded(
                         child: PageView.builder(

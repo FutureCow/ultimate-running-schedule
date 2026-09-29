@@ -15,6 +15,8 @@ class Plan {
   final DateTime? raceDate;
   final double? weeklyKm;
   final Map<String, dynamic>? paceZones;
+  /// Latest weekly review: {week, stats, text, tone}
+  final Map<String, dynamic>? weeklyReview;
 
   const Plan({
     required this.id,
@@ -32,6 +34,7 @@ class Plan {
     this.raceDate,
     this.weeklyKm,
     this.paceZones,
+    this.weeklyReview,
   });
 
   factory Plan.fromJson(Map<String, dynamic> j) {
@@ -57,6 +60,7 @@ class Plan {
       raceDate: j['race_date'] != null ? DateTime.tryParse(j['race_date']) : null,
       weeklyKm: (j['weekly_km'] as num?)?.toDouble(),
       paceZones: paceZones,
+      weeklyReview: j['weekly_review'] as Map<String, dynamic>?,
     );
   }
 
