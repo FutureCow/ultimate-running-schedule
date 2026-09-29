@@ -450,6 +450,7 @@ def _feedback_instructions(tone: str, lang_instruction: str) -> tuple[str, str, 
         system = (
             f"You are a warm, experienced running coach writing to a beginner in {lang_instruction}. "
             "Return plain prose — no headers, no bullet points, no markdown. "
+            "Use the Latin alphabet only. "
             "Be encouraging but never invent praise the data does not support: every compliment must "
             "point at a real number from this run. If something genuinely went badly, say so plainly "
             "and frame it as the next thing to practise, not as a failure."
@@ -464,6 +465,7 @@ Paragraph 2 — One small next step: give exactly one concrete, achievable thing
     system = (
         f"You are an elite running coach and sports scientist writing in {lang_instruction}. "
         "Return plain prose — no headers, no bullet points, no markdown. "
+            "Use the Latin alphabet only. "
         "Ground every claim in the numbers you are given; no filler."
     )
     task = f"""You are an elite running coach writing a post-workout analysis in {lang_instruction}. Write exactly 3 paragraphs, each 2–3 sentences. No headers, no bullet points, no markdown.
@@ -526,11 +528,24 @@ _MIN_BLOCK_S = 60       # anything shorter is a surge, not a block
 _MAX_GAP_S = 20         # a corner or a traffic light does not end a block
 
 
-def _detect_work_blocks(time_s: list, pace: list, hr: list, threshold_s: float) -> list[dict]:
+def _detect_work_blocks(
+    time_s: list,
+    pace: list,
+    hr: list,
+    threshold_s: float,
+    expected: int | None = None,
+    max_merge_gap_s: float = 0,
+) -> list[dict]:
     """Stretches of the pace trace run faster than threshold_s, one per work block.
 
     `pace` is seconds per km with None where the athlete stood still. Returns
-    start, duration, time-weighted average pace and average heart rate per block.
+    start, duration, time-weighted average pace, average heart rate and any
+    slowdown merged into the block.
+
+    With `expected` from the plan, a block split by a slowdown is put back
+    together: while more blocks are found than planned, the two separated by
+    the shortest gap are merged — but only across a gap shorter than
+    `max_merge_gap_s`, the planned rest, so a real pause is never hidden.
     """
     n = min(len(time_s), len(pace))
     if n < 2:
@@ -565,8 +580,19 @@ def _detect_work_blocks(time_s: list, pace: list, hr: list, threshold_s: float) 
         else:
             i += 1
 
+    runs = [[a, b, 0] for a, b in runs]  # third field: slowdown merged into it
+
+    def long_runs() -> int:
+        return sum(1 for a, b, _ in runs if time_s[b] - time_s[a] >= _MIN_BLOCK_S)
+
+    while expected and long_runs() > expected and len(runs) > 1:
+        gap, i = min((time_s[runs[k + 1][0]] - time_s[runs[k][1]], k) for k in range(len(runs) - 1))
+        if gap >= max_merge_gap_s:
+            break
+        runs[i:i + 2] = [[runs[i][0], runs[i + 1][1], runs[i][2] + runs[i + 1][2] + gap]]
+
     blocks = []
-    for a, b in runs:
+    for a, b, slowdown in runs:
         duration = time_s[b] - time_s[a]
         if duration < _MIN_BLOCK_S:
             continue
@@ -584,6 +610,7 @@ def _detect_work_blocks(time_s: list, pace: list, hr: list, threshold_s: float) 
             "duration_s": duration,
             "pace_s": seconds * 1000 / metres,
             "hr": round(sum(heart) / len(heart)) if heart else None,
+            "slowdown_s": slowdown,
         })
     return blocks
 
@@ -622,7 +649,11 @@ def _structure_lines(streams: dict | None, planned: dict | None) -> list[str]:
 
     streams = streams or {}
     time_s, pace = streams.get("time") or [], streams.get("pace") or []
-    blocks = _detect_work_blocks(time_s, pace, streams.get("heart_rate") or [], threshold)
+    blocks = _detect_work_blocks(
+        time_s, pace, streams.get("heart_rate") or [], threshold,
+        expected=sum(entry.get("reps", 1) for entry in intervals),
+        max_merge_gap_s=intervals[0].get("rest_seconds") or 60,
+    )
     if blocks:
         lines.append(f"- Work blocks measured from the pace trace (judge execution on these): {len(blocks)}")
         for number, block in enumerate(blocks, 1):
@@ -630,6 +661,8 @@ def _structure_lines(streams: dict | None, planned: dict | None) -> list[str]:
                     f"at {_fmt_pace_s(block['pace_s'])} /km")
             if block["hr"]:
                 line += f", avg HR {block['hr']} bpm"
+            if block["slowdown_s"] >= 10:
+                line += f", includes a {block['slowdown_s']} s slowdown"
             lines.append(line)
     elif time_s and pace:
         lines.append(f"- No sustained block faster than {_fmt_pace_s(threshold)} /km "

@@ -190,3 +190,69 @@ def test_the_prompt_forbids_comparing_the_run_average_with_the_block_pace():
     flat = " ".join(_feedback_prompt(task, []).split()).lower()
 
     assert "never compare the whole-run average" in flat
+
+
+# ── Using the plan to put split blocks back together ─────────────────────────
+
+def run_with_slowdown():
+    """The reported run again, with the ~35 s slowdown at 18:00 inside block 1."""
+    samples = (
+        seg(0, 900, 450, 135)
+        + seg(900, 1080, 380, 155)        # block 1, first part
+        + seg(1080, 1115, 450, 150)       # slowdown ~35 s at ~7:30
+        + seg(1115, 1380, 375, 158)       # block 1, second part
+        + seg(1380, 1480, 720, 150)       # the real pause, 100 s
+        + seg(1480, 1950, 370, 162)       # block 2
+        + seg(1950, 2620, 450, 145)
+    )
+    return [s[0] for s in samples], [s[1] for s in samples], [s[2] for s in samples]
+
+
+def test_without_a_plan_a_long_slowdown_splits_the_block():
+    time_s, pace, hr = run_with_slowdown()
+
+    assert len(_detect_work_blocks(time_s, pace, hr, threshold_s=405)) == 3
+
+
+def test_the_planned_count_puts_a_split_block_back_together():
+    """The reported analysis found 3 blocks for a 2 x 8 min session."""
+    time_s, pace, hr = run_with_slowdown()
+
+    blocks = _detect_work_blocks(time_s, pace, hr, threshold_s=405, expected=2, max_merge_gap_s=90)
+
+    assert len(blocks) == 2
+    assert abs(blocks[0]["duration_s"] - 480) <= 15
+
+
+def test_a_merged_block_reports_its_slowdown():
+    time_s, pace, hr = run_with_slowdown()
+
+    first = _detect_work_blocks(time_s, pace, hr, threshold_s=405, expected=2, max_merge_gap_s=90)[0]
+
+    assert 25 <= first["slowdown_s"] <= 50
+
+
+def test_a_real_pause_is_never_merged_away():
+    """Skipping a rep must show as fewer blocks, not be hidden by merging."""
+    time_s, pace, hr = run_with_slowdown()
+
+    blocks = _detect_work_blocks(time_s, pace, hr, threshold_s=405, expected=1, max_merge_gap_s=90)
+
+    assert len(blocks) == 2
+
+
+def test_the_analysis_sees_two_blocks_and_the_slowdown():
+    time_s, pace, hr = run_with_slowdown()
+    text = "\n".join(_structure_lines({"time": time_s, "pace": pace, "heart_rate": hr}, PLANNED))
+
+    assert "block 3" not in text
+    assert "slowdown" in text
+
+
+# ── Script ───────────────────────────────────────────────────────────────────
+
+def test_the_note_is_asked_for_in_the_latin_alphabet():
+    """The reported note contained "tempoблокken"."""
+    system, _, _ = _feedback_instructions("encouraging", "Dutch (Nederlands)")
+
+    assert "latin alphabet" in system.lower()
