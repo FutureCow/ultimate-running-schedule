@@ -27,6 +27,46 @@ def _fmt_clock(seconds: float) -> str:
     return f"{h}:{m:02d}:{s:02d}" if h else f"{m}:{s:02d}"
 
 
+_EASY_TYPES = {"easy_run", "long_run", "recovery"}
+_MIN_RUNS_PER_END = 3
+
+
+def _aerobic_efficiency(runs: list[tuple[date, object]]) -> dict | None:
+    """Distance per heartbeat on easy runs, early in the plan against late.
+
+    A heart rate on its own says little — for one runner 160 is conversation
+    pace, for another hard work. Compared with the same runner earlier, the
+    level drops out: running faster at the same heart rate, or the same pace at
+    a lower one, is fitness gained whatever the athlete's heart rate is.
+    """
+    usable = sorted(
+        ((when, act) for when, act in runs
+         if getattr(act, "avg_heart_rate", None) and act.distance_km and act.duration_seconds),
+        key=lambda pair: pair[0],
+    )
+    if len(usable) < 2 * _MIN_RUNS_PER_END:
+        return None
+    third = max(_MIN_RUNS_PER_END, len(usable) // 3)
+    early, late = usable[:third], usable[-third:]
+
+    def per_beat(group):
+        return sum(a.distance_km * 1000 / (a.duration_seconds / 60) / a.avg_heart_rate
+                   for _, a in group) / len(group)
+
+    def typical(group):
+        pace = sum(a.duration_seconds / a.distance_km for _, a in group) / len(group)
+        hr = sum(a.avg_heart_rate for _, a in group) / len(group)
+        return {"pace_s": round(pace), "hr": round(hr)}
+
+    before, after = per_beat(early), per_beat(late)
+    return {
+        "change_pct": round((after - before) / before * 100, 1),
+        "runs": len(usable),
+        "early": typical(early),
+        "late": typical(late),
+    }
+
+
 def summarise_plan(plan, activities_by_id: dict, today: date | None = None) -> dict:
     """What the plan achieved, as measured — not as planned.
 
@@ -68,6 +108,13 @@ def summarise_plan(plan, activities_by_id: dict, today: date | None = None) -> d
             race = {"distance_km": act.distance_km or goal_km(plan),
                     "time_seconds": act.duration_seconds}
 
+    easy_runs = [
+        (s.scheduled_date, activities_by_id[s.garmin_activity_id])
+        for s in done
+        if s.workout_type in _EASY_TYPES and s.week_number <= last_build_week
+        and s.garmin_activity_id in activities_by_id
+    ]
+
     ahead = [s for s in training if s.scheduled_date and s.scheduled_date >= today]
     overview = (plan.plan_json or {}).get("plan_overview") or {}
 
@@ -87,6 +134,7 @@ def summarise_plan(plan, activities_by_id: dict, today: date | None = None) -> d
         "longest_run_km": longest,
         "build_weekly_km": build_weekly_km,
         "race": race,
+        "aerobic_efficiency": _aerobic_efficiency(easy_runs),
     }
 
 
@@ -203,6 +251,21 @@ def previous_plan_lines(summary: dict) -> str:
         lines.append(f"Longest run done: {summary['longest_run_km']:g} km.")
     if summary.get("build_weekly_km"):
         lines.append(f"Weekly volume in the last build weeks: {summary['build_weekly_km']:.1f} km.")
+
+    eff = summary.get("aerobic_efficiency")
+    if eff:
+        change = eff["change_pct"]
+        trend = (f"{change:.1f}% more distance per heartbeat" if change >= 0
+                 else f"{-change:.1f}% less distance per heartbeat")
+        lines.append(
+            f"Aerobic efficiency on easy runs ({eff['runs']} runs, same heart rate compared): "
+            f"{trend} late in the plan than early — "
+            f"{_fmt_clock(eff['early']['pace_s'])} /km at {eff['early']['hr']} bpm became "
+            f"{_fmt_clock(eff['late']['pace_s'])} /km at {eff['late']['hr']} bpm. "
+            "This athlete is compared with themselves, so their heart-rate level does not matter. "
+            "Heat and fatigue raise heart rate too, so treat it as likely rather than certain; "
+            "use it to set easy paces, not to invent a race time."
+        )
 
     lines.append(
         "Start this plan's weekly volume at about 80–90% of that build volume and the long run "

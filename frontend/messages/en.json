@@ -155,6 +155,8 @@
       "zonesRecalibrated": "Pace zones recalibrated during the plan",
       "raceTime": "Race time",
       "raceOver": "over",
+      "efficiencyUp": "Easy runs {pct}% more efficient at the same heart rate",
+      "efficiencyDown": "Easy runs {pct}% less efficient at the same heart rate (heat or fatigue?)",
       "suggestionsTitle": "What could you work towards?",
       "suggestionsHint": "Predicted from your result and how your previous plan went — a direction, not a promise. Click to fill in the goal and target time.",
       "suggest": {"faster": "Faster: {goal} in {time}", "repeat": "Again: {goal} in {time}", "stepUpRace": "Step up: {goal} in {time}", "stepUpFitness": "Step up: finish a {goal}"},

@@ -170,3 +170,83 @@ def test_the_prompt_says_when_a_plan_was_not_finished():
     p, acts = finished_plan()
 
     assert "stopped in week 2" in text(summarise_plan(p, acts, today=date(2026, 9, 14)))
+
+
+# ── Aerobic efficiency: faster at the same heart rate ────────────────────────
+
+def easy(week, day, when, act_id):
+    return session(week, day, "easy_run", 6, when, act_id)
+
+
+def run_at(km, pace_s, hr):
+    """An activity of km at pace_s per km with an average heart rate."""
+    act = activity(km, round(km * pace_s))
+    act.avg_heart_rate = hr
+    return act
+
+
+def efficiency_plan(late_pace_s=425, late_hr=150, early_pace_s=450, early_hr=150, n=3):
+    """n easy runs early in the plan and n late, before the taper."""
+    sessions, acts = [], {}
+    for i in range(n):
+        sessions.append(easy(1, 2 + i, date(2026, 6, 1 + i), f"e{i}"))
+        acts[f"e{i}"] = run_at(6, early_pace_s, early_hr)
+        sessions.append(easy(8, 2 + i, date(2026, 7, 20 + i), f"l{i}"))
+        acts[f"l{i}"] = run_at(6, late_pace_s, late_hr)
+    return plan(sessions, duration_weeks=12), acts
+
+
+def test_measures_running_faster_at_the_same_heart_rate():
+    """7:30 -> 7:05 at 150 bpm is about 6% more distance per heartbeat."""
+    p, acts = efficiency_plan()
+
+    eff = summarise_plan(p, acts, today=TODAY)["aerobic_efficiency"]
+
+    assert 5.5 <= eff["change_pct"] <= 6.5
+
+
+def test_a_high_heart_rate_runner_is_judged_against_themselves():
+    """Same 6% gain, just at 165 bpm throughout: the level does not matter."""
+    p, acts = efficiency_plan(early_hr=165, late_hr=165)
+
+    assert 5.5 <= summarise_plan(p, acts, today=TODAY)["aerobic_efficiency"]["change_pct"] <= 6.5
+
+
+def test_the_same_pace_at_a_lower_heart_rate_is_also_a_gain():
+    p, acts = efficiency_plan(early_pace_s=450, late_pace_s=450, early_hr=155, late_hr=145)
+
+    assert summarise_plan(p, acts, today=TODAY)["aerobic_efficiency"]["change_pct"] > 5
+
+
+def test_too_few_easy_runs_with_heart_rate_gives_no_trend():
+    """Noise sold as a trend is worse than saying nothing."""
+    p, acts = efficiency_plan(n=2)
+
+    assert summarise_plan(p, acts, today=TODAY)["aerobic_efficiency"] is None
+
+
+def test_runs_without_heart_rate_are_left_out():
+    p, acts = efficiency_plan()
+    for act in acts.values():
+        act.avg_heart_rate = None
+
+    assert summarise_plan(p, acts, today=TODAY)["aerobic_efficiency"] is None
+
+
+def test_the_prompt_reports_the_gain_with_the_heat_caveat():
+    p, acts = efficiency_plan()
+
+    t = text(summarise_plan(p, acts, today=TODAY))
+
+    assert "same heart rate" in t
+    assert "heat" in t
+
+
+def test_the_trend_never_invents_a_target_time():
+    """Without a race it says how much fitter, not how fast over a distance."""
+    from app.services.follow_up import suggest_goals
+
+    p, acts = efficiency_plan()
+    summary = summarise_plan(p, acts, today=TODAY)
+
+    assert all(s["target_time_seconds"] is None for s in suggest_goals(summary))

@@ -155,6 +155,8 @@
       "zonesRecalibrated": "Tempozones tussentijds bijgesteld",
       "raceTime": "Wedstrijdtijd",
       "raceOver": "over",
+      "efficiencyUp": "Rustige runs {pct}% efficiënter bij dezelfde hartslag",
+      "efficiencyDown": "Rustige runs {pct}% minder efficiënt bij dezelfde hartslag (warmte of vermoeidheid?)",
       "suggestionsTitle": "Waar zou je naartoe kunnen werken?",
       "suggestionsHint": "Voorspeld uit je uitslag en hoe je vorige plan ging — een richting, geen belofte. Klik om doel en doeltijd in te vullen.",
       "suggest": {"faster": "Sneller: {goal} in {time}", "repeat": "Nog eens {goal} in {time}", "stepUpRace": "Stap verder: {goal} in {time}", "stepUpFitness": "Stap verder: {goal} uitlopen"},

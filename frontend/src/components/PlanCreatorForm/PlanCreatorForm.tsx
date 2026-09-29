@@ -362,6 +362,11 @@ export function PlanCreatorForm({ editPlan, followUpFrom: followUpProp }: Props)
                     followUp.longest_run_km ? tFollow("longest", { km: followUp.longest_run_km }) : null,
                     followUp.build_weekly_km ? tFollow("build", { km: followUp.build_weekly_km }) : null,
                     followUp.zones_recalibrated ? tFollow("zonesRecalibrated") : null,
+                    followUp.aerobic_efficiency
+                      ? tFollow(followUp.aerobic_efficiency.change_pct >= 0 ? "efficiencyUp" : "efficiencyDown", {
+                          pct: Math.abs(followUp.aerobic_efficiency.change_pct).toLocaleString(locale),
+                        })
+                      : null,
                   ].filter(Boolean).join(" · ")}
                 </p>
                 <div>

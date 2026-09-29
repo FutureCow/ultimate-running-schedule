@@ -191,6 +191,13 @@ export interface FollowUpSummary {
   build_weekly_km?: number | null;
   race?: { distance_km: number; time_seconds: number } | null;
   suggestions?: GoalSuggestion[];
+  /** Distance per heartbeat on easy runs, late in the plan against early */
+  aerobic_efficiency?: {
+    change_pct: number;
+    runs: number;
+    early: { pace_s: number; hr: number };
+    late: { pace_s: number; hr: number };
+  } | null;
 }
 
 /** A goal the follow-up could aim for, predicted from the previous result. */
