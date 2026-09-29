@@ -22,7 +22,7 @@ class WeeklyReviewCard extends StatelessWidget {
       final planned = (w['planned_km'] as num?)?.toDouble() ?? 0;
       final run = (w['run_km'] as num?)?.toDouble() ?? 0;
       return [m, planned, run].reduce((a, b) => a > b ? a : b);
-    });
+    }) * 1.1; // headroom so nothing touches the end of the track
 
     final facts = <String>[
       'Nog ${stats['weeks_to_go'] ?? '?'} weken',
@@ -53,6 +53,11 @@ class WeeklyReviewCard extends StatelessWidget {
           childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
           children: [
             for (final w in weeks) _WeekBar(week: w, peak: peak),
+            const Padding(
+              padding: EdgeInsets.only(top: 4),
+              child: Text('Groen: gelopen · streepje: gepland',
+                  style: TextStyle(color: Color(0xFF64748b), fontSize: 10)),
+            ),
             if (text != null && text.isNotEmpty) ...[
               const SizedBox(height: 10),
               Text(text,
@@ -86,13 +91,19 @@ class _WeekBar extends StatelessWidget {
           ),
           Expanded(
             child: LayoutBuilder(
-              builder: (_, box) => Stack(children: [
-                Container(height: 8, decoration: _bar(const Color(0xFF334155))),
-                Container(height: 8, width: box.maxWidth * planned / peak,
-                    decoration: _bar(const Color(0xFF475569))),
-                Container(height: 8, width: box.maxWidth * run / peak,
-                    decoration: _bar(const Color(0xFF22c55e))),
-              ]),
+              builder: (_, box) => SizedBox(
+                height: 14,
+                child: Stack(alignment: Alignment.centerLeft, children: [
+                  Container(height: 8, decoration: _bar(const Color(0xFF334155))),
+                  Container(height: 8, width: box.maxWidth * run / peak,
+                      decoration: _bar(const Color(0xFF22c55e))),
+                  // The plan as a marker, visible even when more was run than planned
+                  Positioned(
+                    left: box.maxWidth * planned / peak - 1,
+                    child: Container(width: 2, height: 14, decoration: _bar(const Color(0xFFe2e8f0))),
+                  ),
+                ]),
+              ),
             ),
           ),
           SizedBox(

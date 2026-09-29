@@ -14,7 +14,8 @@ export function WeeklyReviewCard({ review }: { review: WeeklyReview }) {
   const locale = useLocale();
   const km = (value: number) => formatDistance(value, locale);
   const { stats } = review;
-  const peak = Math.max(1, ...stats.weeks.flatMap((w) => [w.planned_km, w.run_km]));
+  // Headroom so neither the bar nor the plan marker touches the end of the track
+  const peak = 1.1 * Math.max(1, ...stats.weeks.flatMap((w) => [w.planned_km, w.run_km]));
   const eff = stats.aerobic_efficiency;
 
   const facts = [
@@ -38,12 +39,14 @@ export function WeeklyReviewCard({ review }: { review: WeeklyReview }) {
             <span className="w-14 shrink-0 text-slate-500">{t("week", { week: w.week })}</span>
             <div className="relative flex-1 h-2 rounded-full bg-slate-700/40">
               <div
-                className="absolute inset-y-0 left-0 rounded-full bg-slate-500/40"
-                style={{ width: `${(w.planned_km / peak) * 100}%` }}
-              />
-              <div
                 className="absolute inset-y-0 left-0 rounded-full bg-brand-500"
                 style={{ width: `${(w.run_km / peak) * 100}%` }}
+              />
+              {/* The plan as a marker, visible even when more was run than planned */}
+              <div
+                className="absolute -top-1 -bottom-1 w-0.5 rounded-full bg-slate-200"
+                style={{ left: `calc(${(w.planned_km / peak) * 100}% - 1px)` }}
+                title={t("plannedMarker")}
               />
             </div>
             <span className="w-24 shrink-0 text-right text-slate-300">
@@ -55,6 +58,8 @@ export function WeeklyReviewCard({ review }: { review: WeeklyReview }) {
           </div>
         ))}
       </div>
+
+      <p className="text-[10px] text-slate-500">{t("legend")}</p>
 
       {facts.length > 0 && <p className="text-xs text-slate-400">{facts.join(" · ")}</p>}
 

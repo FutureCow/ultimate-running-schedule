@@ -121,6 +121,8 @@
       "title": "Week {week} in review",
       "week": "Week {week}",
       "volume": "{run} / {planned} km",
+      "legend": "Green: run · marker: planned",
+      "plannedMarker": "Planned",
       "weeksToGo": "{weeks} weeks to go",
       "longest": "Longest run {km} km",
       "longestAhead": "{km} km still to come",

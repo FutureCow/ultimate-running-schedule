@@ -112,10 +112,37 @@ def test_counts_the_weeks_to_go():
     assert stats()["weeks_to_go"] == 3
 
 
-def test_lists_next_week():
+def test_lists_the_current_week():
     ahead = stats()["next_week"]
 
     assert [(x["type"], x["km"]) for x in ahead] == [("easy_run", 6), ("interval", 7), ("long_run", 13)]
+
+
+def test_the_current_week_says_what_is_already_done():
+    """The reported review called a tempo run 'coming up' that had been run."""
+    p, acts = plan()
+    p.sessions[10].completed_at = "x"  # week 4 easy run, done on Tuesday
+
+    week = weekly_stats(p, acts, IN_WEEK_4)["next_week"]
+
+    assert [x["done"] for x in week] == [True, False, False]
+
+
+def test_the_prompt_separates_done_from_still_to_come():
+    p, acts = plan()
+    p.sessions[10].completed_at = "x"
+    _, task, _ = review_prompt(weekly_stats(p, acts, IN_WEEK_4), [], "encouraging", "Dutch")
+
+    assert "already done: easy_run 6 km" in task
+    assert "still to come: interval 7 km, long_run 13 km" in task
+
+
+def test_distances_are_rounded_to_one_decimal():
+    """The reported review quoted a longest run of "7,01 kilometer"."""
+    p, acts = plan()
+    acts["a8"] = activity(11.237)
+
+    assert weekly_stats(p, acts, IN_WEEK_4)["longest_run_km"] == 11.2
 
 
 # ── The prompt ───────────────────────────────────────────────────────────────

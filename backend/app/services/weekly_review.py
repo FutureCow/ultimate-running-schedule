@@ -79,11 +79,12 @@ def weekly_stats(plan, activities_by_id: dict, today: date) -> dict | None:
         "race_date": plan.race_date.isoformat() if getattr(plan, "race_date", None) else None,
         "target_time_seconds": getattr(plan, "target_time_seconds", None),
         "weeks": weeks,
-        "longest_run_km": max(long_runs) if long_runs else None,
-        "longest_ahead_km": longest_ahead or None,
+        "longest_run_km": round(max(long_runs), 1) if long_runs else None,
+        "longest_ahead_km": round(longest_ahead, 1) if longest_ahead else None,
         "aerobic_efficiency": _aerobic_efficiency(easy),
-        "next_week": [{"day": s.day_number, "type": s.workout_type, "km": s.distance_km}
-                      for s in next_week],
+        # The week after the reviewed one is usually already under way
+        "next_week": [{"day": s.day_number, "type": s.workout_type, "km": s.distance_km,
+                       "done": bool(s.completed_at)} for s in next_week],
     }
 
 
@@ -131,9 +132,15 @@ def review_prompt(stats: dict, analyses: list[tuple], tone: str, lang: str) -> t
             f"{eff['change_pct']:+.1f}% distance per heartbeat (heat and fatigue also move this)."
         )
     if stats.get("next_week"):
-        coming = ", ".join(f"{x['type']} {x['km'] or ''} km".replace("  ", " ")
-                           for x in stats["next_week"])
-        facts.append(f"Coming up next week: {coming}.")
+        def listed(items):
+            return ", ".join(f"{x['type']} {x['km']:g} km" if x.get("km") else x["type"] for x in items)
+        done = [x for x in stats["next_week"] if x.get("done")]
+        to_come = [x for x in stats["next_week"] if not x.get("done")]
+        line = f"This week (week {stats['reviewed_week'] + 1}, under way):"
+        if done:
+            line += f" already done: {listed(done)};"
+        line += f" still to come: {listed(to_come) or 'nothing'}."
+        facts.append(line)
 
     notes = "\n".join(f"- {when.isoformat()} {title}: {text}" for when, title, text in analyses) \
         or "- (no session analyses yet)"
@@ -141,7 +148,7 @@ def review_prompt(stats: dict, analyses: list[tuple], tone: str, lang: str) -> t
     task = f"""Write a weekly review of this training plan in {lang}. Exactly 3 paragraphs, each 2–4 sentences. No headers, no bullet points, no markdown.
 
 Paragraph 1 — The thread: what the recent weeks show — volume against plan, consistency, the trend. Draw on the session analyses below for what keeps coming back or is improving; do not repeat them one by one.
-Paragraph 2 — Looking ahead: what the coming week holds and whether the athlete is on course. Judge it from what was done, never predict a race time.
+Paragraph 2 — Looking ahead: what is still to come this week and whether the athlete is on course; never present a session that is already done as coming up. Judge it from what was done, never predict a race time.
 Paragraph 3 — A pep talk for the week ahead: specific to this athlete and these numbers, not generic.
 
 The numbers are computed and correct; use them rather than recalculating.

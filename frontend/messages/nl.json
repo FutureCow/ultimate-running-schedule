@@ -121,6 +121,8 @@
       "title": "Terugblik week {week}",
       "week": "Week {week}",
       "volume": "{run} / {planned} km",
+      "legend": "Groen: gelopen · streepje: gepland",
+      "plannedMarker": "Gepland",
       "weeksToGo": "Nog {weeks} weken te gaan",
       "longest": "Langste duurloop {km} km",
       "longestAhead": "straks {km} km",
