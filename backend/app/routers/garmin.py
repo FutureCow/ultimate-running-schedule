@@ -85,7 +85,14 @@ async def auto_sync_if_stale(
     user: User = Depends(get_current_user),
 ):
     """Sync Garmin activities if last sync was more than 1 hour ago.
-    Also updates the user's weekly_km profile field from Garmin data."""
+    Also updates the user's weekly_km profile field from Garmin data.
+
+    The weekly review is scheduled on every call, not only after a sync that
+    ran: the hourly throttle, a missing Garmin link or a failed sync used to
+    skip it, so the review could stay away all week. It only calls the AI when
+    a review is actually due.
+    """
+    background_tasks.add_task(_weekly_reviews_background, user.id)
     cred = await garmin_service.get_credentials(db, user.id)
     if not cred:
         return {"synced": False, "reason": "no_credentials"}
@@ -98,7 +105,6 @@ async def auto_sync_if_stale(
         result = await garmin_service.fetch_activities(db, user.id, months=3, user_tier=user.tier)
         _update_volume_profile(user, result["summary"])
         await db.commit()
-        background_tasks.add_task(_weekly_reviews_background, user.id)
         return {
             "synced": True,
             "activity_count": len(result["activities"]),
