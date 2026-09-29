@@ -134,3 +134,39 @@ def test_a_run_without_warmup_or_cooldown_paces_is_one_block():
 
     assert kinds(s) == ["interval"]
     assert distance_total_m(s) == 6000
+
+
+# ── Strides come out of the planned distance ─────────────────────────────────
+
+STRIDES = {"reps": 5, "distance_m": 100, "pace": "5:15 - 5:30", "rest_seconds": 75}
+
+
+def easy_with_strides(**overrides) -> WorkoutSession:
+    return session(workout_type="easy", title="Rustige duurloop met versnellingen",
+                   description="5 km rustig met tot slot 5 versnellingen van 100 m.",
+                   target_paces={"main": "7:10 - 7:50", "strides": STRIDES}, **overrides)
+
+
+def test_strides_do_not_add_to_the_planned_distance():
+    """The reported bug: 5 km with strides became almost 6 km on the watch."""
+    steps = steps_of(easy_with_strides())
+    easy = steps[0]["endConditionValue"]
+    strides = sum(st["endConditionValue"] for st in steps[1:]
+                  if st["endCondition"]["conditionTypeKey"] == "distance")
+    # The 4 x 75 s jog in between, at 7:50 /km, covers about 638 m
+    jog_m = 4 * 75 * 1000 / 470
+    assert strides == 500
+    assert abs(easy + strides + jog_m - 5000) < 2
+
+
+def test_strides_follow_the_easy_running():
+    assert kinds(easy_with_strides()) == ["interval"] + ["interval", "recovery"] * 4 + ["interval"]
+
+
+def test_strides_and_warmup_both_come_out_of_the_total():
+    paces = {**PACES, "main": "7:10 - 7:50", "strides": STRIDES}
+    s = session(workout_type="easy", distance_km=8.0, target_paces=paces, intervals=None)
+    jog_m = 4 * 75 * 1000 / 470
+    assert abs(distance_total_m(s) + jog_m - 8000) < 2
+    assert kinds(s)[0] == "warmup" and kinds(s)[-1] == "cooldown"
+

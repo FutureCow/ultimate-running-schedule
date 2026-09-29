@@ -817,6 +817,23 @@ _DEFAULT_WARMUP_M = 1000
 _DEFAULT_COOLDOWN_M = 500
 # Below this a session is not worth splitting into warm-up / work / cool-down
 _MIN_MAIN_BLOCK_M = 500
+# Jogging pace assumed for the timed recovery between strides when the session
+# gives no easy pace to go by: 7:30 /km
+_FALLBACK_JOG_MS = 1000 / 450
+
+
+def _strides_m(strides: dict | None, main_pace: str | None) -> int:
+    """How far a set of strides takes you, the jog between them included.
+
+    The strides are measured in metres but the recovery in seconds, so that
+    part is estimated at the slow end of the easy pace — the jog is no faster.
+    """
+    if not strides:
+        return 0
+    reps = strides.get("reps", 4)
+    _, _, slow_ms = _pace_target(main_pace)
+    jog_s = max(reps - 1, 0) * strides.get("rest_seconds", 90)
+    return int(reps * strides.get("distance_m", 100) + jog_s * (slow_ms or _FALLBACK_JOG_MS))
 
 
 def _work_blocks(intervals: list) -> list[dict]:
@@ -852,8 +869,8 @@ def _build_workout_payload(session: WorkoutSession) -> dict:
 
     The pushed workout mirrors the plan — easy kilometres in, each work block
     on its own with the jog between them, easy kilometres out. Warm-up and
-    cool-down come out of the planned distance rather than on top of it, so a
-    steady run adds up to what the plan says.
+    cool-down come out of the planned distance rather than on top of it, and
+    so do strides, so a steady run adds up to what the plan says.
     """
     paces = session.target_paces or {}
     steps: list[dict] = []
@@ -868,16 +885,20 @@ def _build_workout_payload(session: WorkoutSession) -> dict:
     cooldown_m = int((cooldown_km or 0) * 1000) or _DEFAULT_COOLDOWN_M
 
     blocks = _work_blocks(session.intervals)
+    # Strides (short fast accelerations stored in target_paces["strides"])
+    strides = paces.get("strides") if not blocks else None
 
     if not blocks:
-        # Steady run: the easy running either side is part of the total, not extra
+        # Steady run: the easy running either side and the strides are part of
+        # the total, not extra
         total_m = int((session.distance_km or 5) * 1000)
+        easy_m = total_m - _strides_m(strides, paces.get("main"))
         lead_m = warmup_m if warmup_pace else 0
         tail_m = cooldown_m if cooldown_pace else 0
-        main_m = total_m - lead_m - tail_m
+        main_m = easy_m - lead_m - tail_m
         if main_m < _MIN_MAIN_BLOCK_M:
             lead_m = tail_m = 0
-            main_m = total_m
+            main_m = max(easy_m, _MIN_MAIN_BLOCK_M)
         warmup_pace = warmup_pace if lead_m else None
         cooldown_pace = cooldown_pace if tail_m else None
         warmup_m, cooldown_m = lead_m, tail_m
@@ -901,9 +922,7 @@ def _build_workout_payload(session: WorkoutSession) -> dict:
                            session.description or "", pace_range=paces.get("main")))
         order += 1
 
-    # Strides (short fast accelerations stored in target_paces["strides"])
-    strides = paces.get("strides")
-    if strides and not blocks:
+    if strides:
         reps = strides.get("reps", 4)
         stride_m = strides.get("distance_m", 100)
         rest_sec = strides.get("rest_seconds", 90)
