@@ -11,6 +11,7 @@ then the file contents are encrypted and persisted in the database.
   complete_mfa() retrieves the client, calls resume_login(), then saves tokens to DB.
 """
 import json
+import re
 import asyncio
 import logging
 import tempfile
@@ -778,6 +779,40 @@ def _step(order: int, step_type_id: int, step_type_key: str,
     return step
 
 
+_KM = r"(\d+(?:[.,]\d+)?)\s*km"
+_EASY_WORDS = {
+    "warmup": r"inlopen|inloop|opwarmen|warming[- ]?up|warm[- ]?up",
+    "cooldown": r"uitlopen|uitloop|cooling[- ]?down|cool[- ]?down",
+}
+_DESCRIBED_RANGE_KM = (0.2, 5.0)
+
+
+def _km_from_description(description: str | None, kind: str) -> float | None:
+    """Read a warm-up or cool-down length out of the session description.
+
+    Plans generated before warmup_km/cooldown_km existed leave those fields
+    empty, but their descriptions still say how far to go — "Na 2 km inlopen",
+    "daarna 1,5 km uitlopen", "a 1.5 km warm-up". Both orders are recognised,
+    with at most two words in between; anything outside a plausible range is
+    ignored so a distance belonging to the work is never mistaken for it.
+    """
+    if not description:
+        return None
+    words = _EASY_WORDS[kind]
+    patterns = (
+        rf"{_KM}\s+(?:[\w-]+\s+){{0,2}}(?:{words})\b",      # "2 km rustig inlopen"
+        rf"\b(?:{words})\s*(?:van|of|:)?\s*{_KM}",           # "warming-up van 2 km"
+    )
+    for pattern in patterns:
+        match = re.search(pattern, description, flags=re.IGNORECASE)
+        if match:
+            km = float(match.group(1).replace(",", "."))
+            low, high = _DESCRIBED_RANGE_KM
+            if low <= km <= high:
+                return km
+    return None
+
+
 _DEFAULT_WARMUP_M = 1000
 _DEFAULT_COOLDOWN_M = 500
 # Below this a session is not worth splitting into warm-up / work / cool-down
@@ -826,8 +861,11 @@ def _build_workout_payload(session: WorkoutSession) -> dict:
 
     warmup_pace = paces.get("warmup")
     cooldown_pace = paces.get("cooldown")
-    warmup_m = int((session.warmup_km or 0) * 1000) or _DEFAULT_WARMUP_M
-    cooldown_m = int((session.cooldown_km or 0) * 1000) or _DEFAULT_COOLDOWN_M
+    # The plan's own field first, then what the description says, then a default
+    warmup_km = session.warmup_km or _km_from_description(session.description, "warmup")
+    cooldown_km = session.cooldown_km or _km_from_description(session.description, "cooldown")
+    warmup_m = int((warmup_km or 0) * 1000) or _DEFAULT_WARMUP_M
+    cooldown_m = int((cooldown_km or 0) * 1000) or _DEFAULT_COOLDOWN_M
 
     blocks = _work_blocks(session.intervals)
 
