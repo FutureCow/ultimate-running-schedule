@@ -69,6 +69,8 @@ class Plan(Base):
     # Snapshot of the plan this one follows on from — kept here so it survives
     # the previous plan being deleted and goes along when this one is regenerated
     previous_summary: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    # Latest weekly review: {week, generated_at, stats, text, tone}
+    weekly_review: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     garmin_synced: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(

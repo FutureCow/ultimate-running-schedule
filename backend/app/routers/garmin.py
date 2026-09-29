@@ -80,6 +80,7 @@ async def delete_credentials(
 
 @router.post("/auto-sync")
 async def auto_sync_if_stale(
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
@@ -97,6 +98,7 @@ async def auto_sync_if_stale(
         result = await garmin_service.fetch_activities(db, user.id, months=3, user_tier=user.tier)
         _update_volume_profile(user, result["summary"])
         await db.commit()
+        background_tasks.add_task(_weekly_reviews_background, user.id)
         return {
             "synced": True,
             "activity_count": len(result["activities"]),
@@ -142,6 +144,46 @@ def _update_volume_profile(user: User, summary: dict) -> None:
     if summary.get("recent_weekly_runs"):
         user.weekly_km = summary.get("recent_weekly_km")
         user.weekly_runs = round(summary["recent_weekly_runs"])
+
+
+async def _weekly_reviews_background(user_id: int) -> None:
+    """Review the week that has just finished, for each of the user's plans.
+
+    Runs after a sync. review_due() makes it one review per plan per week, so
+    syncing again the same week costs nothing. The numbers are stored for
+    everyone; the narrative only for Elite. When the narrative fails, nothing
+    is stored and the next sync tries again.
+    """
+    from datetime import date as _date
+
+    from app.database import AsyncSessionLocal
+    from app.routers.plans import _activities_for
+    from app.services import claude_service
+    from app.services.weekly_review import recent_analyses, review_due, stored_review, weekly_stats
+
+    async with AsyncSessionLocal() as db:
+        try:
+            user = await db.get(User, user_id)
+            if not user:
+                return
+            plans = (await db.execute(select(Plan).where(Plan.user_id == user_id))).scalars().all()
+            for plan in plans:
+                stats = weekly_stats(plan, await _activities_for(db, user_id, plan), _date.today())
+                if not review_due(plan, stats):
+                    continue
+                text = tone = None
+                if user.tier == "elite":
+                    tone = claude_service.resolve_feedback_tone(plan.feedback_tone, user.feedback_tone)
+                    try:
+                        text = await claude_service.generate_weekly_review(
+                            stats, recent_analyses(plan), tone, "nl")
+                    except Exception as exc:
+                        logger.warning("Weekly review failed for plan %s: %s", plan.id, exc)
+                        continue  # store nothing, so the next sync retries
+                plan.weekly_review = stored_review(stats, text, tone)
+                await db.commit()
+        except Exception as exc:
+            logger.warning("Weekly reviews failed for user %s: %s", user_id, exc)
 
 
 async def _generate_feedback_background(
@@ -190,6 +232,7 @@ async def sync_activities(
         result = await garmin_service.fetch_activities(db, user.id, months, user_tier=user.tier)
         _update_volume_profile(user, result["summary"])
         await db.commit()
+        background_tasks.add_task(_weekly_reviews_background, user.id)
 
         if user.tier == "elite":
             for session_id, activity_id in result.get("newly_matched_ids", []):

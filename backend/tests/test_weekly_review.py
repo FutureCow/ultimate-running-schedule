@@ -155,3 +155,54 @@ def test_the_tone_changes_the_voice():
     scientific, _, _ = review_prompt(stats(), recent(), "scientific", "Dutch")
 
     assert encouraging != scientific
+
+
+# ── When to write one, and what gets stored ──────────────────────────────────
+
+from app.services.weekly_review import review_due, stored_review  # noqa: E402
+
+
+def test_a_review_is_due_for_a_week_not_yet_reviewed():
+    p, _ = plan()
+    p.weekly_review = {"week": 2}
+
+    assert review_due(p, stats()) is True
+
+
+def test_no_second_review_for_the_same_week():
+    """One AI call per plan per week, however often the athlete syncs."""
+    p, _ = plan()
+    p.weekly_review = {"week": 3}
+
+    assert review_due(p, stats()) is False
+
+
+def test_the_first_review_of_a_plan_is_due():
+    p, _ = plan()
+    p.weekly_review = None
+
+    assert review_due(p, stats()) is True
+
+
+def test_nothing_is_due_without_a_finished_week():
+    p, _ = plan()
+    p.weekly_review = None
+
+    assert review_due(p, None) is False
+
+
+def test_the_stored_review_keeps_numbers_text_and_tone():
+    review = stored_review(stats(), "Goede week.", "encouraging")
+
+    assert review["week"] == 3
+    assert review["text"] == "Goede week."
+    assert review["tone"] == "encouraging"
+    assert review["stats"]["weeks"][-1]["run_km"] == 23.3
+
+
+def test_without_a_text_the_numbers_are_still_stored():
+    """Base and Tempo get the numbers without the AI narrative."""
+    review = stored_review(stats(), None, None)
+
+    assert review["text"] is None
+    assert review["stats"]["reviewed_week"] == 3

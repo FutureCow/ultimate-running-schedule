@@ -154,3 +154,24 @@ Volume per week:
 Recent session analyses:
 {notes}"""
     return system, task, 2500
+
+
+def review_due(plan, stats: dict | None) -> bool:
+    """One review per plan per finished week, however often the athlete syncs."""
+    if not stats:
+        return False
+    previous = getattr(plan, "weekly_review", None) or {}
+    return previous.get("week") != stats["reviewed_week"]
+
+
+def stored_review(stats: dict, text: str | None, tone: str | None) -> dict:
+    """What goes on the plan: the numbers always, the narrative when there is one."""
+    from datetime import datetime, timezone
+
+    return {
+        "week": stats["reviewed_week"],
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "stats": stats,
+        "text": text,
+        "tone": tone,
+    }

@@ -950,3 +950,22 @@ Return ONLY a JSON object in this exact format (use "min:ss-min:ss/km" notation)
     except json.JSONDecodeError:
         logger.error("recalibrate_paces JSON parse failed: %s", raw[:200])
         return {}
+
+
+async def generate_weekly_review(stats: dict, analyses: list, tone: str, language: str = "nl") -> str:
+    """The narrative for a weekly plan review; see weekly_review.review_prompt."""
+    from app.services.weekly_review import review_prompt
+
+    client = anthropic.AsyncAnthropic(
+        api_key=settings.ANTHROPIC_API_KEY,
+        base_url=settings.ANTHROPIC_BASE_URL or None,
+    )
+    lang = "Dutch (Nederlands)" if language == "nl" else "English"
+    system, task, max_tokens = review_prompt(stats, analyses, tone, lang)
+    message = await client.messages.create(
+        model=settings.CLAUDE_MODEL,
+        max_tokens=max_tokens,
+        system=system,
+        messages=[{"role": "user", "content": task}],
+    )
+    return _response_text(message).strip()

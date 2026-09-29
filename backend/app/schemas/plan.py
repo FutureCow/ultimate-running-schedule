@@ -185,6 +185,7 @@ class PlanResponse(BaseModel):
     race_date: Optional[date] = None
     plan_json: Optional[Any] = None
     previous_summary: Optional[dict] = None
+    weekly_review: Optional[dict] = None
     garmin_synced: bool
     strength_enabled: bool = False
     strength_location: Optional[str] = None
