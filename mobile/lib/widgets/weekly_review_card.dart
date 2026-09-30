@@ -80,17 +80,33 @@ class _WeeklyReviewCardState extends State<WeeklyReviewCard> {
           collapsedIconColor: const Color(0xFF94a3b8),
           childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
           children: [
-            for (final w in weeks) _WeekBar(week: w, peak: peak),
-            const Padding(
-              padding: EdgeInsets.only(top: 4),
-              child: Text('Groen: gelopen · streepje: gepland',
-                  style: TextStyle(color: Color(0xFF64748b), fontSize: 10)),
+            // The card sits above the week's sessions rather than inside a
+            // scroll view, so its content scrolls on its own instead of
+            // running off the bottom of the screen
+            ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.45),
+              child: Scrollbar(
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      for (final w in weeks) _WeekBar(week: w, peak: peak),
+                      const Padding(
+                        padding: EdgeInsets.only(top: 4),
+                        child: Text('Groen: gelopen · streepje: gepland',
+                            style: TextStyle(color: Color(0xFF64748b), fontSize: 10)),
+                      ),
+                      if (text != null && text.isNotEmpty) ...[
+                        const SizedBox(height: 10),
+                        Text(text,
+                            style: const TextStyle(
+                                color: Color(0xFFcbd5e1), fontSize: 13, height: 1.45)),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
             ),
-            if (text != null && text.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              Text(text,
-                  style: const TextStyle(color: Color(0xFFcbd5e1), fontSize: 13, height: 1.45)),
-            ],
           ],
         ),
       ),
