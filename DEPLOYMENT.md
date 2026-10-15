@@ -257,7 +257,7 @@ sudo systemctl status certbot.timer
 # Systeem pakketten
 apk add --no-cache \
   python3 py3-pip py3-virtualenv \
-  postgresql16 postgresql16-contrib \
+  postgresql18 postgresql18-contrib \
   nginx certbot certbot-nginx \
   nodejs npm git curl gcc musl-dev \
   libpq-dev libffi-dev
@@ -340,6 +340,35 @@ tail -f /var/log/runai-backend.log
 tail -f /var/log/runai-frontend.log
 ```
 
+De frontend heeft `need runai-backend`: stop je de backend, dan stopt OpenRC de
+frontend mee, maar een `start` van de backend start hem niet vanzelf opnieuw.
+Gebruik daarom `rc-service runai-backend restart` (herstart de frontend mee), of
+start na een losse `stop` beide weer:
+
+```bash
+rc-service runai-backend start
+rc-service runai-frontend start
+```
+
+**Logs klein houden:** de services schrijven elk naar één bestand dat anders
+blijft groeien. Draait de backend per ongeluk met `APP_ENV=development`, dan
+logt hij bovendien elke databasequery.
+
+```bash
+apk add logrotate
+cat > /etc/logrotate.d/runai <<'EOF'
+/var/log/runai-backend.log /var/log/runai-frontend.log {
+    weekly
+    rotate 4
+    compress
+    missingok
+    notifempty
+    copytruncate
+}
+EOF
+logrotate -d /etc/logrotate.d/runai   # proefdraaien
+```
+
 ---
 
 ## Database back-ups
@@ -351,6 +380,81 @@ BACKUP_DIR="/var/backups/runai"
 mkdir -p $BACKUP_DIR
 sudo -u postgres pg_dump rundb | gzip > "$BACKUP_DIR/rundb_$(date +%Y%m%d_%H%M%S).sql.gz"
 find $BACKUP_DIR -name "*.sql.gz" -mtime +30 -delete
+```
+
+Op Alpine zijn `bash` en `sudo` er standaard niet, en draait cron de scripts in
+`/etc/periodic/daily` (bestandsnaam zonder punt, `chmod +x`):
+
+```sh
+# /etc/periodic/daily/runai-backup
+#!/bin/sh
+BACKUP_DIR="/var/backups/runai"
+mkdir -p "$BACKUP_DIR"
+su postgres -c 'pg_dump rundb' | gzip > "$BACKUP_DIR/rundb_$(date +%Y%m%d_%H%M%S).sql.gz"
+find "$BACKUP_DIR" -name "*.sql.gz" -mtime +30 -delete
+```
+
+---
+
+## PostgreSQL upgraden naar een nieuwe major-versie (Alpine)
+
+Alpine installeert major-versies naast elkaar (`/usr/libexec/postgresqlNN`,
+data in `/var/lib/postgresql/NN/data`); `pg_versions` kiest welke de standaard
+is. Hieronder van 16 naar 18; vervang de nummers voor een andere stap. De app
+zelf heeft geen versie-specifieke afhankelijkheden (geen extensies, alleen
+`asyncpg`).
+
+```sh
+# 0. Snapshot van de container (op de Proxmox-host) en een dump als vangnet
+pct snapshot <CTID> voor-pg18
+su postgres -c 'pg_dumpall' > /root/pg16-dumpall.sql
+
+# 1. Encoding/locale en checksums van het oude cluster noteren
+su postgres -c "psql -c '\l'"
+/usr/libexec/postgresql16/pg_controldata /var/lib/postgresql/16/data | grep -i checksum
+
+# 2. Nieuwe versie installeren en alles stoppen (de frontend stopt mee)
+apk add postgresql18 postgresql18-contrib
+rc-service runai-backend stop
+rc-service postgresql stop
+
+# 3. Nieuw cluster met dezelfde encoding/locale. Versie 18 zet checksums
+#    standaard aan; stond het oude cluster op 0, voeg dan --no-data-checksums toe
+su postgres -c '/usr/libexec/postgresql18/initdb -D /var/lib/postgresql/18/data \
+  --encoding=UTF8 --locale=<zelfde als oud>'
+
+# 4. Eerst met --check, daarna hetzelfde zonder --check. Het kopieert de data,
+#    dus het oude cluster blijft intact
+su postgres -c 'cd /var/lib/postgresql && /usr/libexec/postgresql18/pg_upgrade \
+  -b /usr/libexec/postgresql16 -B /usr/libexec/postgresql18 \
+  -d /var/lib/postgresql/16/data -D /var/lib/postgresql/18/data --check'
+
+# 5. Eigen instellingen overnemen. initdb neemt timezone en lc_* over uit de
+#    omgeving; zet die gelijk aan het oude cluster
+diff /var/lib/postgresql/16/data/pg_hba.conf /var/lib/postgresql/18/data/pg_hba.conf
+diff <(grep -v '^\s*#' /var/lib/postgresql/16/data/postgresql.conf | grep .) \
+     <(grep -v '^\s*#' /var/lib/postgresql/18/data/postgresql.conf | grep .)
+
+# 6. Overschakelen en starten. data_dir in /etc/conf.d/postgresql volgt de
+#    standaardversie zolang die regel uitgecommentarieerd is
+pg_versions set-default 18
+rc-service postgresql start
+su postgres -c "psql -c 'SELECT version();'"
+su postgres -c 'vacuumdb --all --analyze-in-stages'
+rc-service runai-backend start
+rc-service runai-frontend start
+```
+
+De meldingen `pg_versions: WARN: /usr/bin/pg_config exists and it's not a
+symlink!` (dat bestand komt van `libpq-dev`) en `find: /usr/share/man: No such
+file or directory` zijn onschuldig.
+
+Terug naar de oude versie: services stoppen, `pg_versions set-default 16` en
+weer starten. Werkt alles een paar dagen, ruim dan op:
+
+```sh
+apk del postgresql16 postgresql16-contrib
+rm -rf /var/lib/postgresql/16 /var/lib/postgresql/delete_old_cluster.sh
 ```
 
 ---
@@ -387,6 +491,7 @@ sudo systemctl restart runai-backend runai-frontend
 - [ ] `SECRET_KEY` is ≥ 32 willekeurige tekens
 - [ ] `GARMIN_ENCRYPTION_KEY` is een geldige Fernet key
 - [ ] `.env` is `chmod 600` (alleen eigenaar)
+- [ ] `APP_ENV=production` in `.env` (development logt elke databasequery)
 - [ ] PostgreSQL accepteert alleen lokale verbindingen (`pg_hba.conf`)
 - [ ] Firewall: alleen poort 80/443 open naar buiten
 
