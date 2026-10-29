@@ -117,6 +117,8 @@ if $BACKEND_CHANGED; then
     # pip install: altijd bij --backend force, anders alleen als requirements veranderd is
     if $FORCE_BACKEND || echo "$CHANGED" | grep -q "^backend/requirements"; then
         info "Dependencies installeren…"
+        # pip itself first: an old pip has its own vulnerabilities when installing
+        pip install -q --upgrade pip
         pip install -q -r requirements.txt
     fi
 
