@@ -1124,6 +1124,14 @@ async def push_sessions_to_garmin(db: AsyncSession, user_id: int, sessions: list
                         payload = _build_strength_workout_payload(session)
                     else:
                         payload = _build_workout_payload(session)
+                    # Pushing again replaces the workout instead of adding a second one
+                    if session.garmin_workout_id:
+                        try:
+                            client.delete_workout(session.garmin_workout_id)
+                            logger.info("Replaced Garmin workout %s", session.garmin_workout_id)
+                        except Exception as e:
+                            logger.warning("Could not delete old Garmin workout %s: %s",
+                                           session.garmin_workout_id, e)
                     logger.info("Uploading session %s: %s", session.id, session.title)
                     resp = client.upload_workout(payload)
                     workout_id = str(resp.get("workoutId", ""))
