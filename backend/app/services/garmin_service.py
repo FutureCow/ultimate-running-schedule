@@ -1,5 +1,5 @@
 """
-Garmin Connect integration service — compatible with python-garminconnect 0.3.2.
+Garmin Connect integration service — compatible with python-garminconnect 0.3.20.
 
 Authentication uses the mobile SSO flow (DI OAuth Bearer tokens).
 Tokens are stored as garmin_tokens.json in a per-user temp directory,
@@ -209,9 +209,10 @@ def _login(cred: GarminCredential, token_dir: str) -> Garmin:
     password = decrypt(cred.encrypted_password)
 
     if Path(token_dir, TOKEN_FILENAME).exists():
-        # Restore from token file — no SSO needed
+        # Restore from token file — no SSO needed. The credentials let the
+        # library log in afresh by itself when the API rejects the cached tokens
         logger.info("Garmin: restoring tokens from cache (user %s)", cred.user_id)
-        client = Garmin()
+        client = Garmin(email=email, password=password, prompt_mfa=None)
         client.login(token_dir)
     else:
         # First-time or expired — full SSO login
