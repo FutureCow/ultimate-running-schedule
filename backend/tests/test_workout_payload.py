@@ -245,3 +245,25 @@ def test_a_tempo_run_keeps_its_warmup_and_tempo_block():
     s = session(workout_type="tempo", distance_km=8.0, target_paces=FINISH)
 
     assert [st["endConditionValue"] for st in steps_of(s)] == [1000, 7000]
+
+
+# ── A rest the plan leaves empty ─────────────────────────────────────────────
+
+def test_an_empty_rest_gets_the_usual_jog():
+    """The generator writes rest_seconds: null; that must not crash the push."""
+    blocks = [{"reps": 2, "duration_seconds": 600, "pace": "5:10 - 5:20", "rest_seconds": None}]
+    recovery = [st for st in steps_of(session(distance_km=8.0, intervals=blocks))
+                if st["stepType"]["stepTypeKey"] == "recovery"]
+
+    assert [st["endConditionValue"] for st in recovery] == [90]
+
+
+def test_a_single_timed_block_fills_the_planned_distance():
+    """20 min at 5:10-5:20 is about 3.8 km of an 8 km session."""
+    paces = {"warmup": "6:35 - 6:55", "main": "5:10 - 5:20", "cooldown": "6:35 - 6:55"}
+    blocks = [{"reps": 1, "duration_seconds": 1200, "pace": "5:10 - 5:20", "rest_seconds": None}]
+    steps = steps_of(session(distance_km=8.0, target_paces=paces, intervals=blocks))
+
+    assert [(st["stepType"]["stepTypeKey"], st["endConditionValue"]) for st in steps] == [
+        ("warmup", 2500), ("interval", 1200), ("cooldown", 1700),
+    ]

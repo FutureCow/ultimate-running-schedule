@@ -907,13 +907,15 @@ def _work_blocks(intervals: list) -> list[dict]:
             condition, value, label = "time", duration_s, f"Blok {round(duration_s / 60)} min"
         else:
             condition, value, label = "distance", 400, "Blok 400 m"
+        # A plan that leaves the rest empty gets the usual jog; 0 means none
+        rest_seconds = entry.get("rest_seconds")
         for _ in range(entry.get("reps", 1)):
             blocks.append({
                 "condition": condition,
                 "value": value,
                 "label": label,
                 "pace": entry.get("pace", ""),
-                "rest_seconds": entry.get("rest_seconds", 90),
+                "rest_seconds": 90 if rest_seconds is None else rest_seconds,
             })
     return blocks
 
