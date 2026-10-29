@@ -98,8 +98,9 @@ def test_the_plan_field_still_wins_over_the_description():
     assert steps["cooldown"]["endConditionValue"] == 1000
 
 
-def test_without_either_it_falls_back_to_the_defaults():
+def test_without_either_the_easy_running_fills_the_planned_distance():
+    """6.1 km minus 2 x 1300 m and the 90 s jog between them, split 60/40."""
     steps = by_kind(old_plan_session(description="Twee blokken op drempeltempo."))
 
-    assert steps["warmup"]["endConditionValue"] == 1000
-    assert steps["cooldown"]["endConditionValue"] == 500
+    assert steps["warmup"]["endConditionValue"] == 2000
+    assert steps["cooldown"]["endConditionValue"] == 1300

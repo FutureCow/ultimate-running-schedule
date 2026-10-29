@@ -98,9 +98,10 @@ def test_uses_the_planned_warmup_and_cooldown():
     assert by_kind["cooldown"]["endConditionValue"] == 1500
 
 
-def test_falls_back_when_the_plan_does_not_say():
-    """Plans generated before the fields existed keep the old defaults."""
-    by_kind = {st["stepType"]["stepTypeKey"]: st for st in steps_of(session(intervals=TWO_BLOCKS))}
+def test_falls_back_when_the_distance_leaves_no_room():
+    """Too little left around the work for more than the defaults."""
+    s = session(intervals=TWO_BLOCKS, distance_km=3.0)
+    by_kind = {st["stepType"]["stepTypeKey"]: st for st in steps_of(s)}
 
     assert by_kind["warmup"]["endConditionValue"] == 1000
     assert by_kind["cooldown"]["endConditionValue"] == 500
@@ -170,3 +171,77 @@ def test_strides_and_warmup_both_come_out_of_the_total():
     assert abs(distance_total_m(s) + jog_m - 8000) < 2
     assert kinds(s)[0] == "warmup" and kinds(s)[-1] == "cooldown"
 
+
+# ── The easy running around intervals fills the planned distance ────────────
+
+EIGHT_400 = [{"reps": 8, "distance_m": 400, "pace": "4:45 - 5:00", "rest_seconds": 90}]
+EASY = {"warmup": "6:35 - 6:55", "main": "4:45 - 5:00", "cooldown": "6:35 - 6:55"}
+# 7 x 90 s jog at 6:55 /km
+JOG_M = 7 * 90 * 1000 / 415
+
+
+def test_intervals_add_up_to_the_planned_distance():
+    """The reported bug: 9 km planned, 6.3 km on the watch with 1 km / 500 m around it."""
+    s = session(workout_type="interval", distance_km=9.0, target_paces=EASY, intervals=EIGHT_400)
+    by_kind = {st["stepType"]["stepTypeKey"]: st for st in steps_of(s)}
+
+    assert by_kind["warmup"]["endConditionValue"] == 2600
+    assert by_kind["cooldown"]["endConditionValue"] == 1700
+    assert abs(distance_total_m(s) + JOG_M - 9000) < 100
+
+
+def test_a_given_warmup_leaves_the_rest_to_the_cooldown():
+    s = session(workout_type="interval", distance_km=9.0, target_paces=EASY,
+                intervals=EIGHT_400, warmup_km=3.0)
+    by_kind = {st["stepType"]["stepTypeKey"]: st for st in steps_of(s)}
+
+    assert by_kind["warmup"]["endConditionValue"] == 3000
+    assert by_kind["cooldown"]["endConditionValue"] == 1300
+
+
+def test_the_jog_between_reps_says_it_is_a_jog():
+    s = session(workout_type="interval", distance_km=9.0, target_paces=EASY, intervals=EIGHT_400)
+    recovery = [st for st in steps_of(s) if st["stepType"]["stepTypeKey"] == "recovery"]
+
+    assert len(recovery) == 7
+    assert all("joggen" in st["description"] for st in recovery)
+
+
+# ── A long run with a faster finish ──────────────────────────────────────────
+
+FINISH = {"warmup": "6:30 - 6:45", "main": "5:00 - 5:10"}
+
+
+def long_run(description: str, **overrides) -> WorkoutSession:
+    return session(workout_type="long_run", title="Lange duurloop", distance_km=12.0,
+                   description=description, target_paces=FINISH, **overrides)
+
+
+def test_a_fast_finish_is_not_sent_as_the_whole_run_at_race_pace():
+    """The reported bug: 1 km easy, then 11 km at race pace."""
+    steps = steps_of(long_run("Rustige langere loop met de laatste kilometers op wedstrijdtempo."))
+
+    assert [(st["stepType"]["stepTypeKey"], st["endConditionValue"]) for st in steps] == [
+        ("warmup", 10000), ("interval", 2000),
+    ]
+    assert steps[0]["description"] == "Rustig"
+
+
+def test_the_finish_length_comes_from_the_description():
+    steps = steps_of(long_run("Rustige duurloop, de laatste 3 km op wedstrijdtempo."))
+
+    assert [st["endConditionValue"] for st in steps] == [9000, 3000]
+
+
+def test_a_planned_finish_in_intervals_is_used_as_is():
+    s = long_run("Rustig, dan 2 km op wedstrijdtempo.", warmup_km=10.0,
+                 intervals=[{"reps": 1, "distance_m": 2000, "pace": "5:00 - 5:10", "rest_seconds": 0}])
+
+    assert [st["endConditionValue"] for st in steps_of(s)] == [10000, 2000]
+
+
+def test_a_tempo_run_keeps_its_warmup_and_tempo_block():
+    """Only an easy or long run reads a slow "warm-up" as its easy bulk."""
+    s = session(workout_type="tempo", distance_km=8.0, target_paces=FINISH)
+
+    assert [st["endConditionValue"] for st in steps_of(s)] == [1000, 7000]

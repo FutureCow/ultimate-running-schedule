@@ -38,6 +38,9 @@ Paces: "MM:SS – MM:SS" per km. Strength: distance_km=null, target_paces={"main
 warmup_km/cooldown_km: the easy running either side of the work, null when there is none.
 distance_km is the whole session including them. description, intervals and these
 numbers must describe the SAME session — never say "6 minutes" and then give a distance.
+A faster part inside an easy or long run (a fast finish, a block at race pace): put it in
+intervals (reps 1, rest_seconds 0) and the easy running before it in warmup_km, after it in
+cooldown_km — never only in the description. rest_seconds between reps is an easy jog.
 description: 1 sentence for runs; numbered 6-8 exercise list (sets×reps, rest, cue) for strength."""
 
 

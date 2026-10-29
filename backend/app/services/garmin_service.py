@@ -817,9 +817,21 @@ _DEFAULT_WARMUP_M = 1000
 _DEFAULT_COOLDOWN_M = 500
 # Below this a session is not worth splitting into warm-up / work / cool-down
 _MIN_MAIN_BLOCK_M = 500
-# Jogging pace assumed for the timed recovery between strides when the session
-# gives no easy pace to go by: 7:30 /km
+# Jogging pace assumed for a timed recovery when the session gives no easy pace
+# to go by: 7:30 /km
 _FALLBACK_JOG_MS = 1000 / 450
+# Share of the easy running around the work that goes before it
+_WARMUP_SHARE = 0.6
+# A "warm-up" this much slower than the main pace is the bulk of an easy run,
+# not a warm-up: a long run with a faster finish
+_FAST_FINISH_GAP_S = 30
+_FINISH_KM = r"(?:laatste|last|final)\s+(\d+(?:[.,]\d+)?)\s*(?:km|kilometers?)"
+
+
+def _jog_m(seconds: float, easy_pace: str | None) -> float:
+    """How far a timed jog takes you, at the slow end of the easy pace."""
+    _, _, slow_ms = _pace_target(easy_pace)
+    return seconds * (slow_ms or _FALLBACK_JOG_MS)
 
 
 def _strides_m(strides: dict | None, main_pace: str | None) -> int:
@@ -831,9 +843,51 @@ def _strides_m(strides: dict | None, main_pace: str | None) -> int:
     if not strides:
         return 0
     reps = strides.get("reps", 4)
-    _, _, slow_ms = _pace_target(main_pace)
     jog_s = max(reps - 1, 0) * strides.get("rest_seconds", 90)
-    return int(reps * strides.get("distance_m", 100) + jog_s * (slow_ms or _FALLBACK_JOG_MS))
+    return int(reps * strides.get("distance_m", 100) + _jog_m(jog_s, main_pace))
+
+
+def _blocks_m(blocks: list[dict], easy_pace: str | None) -> float:
+    """The distance of the work blocks and the jogs between them."""
+    total = 0.0
+    for index, block in enumerate(blocks):
+        if block["condition"] == "distance":
+            total += block["value"]
+        else:
+            _, fast_ms, slow_ms = _pace_target(block["pace"])
+            total += block["value"] * ((fast_ms + slow_ms) / 2 if fast_ms else _FALLBACK_JOG_MS)
+        if index < len(blocks) - 1:
+            total += _jog_m(block["rest_seconds"], easy_pace)
+    return total
+
+
+def _round_100(metres: float) -> int:
+    return int(round(metres / 100) * 100)
+
+
+def _pace_seconds(pace: str | None) -> float | None:
+    """The middle of a pace range in seconds per km."""
+    _, fast_ms, slow_ms = _pace_target(pace)
+    return 1000 / ((fast_ms + slow_ms) / 2) if fast_ms else None
+
+
+def _fast_finish_m(session: WorkoutSession, paces: dict, total_m: int) -> int:
+    """The fast closing part of an easy or long run planned without intervals for it.
+
+    Such a session comes as a "warm-up" at easy pace and a "main" pace that is
+    really the finish, with no length for either. Read the length from the
+    description ("de laatste 2 km") or take a fifth of the run in whole
+    kilometres, so the bulk is not sent to the watch at race pace.
+    """
+    if session.workout_type not in ("long_run", "easy_run") or paces.get("cooldown"):
+        return 0
+    easy_s, main_s = _pace_seconds(paces.get("warmup")), _pace_seconds(paces.get("main"))
+    if not easy_s or not main_s or easy_s - main_s < _FAST_FINISH_GAP_S:
+        return 0
+    match = re.search(_FINISH_KM, session.description or "", flags=re.IGNORECASE)
+    if match:
+        return int(float(match.group(1).replace(",", ".")) * 1000)
+    return max(1000, round(total_m * 0.2 / 1000) * 1000)
 
 
 def _work_blocks(intervals: list) -> list[dict]:
@@ -884,14 +938,40 @@ def _build_workout_payload(session: WorkoutSession) -> dict:
     warmup_m = int((warmup_km or 0) * 1000) or _DEFAULT_WARMUP_M
     cooldown_m = int((cooldown_km or 0) * 1000) or _DEFAULT_COOLDOWN_M
 
+    total_m = int((session.distance_km or 0) * 1000)
     blocks = _work_blocks(session.intervals)
+    easy_run = session.workout_type in ("long_run", "easy_run")
+    if not blocks and not warmup_km:
+        finish_m = _fast_finish_m(session, paces, total_m)
+        if finish_m and total_m - finish_m >= _MIN_MAIN_BLOCK_M:
+            blocks = [{"condition": "distance", "value": finish_m,
+                       "label": f"Slot {finish_m / 1000:g} km", "pace": paces.get("main", ""),
+                       "rest_seconds": 0}]
     # Strides (short fast accelerations stored in target_paces["strides"])
     strides = paces.get("strides") if not blocks else None
+
+    if blocks and total_m:
+        # The easy running around the work fills up to the planned distance;
+        # a length the plan or its description gives comes first
+        around_m = total_m - _blocks_m(blocks, warmup_pace or cooldown_pace)
+        lead_open = bool(warmup_pace) and not warmup_km
+        tail_open = bool(cooldown_pace) and not cooldown_km
+        lead_m = warmup_m if warmup_pace else 0
+        tail_m = cooldown_m if cooldown_pace else 0
+        if lead_open and tail_open:
+            if around_m > _DEFAULT_WARMUP_M + _DEFAULT_COOLDOWN_M:
+                lead_m = _round_100(around_m * _WARMUP_SHARE)
+                tail_m = _round_100(around_m - lead_m)
+        elif lead_open:
+            lead_m = max(_round_100(around_m - tail_m), _DEFAULT_WARMUP_M)
+        elif tail_open:
+            tail_m = max(_round_100(around_m - lead_m), _DEFAULT_COOLDOWN_M)
+        warmup_m, cooldown_m = lead_m, tail_m
 
     if not blocks:
         # Steady run: the easy running either side and the strides are part of
         # the total, not extra
-        total_m = int((session.distance_km or 5) * 1000)
+        total_m = total_m or 5000
         easy_m = total_m - _strides_m(strides, paces.get("main"))
         lead_m = warmup_m if warmup_pace else 0
         tail_m = cooldown_m if cooldown_pace else 0
@@ -904,8 +984,10 @@ def _build_workout_payload(session: WorkoutSession) -> dict:
         warmup_m, cooldown_m = lead_m, tail_m
 
     if warmup_pace:
+        # The easy bulk of a long run with a faster finish is no warm-up
         steps.append(_step(order, 1, "warmup", "distance", warmup_m,
-                           "Warming-up", pace_range=warmup_pace))
+                           "Rustig" if easy_run and blocks else "Warming-up",
+                           pace_range=warmup_pace))
         order += 1
 
     if blocks:
@@ -914,8 +996,9 @@ def _build_workout_payload(session: WorkoutSession) -> dict:
                                block["label"], pace_range=block["pace"]))
             order += 1
             # A jog between the blocks, not one trailing into the cool-down
-            if index < len(blocks) - 1:
-                steps.append(_step(order, 4, "recovery", "time", block["rest_seconds"], "Rust"))
+            if index < len(blocks) - 1 and block["rest_seconds"]:
+                steps.append(_step(order, 4, "recovery", "time", block["rest_seconds"],
+                                   "Herstel: rustig joggen"))
                 order += 1
     else:
         steps.append(_step(order, 3, "interval", "distance", main_m,
