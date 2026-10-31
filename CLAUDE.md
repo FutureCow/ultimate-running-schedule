@@ -59,7 +59,7 @@ npm run type-check   # TypeScript check
 
 ### Backend (`backend/app/`)
 - **`main.py`**: App entrypoint, startup hooks (`init_db` in dev, table creation)
-- **`models/`**: SQLAlchemy 2.0 async models — `User`, `Plan`, `WorkoutSession`, `GarminCredential`
+- **`models/`**: SQLAlchemy 2.0 async models — `User`, `Plan`, `WorkoutSession`, `GarminCredential`, `GarminActivity`, `Friendship`
 - **`routers/`**: FastAPI routers — `auth`, `plans`, `sessions`, `garmin`, `friends`, `admin`
 - **`services/`**: `claude_service.py` (plan generation, run feedback, weekly review text), `garmin_service.py` (Garmin Connect API, workout payloads), `follow_up.py` (follow-up plans, goal suggestions), `weekly_review.py` (weekly numbers and prompt), `auth_service.py` (PyJWT + passlib/bcrypt), `email_service.py`
 - **`database.py`**: Async SQLAlchemy engine with `asyncpg`, connection pool (10/20), `get_db()` dependency
@@ -67,7 +67,7 @@ npm run type-check   # TypeScript check
 ### Frontend (`frontend/src/`)
 - **`app/[locale]/`**: Next.js App Router with locale prefix (`/nl/`, `/en/`) via `next-intl`
 - **`(auth)/`** route group: login, register pages
-- **`dashboard/`**, **`plans/`**, **`settings/`**: Main app pages
+- **`dashboard/`**, **`plans/`**, **`analyse/`**, **`friends/`**, **`settings/`**, **`admin/`**: Main app pages
 - **`components/`**: `PlanCreatorForm` (multi-step wizard), `Calendar`, `WorkoutCard`, shadcn/ui primitives
 - **`lib/api.ts`**: Axios instance with JWT auto-refresh interceptor; a 401, or a 403 with "Not authenticated", counts as a lost session
 - **`AuthGuard`** wraps the app sections
@@ -77,6 +77,8 @@ npm run type-check   # TypeScript check
 ```
 users (1) → (M) plans
 users (1) → (1) garmin_credentials
+users (1) → (M) garmin_activities
+users (M) ↔ (M) users, through friendships (requester_id, addressee_id)
 plans (1) → (M) workout_sessions
 ```
 `WorkoutSession` fields include `week_number`, `day_number`, `workout_type`, `distance`, `paces` (JSON), `intervals` (JSON), and Garmin workout/calendar IDs.
