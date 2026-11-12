@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../models/activity.dart';
 import '../../services/api_service.dart';
+import '../../widgets/race_predictions_card.dart';
 
 class AnalyseScreen extends StatefulWidget {
   const AnalyseScreen({super.key});
@@ -13,6 +14,7 @@ class AnalyseScreen extends StatefulWidget {
 class _AnalyseScreenState extends State<AnalyseScreen> {
   final _api = ApiService();
   List<ActivitySummary> _activities = [];
+  Map<String, dynamic>? _predictions;
   bool _loading = true;
   bool _syncing = false;
 
@@ -36,6 +38,14 @@ class _AnalyseScreenState extends State<AnalyseScreen> {
     } finally {
       setState(() => _loading = false);
     }
+    _loadPredictions();
+  }
+
+  Future<void> _loadPredictions() async {
+    try {
+      final res = await _api.getRacePredictions();
+      if (mounted) setState(() => _predictions = res.data as Map<String, dynamic>?);
+    } catch (_) {}
   }
 
   Future<void> _sync() async {
@@ -84,11 +94,17 @@ class _AnalyseScreenState extends State<AnalyseScreen> {
                     onRefresh: _load,
                     child: ListView.builder(
                       padding: const EdgeInsets.all(16),
-                      itemCount: _activities.length,
-                      itemBuilder: (_, i) => _ActivityTile(
-                        activity: _activities[i],
-                        onTap: () => context.go('/analyse/${_activities[i].activityId}'),
-                      ),
+                      itemCount: _activities.length + (_predictions != null ? 1 : 0),
+                      itemBuilder: (_, index) {
+                        if (_predictions != null && index == 0) {
+                          return RacePredictionsCard(data: _predictions!);
+                        }
+                        final i = _predictions != null ? index - 1 : index;
+                        return _ActivityTile(
+                          activity: _activities[i],
+                          onTap: () => context.go('/analyse/${_activities[i].activityId}'),
+                        );
+                      },
                     ),
                   ),
       );
