@@ -291,6 +291,22 @@ async def list_activities(
     ]
 
 
+@router.get("/race-predictions")
+async def race_predictions(
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Estimated 5K/10K/HM/M times from the best effort of the last 12 weeks, or null."""
+    from app.models.garmin_activity import GarminActivity
+    from app.services.race_predictions import WINDOW, predict_race_times
+    since = datetime.now(timezone.utc) - WINDOW
+    result = await db.execute(
+        select(GarminActivity)
+        .where(GarminActivity.user_id == user.id, GarminActivity.start_time >= since)
+    )
+    return predict_race_times(result.scalars().all())
+
+
 @router.get("/activity/{activity_id}")
 async def get_activity_detail(
     activity_id: str,
