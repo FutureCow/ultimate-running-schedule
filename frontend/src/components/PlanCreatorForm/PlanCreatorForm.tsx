@@ -146,7 +146,8 @@ export function PlanCreatorForm({ editPlan, followUpFrom: followUpProp }: Props)
       if (data.weight_kg) setValue("weight_kg", data.weight_kg);
       if (data.weekly_km) setValue("weekly_km", data.weekly_km);
       if (data.weekly_runs) setValue("weekly_runs", data.weekly_runs);
-      if (data.injuries) setValue("injuries", data.injuries);
+      // A follow-up takes injuries from the previous plan, the profile only as fallback
+      if (data.injuries && !followUpFrom) setValue("injuries", data.injuries);
       if (data.feedback_tone) setValue("feedback_tone", data.feedback_tone);
     }).catch(() => {/* no profile yet, leave fields empty */});
   }, [isEditMode]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -205,6 +206,10 @@ export function PlanCreatorForm({ editPlan, followUpFrom: followUpProp }: Props)
       if (prev.surface) setValue("surface", prev.surface);
       if (prev.feedback_tone) setValue("feedback_tone", prev.feedback_tone);
       setValue("duration_weeks", prev.duration_weeks);
+      // Complaints noted in the previous plan carry over; the athlete can update them
+      const injuries = prev.injuries || profile.injuries;
+      if (injuries) setValue("injuries", injuries);
+      if (prev.extra_notes) setValue("extra_notes", prev.extra_notes);
       if (prev.strength_enabled) {
         setValue("strength", {
           enabled: true,
