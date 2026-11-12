@@ -785,6 +785,8 @@ _EASY_WORDS = {
     "warmup": r"inlopen|inloop|opwarmen|warming[- ]?up|warm[- ]?up",
     "cooldown": r"uitlopen|uitloop|cooling[- ]?down|cool[- ]?down",
 }
+# Split Dutch verbs: "warm 1,5 km rustig in", "loop 1 km uit"
+_SPLIT_VERBS = {"warmup": ("warm", "in"), "cooldown": ("loop", "uit")}
 _DESCRIBED_RANGE_KM = (0.2, 5.0)
 
 
@@ -800,9 +802,11 @@ def _km_from_description(description: str | None, kind: str) -> float | None:
     if not description:
         return None
     words = _EASY_WORDS[kind]
+    verb, particle = _SPLIT_VERBS[kind]
     patterns = (
         rf"{_KM}\s+(?:[\w-]+\s+){{0,2}}(?:{words})\b",      # "2 km rustig inlopen"
         rf"\b(?:{words})\s*(?:van|of|:)?\s*{_KM}",           # "warming-up van 2 km"
+        rf"\b{verb}\s+{_KM}\s+(?:[\w-]+\s+){{0,2}}{particle}\b",  # "warm 1,5 km rustig in"
     )
     for pattern in patterns:
         match = re.search(pattern, description, flags=re.IGNORECASE)
@@ -971,7 +975,16 @@ def _build_workout_payload(session: WorkoutSession) -> dict:
             tail_m = max(_round_100(around_m - lead_m), _DEFAULT_COOLDOWN_M)
         warmup_m, cooldown_m = lead_m, tail_m
 
-    if not blocks:
+    # A race's distance is the race itself: warm-up and cool-down come on top,
+    # and the strides belong to the warm-up, not after the finish
+    race = session.workout_type == "race" and not blocks
+    if race:
+        main_m = total_m or 5000
+        if not warmup_pace:
+            warmup_m = 0
+        if not cooldown_pace:
+            cooldown_m = 0
+    elif not blocks:
         # Steady run: the easy running either side and the strides are part of
         # the total, not extra
         total_m = total_m or 5000
@@ -993,6 +1006,24 @@ def _build_workout_payload(session: WorkoutSession) -> dict:
                            pace_range=warmup_pace))
         order += 1
 
+    def add_strides(order: int) -> int:
+        reps = strides.get("reps", 4)
+        stride_m = strides.get("distance_m", 100)
+        rest_sec = strides.get("rest_seconds", 90)
+        stride_pace = strides.get("pace", "")
+        for i in range(reps):
+            steps.append(_step(order, 3, "interval", "distance", stride_m,
+                               f"Stride {i + 1}", pace_range=stride_pace))
+            order += 1
+            # Before a race the last stride is followed by a jog to the start
+            if i < reps - 1 or race:
+                steps.append(_step(order, 4, "recovery", "time", rest_sec, "Herstel"))
+                order += 1
+        return order
+
+    if strides and race:
+        order = add_strides(order)
+
     if blocks:
         for index, block in enumerate(blocks):
             steps.append(_step(order, 3, "interval", block["condition"], block["value"],
@@ -1008,18 +1039,8 @@ def _build_workout_payload(session: WorkoutSession) -> dict:
                            session.description or "", pace_range=paces.get("main")))
         order += 1
 
-    if strides:
-        reps = strides.get("reps", 4)
-        stride_m = strides.get("distance_m", 100)
-        rest_sec = strides.get("rest_seconds", 90)
-        stride_pace = strides.get("pace", "")
-        for i in range(reps):
-            steps.append(_step(order, 3, "interval", "distance", stride_m,
-                               f"Stride {i + 1}", pace_range=stride_pace))
-            order += 1
-            if i < reps - 1:
-                steps.append(_step(order, 4, "recovery", "time", rest_sec, "Herstel"))
-                order += 1
+    if strides and not race:
+        order = add_strides(order)
 
     if cooldown_pace:
         steps.append(_step(order, 2, "cooldown", "distance", cooldown_m,

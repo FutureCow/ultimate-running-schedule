@@ -104,3 +104,9 @@ def test_without_either_the_easy_running_fills_the_planned_distance():
 
     assert steps["warmup"]["endConditionValue"] == 2000
     assert steps["cooldown"]["endConditionValue"] == 1300
+
+
+def test_split_dutch_verbs():
+    text = "Warm 1,5 km rustig in met 3 versnellingen, loop de eerste 2 km op 6:05/km, en loop 1 km uit."
+    assert _km_from_description(text, "warmup") == 1.5
+    assert _km_from_description(text, "cooldown") == 1.0

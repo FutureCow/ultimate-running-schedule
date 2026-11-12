@@ -267,3 +267,56 @@ def test_a_single_timed_block_fills_the_planned_distance():
     assert [(st["stepType"]["stepTypeKey"], st["endConditionValue"]) for st in steps] == [
         ("warmup", 2500), ("interval", 1200), ("cooldown", 1700),
     ]
+
+
+# ── A race: the distance is the race, warm-up and cool-down come on top ──────
+
+RACE_DESCRIPTION = (
+    "Warm 1,5 km rustig in met 3 versnellingen, loop de eerste 2 km op 6:05/km en "
+    "versnel daarna naar 6:00/km of sneller richting de finish, en loop 1 km uit."
+)
+RACE_PACES = {
+    "warmup": "7:10 – 7:50", "main": "5:55 – 6:05", "cooldown": "7:30 – 8:15",
+    "strides": {"reps": 3, "distance_m": 80, "pace": "5:15 – 5:30", "rest_seconds": 90},
+}
+
+
+def race(**overrides) -> WorkoutSession:
+    return session(workout_type="race", title="Wedstrijd 8 km", description=RACE_DESCRIPTION,
+                   distance_km=8.0, duration_minutes=48, target_paces=RACE_PACES, **overrides)
+
+
+def test_race_block_is_the_full_race_distance():
+    main = [st for st in steps_of(race()) if st["stepType"]["stepTypeKey"] == "interval"
+            and not st["description"].startswith("Stride")]
+    assert [st["endConditionValue"] for st in main] == [8000]
+
+
+def test_race_warmup_and_cooldown_come_from_the_description_on_top():
+    steps = steps_of(race())
+    assert steps[0]["stepType"]["stepTypeKey"] == "warmup"
+    assert steps[0]["endConditionValue"] == 1500
+    assert steps[-1]["stepType"]["stepTypeKey"] == "cooldown"
+    assert steps[-1]["endConditionValue"] == 1000
+
+
+def test_race_strides_come_before_the_start():
+    assert kinds(race()) == [
+        "warmup",
+        "interval", "recovery", "interval", "recovery", "interval", "recovery",
+        "interval",
+        "cooldown",
+    ]
+
+
+def test_race_fields_win_over_the_description():
+    steps = steps_of(race(warmup_km=2.0, cooldown_km=0.5))
+    assert steps[0]["endConditionValue"] == 2000
+    assert steps[-1]["endConditionValue"] == 500
+
+
+def test_easy_run_strides_still_come_after_the_run():
+    easy = session(workout_type="easy_run", description="Rustige loop met versnellingen.",
+                   target_paces={"main": "7:10 – 7:50", "strides": RACE_PACES["strides"]})
+    assert kinds(easy)[0] == "interval"
+    assert steps_of(easy)[1]["description"] == "Stride 1"
