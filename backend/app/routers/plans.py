@@ -352,6 +352,8 @@ async def update_plan(
 
     # Build a PlanCreate-like object for AI generation using merged values
     merged = _plan_to_create(plan)
+    # The race date may have moved the race into another week
+    plan.duration_weeks = merged.duration_weeks
 
     # Fetch optional Garmin context
     garmin_summary = None

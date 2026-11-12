@@ -1,5 +1,5 @@
 from pydantic import BaseModel, ConfigDict, model_validator
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from typing import Literal, Optional, Any
 
 from app.schemas.common import FeedbackTone
@@ -11,6 +11,26 @@ MIN_CUSTOM_DISTANCE_KM = 1.0
 MAX_CUSTOM_DISTANCE_KM = 100.0
 
 GoalKind = Literal["race", "fitness"]
+
+
+def plan_week(start: date, day: date) -> int:
+    """The plan week that holds `day`; week 1 is the Monday-to-Sunday week of `start`."""
+    week1_monday = start - timedelta(days=start.weekday())
+    return (day - week1_monday).days // 7 + 1
+
+
+def _align_duration_to_race(model):
+    """The race falls in the plan's last week, so the race date sets the length.
+
+    The prompt puts the race in week `duration_weeks` and the sessions are laid
+    out from the start's Monday. A race date in another week would pull only the
+    race session away from its taper and recovery weeks.
+    """
+    if model.race_date is not None:
+        week = plan_week(model.start_date or date.today(), model.race_date)
+        if week >= 1:
+            model.duration_weeks = week
+    return model
 
 
 def _check_custom_distance(model):
@@ -118,6 +138,10 @@ class PlanCreate(BaseModel):
     @model_validator(mode="after")
     def _validate_custom_distance(self):
         return _check_custom_distance(self)
+
+    @model_validator(mode="after")
+    def _align_duration(self):
+        return _align_duration_to_race(self)
 
 
 class SessionUpdate(BaseModel):

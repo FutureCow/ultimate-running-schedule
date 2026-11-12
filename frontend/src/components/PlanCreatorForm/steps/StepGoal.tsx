@@ -23,17 +23,27 @@ interface Props {
   targetTimeDisplay?: string;
 }
 
-function addWeeksToDate(dateStr: string, weeks: number): string {
+// Plan weeks run Monday to Sunday; week 1 is the week of the start date.
+// "YYYY-MM-DD" parses as UTC midnight, so all date math stays in UTC.
+const DAY_MS = 1000 * 60 * 60 * 24;
+
+function startMonday(dateStr: string): Date {
   const d = new Date(dateStr);
-  d.setDate(d.getDate() + weeks * 7);
+  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
+  return d;
+}
+
+// The Sunday of week `weeks`, where the backend puts the race
+function addWeeksToDate(dateStr: string, weeks: number): string {
+  const d = startMonday(dateStr);
+  d.setUTCDate(d.getUTCDate() + (weeks - 1) * 7 + 6);
   return d.toISOString().split("T")[0];
 }
 
+// The plan week that holds the race date
 function weeksFromDates(startStr: string, endStr: string): number {
-  const start = new Date(startStr);
-  const end = new Date(endStr);
-  const diffDays = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-  return Math.max(4, Math.min(52, Math.ceil(diffDays / 7)));
+  const diffDays = Math.round((new Date(endStr).getTime() - startMonday(startStr).getTime()) / DAY_MS);
+  return Math.max(4, Math.min(52, Math.floor(diffDays / 7) + 1));
 }
 
 export function StepGoal({ register, watch, setValue, errors, targetTimeDisplay }: Props) {
