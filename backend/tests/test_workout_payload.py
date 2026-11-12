@@ -269,7 +269,7 @@ def test_a_single_timed_block_fills_the_planned_distance():
     ]
 
 
-# ── A race: the distance is the race, warm-up and cool-down come on top ──────
+# ── A race: only the race itself goes to the watch ───────────────────────────
 
 RACE_DESCRIPTION = (
     "Warm 1,5 km rustig in met 3 versnellingen, loop de eerste 2 km op 6:05/km en "
@@ -286,33 +286,20 @@ def race(**overrides) -> WorkoutSession:
                    distance_km=8.0, duration_minutes=48, target_paces=RACE_PACES, **overrides)
 
 
-def test_race_block_is_the_full_race_distance():
-    main = [st for st in steps_of(race()) if st["stepType"]["stepTypeKey"] == "interval"
-            and not st["description"].startswith("Stride")]
-    assert [st["endConditionValue"] for st in main] == [8000]
-
-
-def test_race_warmup_and_cooldown_come_from_the_description_on_top():
+def test_race_is_one_step_of_the_full_distance_at_race_pace():
     steps = steps_of(race())
-    assert steps[0]["stepType"]["stepTypeKey"] == "warmup"
-    assert steps[0]["endConditionValue"] == 1500
-    assert steps[-1]["stepType"]["stepTypeKey"] == "cooldown"
-    assert steps[-1]["endConditionValue"] == 1000
+    assert kinds(race()) == ["interval"]
+    assert steps[0]["endConditionValue"] == 8000
+    assert steps[0]["description"] == "Wedstrijd 8 km"
+    assert "targetValueOne" in steps[0]
 
 
-def test_race_strides_come_before_the_start():
-    assert kinds(race()) == [
-        "warmup",
-        "interval", "recovery", "interval", "recovery", "interval", "recovery",
-        "interval",
-        "cooldown",
-    ]
+def test_race_leaves_warmup_and_cooldown_to_the_runner_even_with_fields_set():
+    assert kinds(race(warmup_km=1.5, cooldown_km=1.0)) == ["interval"]
 
 
-def test_race_fields_win_over_the_description():
-    steps = steps_of(race(warmup_km=2.0, cooldown_km=0.5))
-    assert steps[0]["endConditionValue"] == 2000
-    assert steps[-1]["endConditionValue"] == 500
+def test_race_keeps_the_advice_in_the_workout_description():
+    assert _build_workout_payload(race())["description"] == RACE_DESCRIPTION
 
 
 def test_easy_run_strides_still_come_after_the_run():

@@ -932,10 +932,20 @@ def _build_workout_payload(session: WorkoutSession) -> dict:
     on its own with the jog between them, easy kilometres out. Warm-up and
     cool-down come out of the planned distance rather than on top of it, and
     so do strides, so a steady run adds up to what the plan says.
+
+    A race is the exception: only the race itself goes to the watch. How to
+    warm up and cool down stays in the description, as advice, because before
+    a start there is not always time for a fixed routine.
     """
     paces = session.target_paces or {}
     steps: list[dict] = []
     order = 1
+
+    if session.workout_type == "race" and not _work_blocks(session.intervals):
+        race_m = int((session.distance_km or 0) * 1000) or 5000
+        steps.append(_step(order, 3, "interval", "distance", race_m,
+                           session.title, pace_range=paces.get("main")))
+        return _workout(session, steps)
 
     warmup_pace = paces.get("warmup")
     cooldown_pace = paces.get("cooldown")
@@ -975,16 +985,7 @@ def _build_workout_payload(session: WorkoutSession) -> dict:
             tail_m = max(_round_100(around_m - lead_m), _DEFAULT_COOLDOWN_M)
         warmup_m, cooldown_m = lead_m, tail_m
 
-    # A race's distance is the race itself: warm-up and cool-down come on top,
-    # and the strides belong to the warm-up, not after the finish
-    race = session.workout_type == "race" and not blocks
-    if race:
-        main_m = total_m or 5000
-        if not warmup_pace:
-            warmup_m = 0
-        if not cooldown_pace:
-            cooldown_m = 0
-    elif not blocks:
+    if not blocks:
         # Steady run: the easy running either side and the strides are part of
         # the total, not extra
         total_m = total_m or 5000
@@ -1006,24 +1007,6 @@ def _build_workout_payload(session: WorkoutSession) -> dict:
                            pace_range=warmup_pace))
         order += 1
 
-    def add_strides(order: int) -> int:
-        reps = strides.get("reps", 4)
-        stride_m = strides.get("distance_m", 100)
-        rest_sec = strides.get("rest_seconds", 90)
-        stride_pace = strides.get("pace", "")
-        for i in range(reps):
-            steps.append(_step(order, 3, "interval", "distance", stride_m,
-                               f"Stride {i + 1}", pace_range=stride_pace))
-            order += 1
-            # Before a race the last stride is followed by a jog to the start
-            if i < reps - 1 or race:
-                steps.append(_step(order, 4, "recovery", "time", rest_sec, "Herstel"))
-                order += 1
-        return order
-
-    if strides and race:
-        order = add_strides(order)
-
     if blocks:
         for index, block in enumerate(blocks):
             steps.append(_step(order, 3, "interval", block["condition"], block["value"],
@@ -1039,13 +1022,27 @@ def _build_workout_payload(session: WorkoutSession) -> dict:
                            session.description or "", pace_range=paces.get("main")))
         order += 1
 
-    if strides and not race:
-        order = add_strides(order)
+    if strides:
+        reps = strides.get("reps", 4)
+        stride_m = strides.get("distance_m", 100)
+        rest_sec = strides.get("rest_seconds", 90)
+        stride_pace = strides.get("pace", "")
+        for i in range(reps):
+            steps.append(_step(order, 3, "interval", "distance", stride_m,
+                               f"Stride {i + 1}", pace_range=stride_pace))
+            order += 1
+            if i < reps - 1:
+                steps.append(_step(order, 4, "recovery", "time", rest_sec, "Herstel"))
+                order += 1
 
     if cooldown_pace:
         steps.append(_step(order, 2, "cooldown", "distance", cooldown_m,
                            "Cooling-down", pace_range=cooldown_pace))
 
+    return _workout(session, steps)
+
+
+def _workout(session: WorkoutSession, steps: list[dict]) -> dict:
     return {
         "sportType": _SPORT_RUNNING,
         "workoutName": session.title,
