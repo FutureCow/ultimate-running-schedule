@@ -9,6 +9,7 @@ import { Link } from "@/i18n/navigation";
 import { plansApi, garminApi } from "@/lib/api";
 import { Plan, WorkoutSession } from "@/types";
 import { Navbar } from "@/components/ui/Navbar";
+import { RacePredictionsCard } from "@/components/RacePredictionsCard";
 import { format, parseISO } from "date-fns";
 import { nl, enUS } from "date-fns/locale";
 import { useLocale } from "next-intl";
@@ -60,6 +61,8 @@ export default function AnalysePage() {
             <h1 className="text-xl font-bold text-white">{t("title")}</h1>
             <p className="text-sm text-slate-400 mt-1">{t("subtitle")}</p>
           </div>
+
+          <RacePredictionsCard />
 
           {isLoading ? (
             <div className="flex justify-center py-20">

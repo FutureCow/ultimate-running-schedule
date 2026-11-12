@@ -178,5 +178,6 @@ export const garminApi = {
   removeSession: (sessionId: number) => api.delete(`/garmin/sessions/${sessionId}`),
   autoSync: () => api.post("/garmin/auto-sync"),
   getActivity: (activityId: string) => api.get(`/garmin/activity/${activityId}`),
+  racePredictions: () => api.get("/garmin/race-predictions"),
   deleteFeedback: (activityId: string) => api.delete(`/garmin/activity/${activityId}/feedback`),
 };

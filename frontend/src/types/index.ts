@@ -232,6 +232,24 @@ export interface GarminStatus {
   created_at: string;
 }
 
+export interface RacePrediction {
+  key: "5k" | "10k" | "half_marathon" | "marathon";
+  distance_km: number;
+  seconds: number;
+}
+
+export interface RacePredictions {
+  vdot: number;
+  basis: {
+    activity_id: string;
+    name: string;
+    date: string;
+    distance_km: number;
+    duration_seconds: number;
+  };
+  predictions: RacePrediction[];
+}
+
 export interface ActivityGpsPoint {
   lat: number;
   lon: number;

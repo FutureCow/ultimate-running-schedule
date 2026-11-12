@@ -406,6 +406,12 @@
     "empty": "No completed workouts found yet. Make sure your Garmin is synced.",
     "loading": "Loading…",
     "error": "Could not load activity. Please try again.",
+    "predictions": {
+      "title": "Estimated race times",
+      "distances": {"5k": "5K", "10k": "10K", "half_marathon": "Half", "marathon": "Marathon"},
+      "basis": "Based on: {name}, {date} ({distance} km in {time})",
+      "note": "From your fastest run of at least 3 km in the last 12 weeks. The marathon time only holds if you have trained for that distance too."
+    },
     "stats": {
       "distance": "Distance",
       "duration": "Duration",

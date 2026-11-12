@@ -406,6 +406,12 @@
     "empty": "Nog geen afgeronde trainingen gevonden. Zorg dat je Garmin gesynchroniseerd is.",
     "loading": "Laden…",
     "error": "Kon de activiteit niet laden. Probeer het opnieuw.",
+    "predictions": {
+      "title": "Geschatte wedstrijdtijden",
+      "distances": {"5k": "5K", "10k": "10K", "half_marathon": "Halve", "marathon": "Marathon"},
+      "basis": "Op basis van: {name}, {date} ({distance} km in {time})",
+      "note": "Uit je snelste run van minstens 3 km in de laatste 12 weken. De marathontijd geldt alleen als je ook voor die afstand getraind hebt."
+    },
     "stats": {
       "distance": "Afstand",
       "duration": "Duur",
